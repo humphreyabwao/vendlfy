@@ -3613,31 +3613,60 @@ textarea.form-input {
     align-items: center;
 }
 
+.page-header-actions .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Montserrat', sans-serif;
+}
+
+.page-header-actions .btn-primary:hover {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+}
+
+.page-header-actions .btn-primary:active {
+    transform: translateY(0);
+    background: #1e40af;
+}
+
+.page-header-actions .btn-primary svg {
+    flex-shrink: 0;
+}
+
 /* Export PDF Button */
 .btn-export-pdf {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem 1.5rem;
-    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    background: #2563eb;
     color: white;
     border: none;
-    border-radius: 8px;
+    border-radius: 6px;
     font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s;
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+    transition: all 0.2s;
 }
 
 .btn-export-pdf:hover {
-    background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
-    transform: translateY(-2px);
+    background: #1d4ed8;
+    transform: translateY(-1px);
 }
 
 .btn-export-pdf:active {
     transform: translateY(0);
+    background: #1e40af;
 }
 
 .btn-export-pdf svg {
@@ -4100,6 +4129,268 @@ textarea.form-input {
     .btn-submit {
         width: 100%;
         justify-content: center;
+    }
+}
+
+/* ============================
+   CUSTOMER MODULE STYLES
+   ============================ */
+
+/* Customer Stat Cards */
+.customer-stat-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border: 1px solid #e5e7eb;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.customer-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.stat-icon-clean {
+    width: 48px;
+    height: 48px;
+    background: #2563eb;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    flex-shrink: 0;
+}
+
+.stat-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.stat-value-customer {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+    color: #000000;
+}
+
+.stat-blue {
+    color: #000000;
+}
+
+.stat-green {
+    color: #000000;
+}
+
+.stat-gray {
+    color: #000000;
+}
+
+.stat-label {
+    color: #6b7280;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+/* Customer Filter Buttons */
+.customer-filter-btn {
+    padding: 0.5rem 1rem;
+    border: 1px solid #d1d5db;
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    transition: all 0.2s;
+}
+
+.customer-filter-btn:hover {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+.customer-filter-btn.active {
+    background: #2563eb;
+    color: white;
+    border-color: #2563eb;
+}
+
+/* Customer Avatar */
+.customer-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.875rem;
+    background: #2563eb;
+    color: white;
+    flex-shrink: 0;
+}
+
+.customer-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.customer-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.customer-name {
+    font-weight: 600;
+    color: #000000;
+    font-size: 0.95rem;
+}
+
+.customer-company {
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+
+/* Customer Status Badge */
+.customer-status-badge {
+    padding: 0.35rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border: 1px solid;
+}
+
+.customer-status-badge.status-active {
+    background: white;
+    color: #000000;
+    border-color: #d1d5db;
+}
+
+.customer-status-badge.status-inactive {
+    background: #f3f4f6;
+    color: #6b7280;
+    border-color: #d1d5db;
+}
+
+/* Customer Modal Enhancements */
+.customer-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.customer-modal-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.5rem;
+    background: #2563eb;
+    color: white;
+    flex-shrink: 0;
+}
+
+.customer-modal-title {
+    display: flex;
+    flex-direction: column;
+}
+
+.customer-modal-name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #000000;
+}
+
+.customer-modal-company {
+    font-size: 0.9rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+}
+
+.customer-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.25rem;
+    margin-top: 1.5rem;
+}
+
+.customer-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.customer-info-label {
+    font-size: 0.8rem;
+    color: #6b7280;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.customer-info-value {
+    font-size: 0.95rem;
+    color: #000000;
+    word-break: break-word;
+}
+
+.customer-notes-section {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.customer-notes-title {
+    font-size: 0.8rem;
+    color: #6b7280;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.75rem;
+}
+
+.customer-notes-content {
+    font-size: 0.95rem;
+    color: #000000;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+/* Responsive adjustments for customer module */
+@media (max-width: 768px) {
+    .customer-stat-card {
+        padding: 1rem;
+    }
+    
+    .stat-icon-clean {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .stat-value-customer {
+        font-size: 1.5rem;
+    }
+    
+    .customer-info-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .customer-modal-header {
+        flex-direction: column;
+        align-items: flex-start;
     }
 }
 

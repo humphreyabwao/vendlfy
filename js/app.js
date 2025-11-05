@@ -6,6 +6,7 @@ import addItemManager from './add-item.js';
 import posSystem from './pos.js';
 import salesManager from './sales.js';
 import expenseManager from './expenses.js';
+import customerManager from './customers.js';
 
 // Make managers globally available
 window.branchManager = branchManager;
@@ -15,6 +16,7 @@ window.addItemManager = addItemManager;
 window.posSystem = posSystem;
 window.salesManager = salesManager;
 window.expenseManager = expenseManager;
+window.customerManager = customerManager;
 
 // App Initialization
 document.addEventListener('DOMContentLoaded', async function() {
@@ -280,6 +282,20 @@ function initNavigation() {
                     const dateInput = document.querySelector('#addExpenseForm input[name="date"]');
                     if (dateInput && !dateInput.value) {
                         dateInput.value = new Date().toISOString().split('T')[0];
+                    }
+                }
+                
+                // Initialize Customers page
+                if (pageId === 'customers') {
+                    customerManager.init();
+                }
+                
+                // Initialize Add Customer page
+                if (pageId === 'add-customer') {
+                    // Clear form if it exists
+                    const form = document.querySelector('#addCustomerForm');
+                    if (form) {
+                        form.reset();
                     }
                 }
             }

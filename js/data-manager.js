@@ -461,6 +461,20 @@ class DataManager {
     // CUSTOMER OPERATIONS
     async createCustomer(customerData) {
         try {
+            // Use localStorage if Firebase not configured
+            if (this.useLocalStorage) {
+                const newCustomer = {
+                    id: this.generateLocalId(),
+                    ...customerData,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                this.cache.customers.push(newCustomer);
+                this.saveToLocalStorage();
+                return newCustomer;
+            }
+            
+            // Use Firebase
             const customersRef = collection(db, 'customers');
             const newCustomer = this.addBranchData({
                 ...customerData,
@@ -470,9 +484,22 @@ class DataManager {
             });
             
             const docRef = await addDoc(customersRef, newCustomer);
-            await this.syncToCentral('customers', docRef.id, newCustomer);
             
-            return { id: docRef.id, ...newCustomer };
+            // Cache the new customer locally to prevent duplicate queries
+            const customerWithId = { id: docRef.id, ...newCustomer };
+            if (!this.cache.customers) {
+                this.cache.customers = [];
+            }
+            this.cache.customers.push(customerWithId);
+            
+            // Sync to central collection
+            try {
+                await this.syncToCentral('customers', docRef.id, newCustomer);
+            } catch (syncError) {
+                console.warn('Failed to sync to central, but customer created:', syncError);
+            }
+            
+            return customerWithId;
         } catch (error) {
             console.error('Error creating customer:', error);
             throw error;
@@ -481,6 +508,11 @@ class DataManager {
 
     async getCustomers(filters = {}) {
         try {
+            // Use localStorage if Firebase not configured
+            if (this.useLocalStorage) {
+                return this.cache.customers || [];
+            }
+            
             const conditions = [];
             
             if (filters.search) {
@@ -493,13 +525,85 @@ class DataManager {
             const q = this.createBranchQuery('customers', conditions);
             const snapshot = await getDocs(q);
             
-            return snapshot.docs.map(doc => ({
+            const customers = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
             }));
+            
+            // Remove duplicates by ID (just in case)
+            const uniqueCustomers = customers.reduce((acc, customer) => {
+                if (!acc.find(c => c.id === customer.id)) {
+                    acc.push(customer);
+                }
+                return acc;
+            }, []);
+            
+            // Update cache
+            this.cache.customers = uniqueCustomers;
+            
+            return uniqueCustomers;
         } catch (error) {
             console.error('Error getting customers:', error);
-            return [];
+            // Return cached data if Firebase fails
+            return this.cache.customers || [];
+        }
+    }
+
+    async updateCustomer(customerId, updates) {
+        try {
+            // Use localStorage if Firebase not configured
+            if (this.useLocalStorage) {
+                const index = this.cache.customers.findIndex(customer => customer.id === customerId);
+                if (index !== -1) {
+                    this.cache.customers[index] = {
+                        ...this.cache.customers[index],
+                        ...updates,
+                        updatedAt: new Date().toISOString()
+                    };
+                    this.saveToLocalStorage();
+                    return this.cache.customers[index];
+                }
+                throw new Error('Customer not found in localStorage');
+            }
+            
+            // Use Firebase
+            const customerRef = doc(db, 'customers', customerId);
+            const updateData = {
+                ...updates,
+                updatedAt: new Date().toISOString()
+            };
+            
+            await updateDoc(customerRef, updateData);
+            
+            // Try to sync to central, but don't fail if it errors
+            try {
+                await this.syncToCentral('customers', customerId, updates);
+            } catch (syncError) {
+                console.warn('⚠️ Could not sync to central, but customer was updated:', syncError);
+            }
+            
+            return { id: customerId, ...updateData };
+        } catch (error) {
+            console.error('Error updating customer:', error);
+            throw error;
+        }
+    }
+
+    async deleteCustomer(customerId) {
+        try {
+            // Use localStorage if Firebase not configured
+            if (this.useLocalStorage) {
+                this.cache.customers = this.cache.customers.filter(customer => customer.id !== customerId);
+                this.saveToLocalStorage();
+                return;
+            }
+            
+            // Use Firebase
+            const customerRef = doc(db, 'customers', customerId);
+            await deleteDoc(customerRef);
+        } catch (error) {
+            console.error('Error deleting customer:', error);
+            throw error;
         }
     }
 
