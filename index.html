@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vendify POS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Top Bar -->
+    <div class="topbar">
+        <div class="topbar-left">
+            <button class="toggle-btn" id="toggleSidebar">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <h1 class="logo">Vendify</h1>
+        </div>
+        <div class="topbar-right">
+            <button class="theme-toggle" id="themeToggle">
+                <svg class="sun-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+                <svg class="moon-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </button>
+            <button class="notification-btn" id="notificationBtn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                </svg>
+                <span class="notification-badge">3</span>
+            </button>
+            <div class="profile-dropdown">
+                <button class="profile-btn" id="profileBtn">
+                    <div class="profile-avatar">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                    </div>
+                    <span>Admin</span>
+                    <svg class="dropdown-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </button>
+                <div class="profile-menu" id="profileMenu">
+                    <a href="#" class="profile-menu-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        Profile
+                    </a>
+                    <a href="#" class="profile-menu-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M12 1v6m0 6v6m-8-7h6m6 0h6"></path>
+                        </svg>
+                        Settings
+                    </a>
+                    <a href="#" class="profile-menu-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                        Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <nav class="sidebar-nav">
+            <ul class="nav-list">
+                <li class="nav-item">
+                    <a href="#dashboard" class="nav-link active" data-page="dashboard">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="14" width="7" height="7"></rect>
+                            <rect x="3" y="14" width="7" height="7"></rect>
+                        </svg>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="nav-item has-submenu">
+                    <a href="#inventory" class="nav-link" data-page="inventory">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                        </svg>
+                        <span>Inventory</span>
+                        <svg class="submenu-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </a>
+                    <ul class="submenu">
+                        <li><a href="#add-item" data-page="add-item">Add Item</a></li>
+                    </ul>
+                </li>
+                <li class="nav-item has-submenu">
+                    <a href="#pos" class="nav-link" data-page="pos">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="9" cy="21" r="1"></circle>
+                            <circle cx="20" cy="21" r="1"></circle>
+                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                        </svg>
+                        <span>POS / Sales</span>
+                        <svg class="submenu-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </a>
+                    <ul class="submenu">
+                        <li><a href="#new-sale" data-page="new-sale">New Sale</a></li>
+                        <li><a href="#all-sales" data-page="all-sales">All Sales</a></li>
+                    </ul>
+                </li>
+                <li class="nav-item has-submenu">
+                    <a href="#b2b-sales" class="nav-link" data-page="b2b-sales">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        <span>B2B Sales</span>
+                        <svg class="submenu-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </a>
+                    <ul class="submenu">
+                        <li><a href="#new-b2b-sale" data-page="new-b2b-sale">New B2B Sale</a></li>
+                    </ul>
+                </li>
+                <li class="nav-item has-submenu">
+                    <a href="#orders" class="nav-link" data-page="orders">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                        </svg>
+                        <span>My Orders</span>
+                        <svg class="submenu-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </a>
+                    <ul class="submenu">
+                        <li><a href="#new-order" data-page="new-order">New Order</a></li>
+                        <li><a href="#add-supplier" data-page="add-supplier">Add Supplier</a></li>
+                    </ul>
+                </li>
+                <li class="nav-item has-submenu">
+                    <a href="#customers" class="nav-link" data-page="customers">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        <span>Customers</span>
+                        <svg class="submenu-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </a>
+                    <ul class="submenu">
+                        <li><a href="#add-customer" data-page="add-customer">Add Customer</a></li>
+                    </ul>
+                </li>
+                <li class="nav-item has-submenu">
+                    <a href="#expenses" class="nav-link" data-page="expenses">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="1" x2="12" y2="23"></line>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                        </svg>
+                        <span>Expenses</span>
+                        <svg class="submenu-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </a>
+                    <ul class="submenu">
+                        <li><a href="#add-expense" data-page="add-expense">Add Expense</a></li>
+                    </ul>
+                </li>
+                <li class="nav-item">
+                    <a href="#reports" class="nav-link" data-page="reports">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 3v18h18"></path>
+                            <path d="M18 17V9"></path>
+                            <path d="M13 17V5"></path>
+                            <path d="M8 17v-3"></path>
+                        </svg>
+                        <span>Reports</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#accounts" class="nav-link" data-page="accounts">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                            <line x1="1" y1="10" x2="23" y2="10"></line>
+                        </svg>
+                        <span>Accounts</span>
+                    </a>
+                </li>
+                <li class="nav-item has-submenu">
+                    <a href="#admin" class="nav-link" data-page="admin">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M12 1v6m0 6v6"></path>
+                            <path d="m4.93 4.93 4.24 4.24m5.66 5.66 4.24 4.24"></path>
+                            <path d="M1 12h6m6 0h6"></path>
+                            <path d="m4.93 19.07 4.24-4.24m5.66-5.66 4.24-4.24"></path>
+                        </svg>
+                        <span>Admin Panel</span>
+                        <svg class="submenu-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </a>
+                    <ul class="submenu">
+                        <li><a href="#new-user" data-page="new-user">New User</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content" id="mainContent">
+        <div class="page-container" id="pageContainer">
+            <!-- Dashboard -->
+            <div class="page active" id="dashboard-page">
+                <div class="dashboard-header">
+                    <div class="dashboard-welcome">
+                        <h2 id="greetingText">Good Evening, User</h2>
+                        <p class="dashboard-date" id="currentDate">Wednesday, 5 November 2025</p>
+                    </div>
+                    <div class="dashboard-controls">
+                        <div class="branch-selector">
+                            <label>Branch:</label>
+                            <select id="branchSelect">
+                                <option value="all">All Branches</option>
+                                <option value="main">Main Branch</option>
+                                <option value="downtown">Downtown Branch</option>
+                            </select>
+                        </div>
+                        <div class="search-bar">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.35-4.35"></path>
+                            </svg>
+                            <input type="text" placeholder="Search products, customers, or transactions...">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Today's Sales</span>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="1" x2="12" y2="23"></line>
+                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                            </svg>
+                        </div>
+                        <div class="stat-value">0.00</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Today's Expenses</span>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 3v18h18"></path>
+                                <path d="M18 17V9"></path>
+                                <path d="M13 17V5"></path>
+                                <path d="M8 17v-3"></path>
+                            </svg>
+                        </div>
+                        <div class="stat-value">0.00</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Profit/Loss</span>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                            </svg>
+                        </div>
+                        <div class="stat-value profit">0.00</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Total Customers</span>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                            </svg>
+                        </div>
+                        <div class="stat-value">0</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Stock Value</span>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                            </svg>
+                        </div>
+                        <div class="stat-value">0.00</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Pending B2B Orders</span>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                            </svg>
+                        </div>
+                        <div class="stat-value">0</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Active Branches</span>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                            </svg>
+                        </div>
+                        <div class="stat-value">0</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Out of Stock</span>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="15" y1="9" x2="9" y2="15"></line>
+                                <line x1="9" y1="9" x2="15" y2="15"></line>
+                            </svg>
+                        </div>
+                        <div class="stat-value warning">0</div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="section-header">
+                    <h3>Quick Actions</h3>
+                </div>
+                <div class="quick-actions-grid">
+                    <button class="action-card" data-page="new-sale">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="9" cy="21" r="1"></circle>
+                            <circle cx="20" cy="21" r="1"></circle>
+                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                        </svg>
+                        <div class="action-content">
+                            <h4>New Sale</h4>
+                            <p>Create a new transaction</p>
+                        </div>
+                    </button>
+
+                    <button class="action-card" data-page="add-item">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                            <polyline points="12 12 12 22"></polyline>
+                            <path d="M12 2v10"></path>
+                        </svg>
+                        <div class="action-content">
+                            <h4>Add Product / Stock In</h4>
+                            <p>Add new items to inventory</p>
+                        </div>
+                    </button>
+
+                    <button class="action-card" data-page="add-expense">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="1" x2="12" y2="23"></line>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                        </svg>
+                        <div class="action-content">
+                            <h4>Record Expense</h4>
+                            <p>Log business expenses</p>
+                        </div>
+                    </button>
+
+                    <button class="action-card" data-page="add-customer">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        <div class="action-content">
+                            <h4>Add Customer</h4>
+                            <p>Register new customer</p>
+                        </div>
+                    </button>
+
+                    <button class="action-card" data-page="reports">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 3v18h18"></path>
+                            <path d="M18 17V9"></path>
+                            <path d="M13 17V5"></path>
+                            <path d="M8 17v-3"></path>
+                        </svg>
+                        <div class="action-content">
+                            <h4>View Reports / Summary</h4>
+                            <p>Access business analytics</p>
+                        </div>
+                    </button>
+
+                    <button class="action-card" onclick="window.print()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                            <rect x="6" y="14" width="12" height="8"></rect>
+                        </svg>
+                        <div class="action-content">
+                            <h4>Print Daily Report</h4>
+                            <p>Generate and print report</p>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="section-header">
+                    <h3>Recent Activity</h3>
+                    <button class="view-all-btn">View All</button>
+                </div>
+                <div class="recent-activity">
+                    <div class="empty-state">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        <p>No recent activity</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Inventory -->
+            <div class="page" id="inventory-page">
+                <div class="page-header">
+                    <h2>Inventory</h2>
+                </div>
+                <div class="page-content">
+                    <!-- Inventory content will go here -->
+                </div>
+            </div>
+
+            <!-- Add Item -->
+            <div class="page" id="add-item-page">
+                <div class="page-header">
+                    <h2>Add Item</h2>
+                </div>
+                <div class="page-content">
+                    <!-- Add item content will go here -->
+                </div>
+            </div>
+
+            <!-- POS / Sales -->
+            <div class="page" id="pos-page">
+                <div class="page-header">
+                    <h2>POS / Sales</h2>
+                </div>
+                <div class="page-content">
+                    <!-- POS content will go here -->
+                </div>
+            </div>
+
+            <!-- New Sale -->
+            <div class="page" id="new-sale-page">
+                <div class="page-header">
+                    <h2>New Sale</h2>
+                </div>
+                <div class="page-content">
+                    <!-- New sale content will go here -->
+                </div>
+            </div>
+
+            <!-- All Sales -->
+            <div class="page" id="all-sales-page">
+                <div class="page-header">
+                    <h2>All Sales</h2>
+                </div>
+                <div class="page-content">
+                    <!-- All sales content will go here -->
+                </div>
+            </div>
+
+            <!-- B2B Sales -->
+            <div class="page" id="b2b-sales-page">
+                <div class="page-header">
+                    <h2>B2B Sales</h2>
+                </div>
+                <div class="page-content">
+                    <!-- B2B sales content will go here -->
+                </div>
+            </div>
+
+            <!-- New B2B Sale -->
+            <div class="page" id="new-b2b-sale-page">
+                <div class="page-header">
+                    <h2>New B2B Sale</h2>
+                </div>
+                <div class="page-content">
+                    <!-- New B2B sale content will go here -->
+                </div>
+            </div>
+
+            <!-- My Orders -->
+            <div class="page" id="orders-page">
+                <div class="page-header">
+                    <h2>My Orders</h2>
+                </div>
+                <div class="page-content">
+                    <!-- Orders content will go here -->
+                </div>
+            </div>
+
+            <!-- New Order -->
+            <div class="page" id="new-order-page">
+                <div class="page-header">
+                    <h2>New Order</h2>
+                </div>
+                <div class="page-content">
+                    <!-- New order content will go here -->
+                </div>
+            </div>
+
+            <!-- Add Supplier -->
+            <div class="page" id="add-supplier-page">
+                <div class="page-header">
+                    <h2>Add Supplier</h2>
+                </div>
+                <div class="page-content">
+                    <!-- Add supplier content will go here -->
+                </div>
+            </div>
+
+            <!-- Customers -->
+            <div class="page" id="customers-page">
+                <div class="page-header">
+                    <h2>Customers</h2>
+                </div>
+                <div class="page-content">
+                    <!-- Customers content will go here -->
+                </div>
+            </div>
+
+            <!-- Add Customer -->
+            <div class="page" id="add-customer-page">
+                <div class="page-header">
+                    <h2>Add Customer</h2>
+                </div>
+                <div class="page-content">
+                    <!-- Add customer content will go here -->
+                </div>
+            </div>
+
+            <!-- Expenses -->
+            <div class="page" id="expenses-page">
+                <div class="page-header">
+                    <h2>Expenses</h2>
+                </div>
+                <div class="page-content">
+                    <!-- Expenses content will go here -->
+                </div>
+            </div>
+
+            <!-- Add Expense -->
+            <div class="page" id="add-expense-page">
+                <div class="page-header">
+                    <h2>Add Expense</h2>
+                </div>
+                <div class="page-content">
+                    <!-- Add expense content will go here -->
+                </div>
+            </div>
+
+            <!-- Reports -->
+            <div class="page" id="reports-page">
+                <div class="page-header">
+                    <h2>Reports</h2>
+                </div>
+                <div class="page-content">
+                    <!-- Reports content will go here -->
+                </div>
+            </div>
+
+            <!-- Accounts -->
+            <div class="page" id="accounts-page">
+                <div class="page-header">
+                    <h2>Accounts</h2>
+                </div>
+                <div class="page-content">
+                    <!-- Accounts content will go here -->
+                </div>
+            </div>
+
+            <!-- Admin Panel -->
+            <div class="page" id="admin-page">
+                <div class="page-header">
+                    <h2>Admin Panel</h2>
+                </div>
+                <div class="page-content">
+                    <div class="admin-section">
+                        <div class="section-header">
+                            <h3>Branch Management</h3>
+                            <button class="btn btn-primary" onclick="openBranchModal()">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                                Add Branch
+                            </button>
+                        </div>
+                        <div class="branches-list" id="branchesListContainer">
+                            <!-- Branches will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- New User -->
+            <div class="page" id="new-user-page">
+                <div class="page-header">
+                    <h2>New User</h2>
+                </div>
+                <div class="page-content">
+                    <!-- New user content will go here -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Branch Modal -->
+    <div class="modal" id="branchModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="branchModalTitle">Add New Branch</h3>
+                <button class="modal-close" onclick="closeBranchModal()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <form id="branchForm" onsubmit="saveBranch(event)">
+                <input type="hidden" id="branchId" name="branchId">
+                
+                <div class="form-group">
+                    <label for="branchName">Branch Name *</label>
+                    <input type="text" id="branchName" name="name" required placeholder="Enter branch name">
+                </div>
+                
+                <div class="form-group">
+                    <label for="branchCode">Branch Code</label>
+                    <input type="text" id="branchCode" name="code" readonly placeholder="Auto-generated" style="background-color: var(--bg-tertiary); cursor: not-allowed;">
+                    <small style="font-size: 11px; color: var(--text-tertiary); margin-top: 4px; display: block;">Code will be automatically generated</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="branchAddress">Address</label>
+                    <textarea id="branchAddress" name="address" rows="2" placeholder="Enter branch address"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="branchPhone">Phone</label>
+                    <input type="tel" id="branchPhone" name="phone" placeholder="Enter phone number">
+                </div>
+                
+                <div class="form-group">
+                    <label for="branchManager">Manager Name</label>
+                    <input type="text" id="branchManager" name="manager" placeholder="Enter manager name">
+                </div>
+                
+                <div class="form-group">
+                    <label for="branchStatus">Status</label>
+                    <select id="branchStatus" name="status">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeBranchModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Branch</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module" src="js/firebase-config.js"></script>
+    <script type="module" src="js/branch-manager.js"></script>
+    <script type="module" src="js/data-manager.js"></script>
+    <script type="module" src="js/branch-ui.js"></script>
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
