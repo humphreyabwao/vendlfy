@@ -5,6 +5,7 @@ import inventoryManager from './inventory.js';
 import addItemManager from './add-item.js';
 import posSystem from './pos.js';
 import salesManager from './sales.js';
+import expenseManager from './expenses.js';
 
 // Make managers globally available
 window.branchManager = branchManager;
@@ -13,6 +14,7 @@ window.inventoryManager = inventoryManager;
 window.addItemManager = addItemManager;
 window.posSystem = posSystem;
 window.salesManager = salesManager;
+window.expenseManager = expenseManager;
 
 // App Initialization
 document.addEventListener('DOMContentLoaded', async function() {
@@ -110,7 +112,20 @@ async function initializeDashboard() {
     updateDate();
     initQuickActions();
     await refreshDashboardStats();
+    
+    // Set up periodic refresh for dashboard stats (every 30 seconds)
+    setInterval(async () => {
+        const dashboardPage = document.getElementById('dashboard-page');
+        if (dashboardPage && dashboardPage.classList.contains('active')) {
+            await refreshDashboardStats();
+        }
+    }, 30000);
 }
+
+// Make refreshDashboardStats globally available
+window.refreshDashboardStats = async function() {
+    await refreshDashboardStats();
+};
 
 function updateGreeting() {
     const greetingElement = document.getElementById('greetingText');
@@ -253,6 +268,20 @@ function initNavigation() {
                 if (pageId === 'all-sales') {
                     salesManager.init();
                 }
+                
+                // Initialize Expenses page
+                if (pageId === 'expenses') {
+                    expenseManager.init();
+                }
+                
+                // Initialize Add Expense page
+                if (pageId === 'add-expense') {
+                    // Set default date to today
+                    const dateInput = document.querySelector('#addExpenseForm input[name="date"]');
+                    if (dateInput && !dateInput.value) {
+                        dateInput.value = new Date().toISOString().split('T')[0];
+                    }
+                }
             }
             
             // Close sidebar on mobile after selection
@@ -286,11 +315,36 @@ async function refreshDashboardStats() {
     try {
         const stats = await dataManager.getDashboardStats();
         
-        // Update stat values
-        updateStatValue('todaysSales', stats.todaysSales);
-        updateStatValue('todaysExpenses', stats.todaysExpenses);
-        updateStatValue('profitLoss', stats.profitLoss, stats.profitLoss >= 0 ? 'profit' : 'loss');
-        updateStatValue('totalCustomers', stats.totalCustomers, null, false);
+        // Update dashboard stat cards directly by ID
+        const todaysSalesEl = document.getElementById('dashboardTodaysSales');
+        const todaysExpensesEl = document.getElementById('dashboardTodaysExpenses');
+        const profitLossEl = document.getElementById('dashboardProfitLoss');
+        const totalCustomersEl = document.getElementById('dashboardTotalCustomers');
+        
+        if (todaysSalesEl) {
+            todaysSalesEl.textContent = formatCurrency(stats.todaysSales);
+        }
+        
+        if (todaysExpensesEl) {
+            todaysExpensesEl.textContent = formatCurrency(stats.todaysExpenses);
+        }
+        
+        if (profitLossEl) {
+            profitLossEl.textContent = formatCurrency(stats.profitLoss);
+            // Update class based on profit or loss
+            profitLossEl.className = 'stat-value';
+            if (stats.profitLoss >= 0) {
+                profitLossEl.classList.add('profit');
+            } else {
+                profitLossEl.classList.add('loss');
+            }
+        }
+        
+        if (totalCustomersEl) {
+            totalCustomersEl.textContent = stats.totalCustomers;
+        }
+        
+        // Also update using the old method for other stats
         updateStatValue('stockValue', stats.stockValue);
         updateStatValue('pendingB2BOrders', stats.pendingB2BOrders, null, false);
         updateStatValue('activeBranches', stats.activeBranches, null, false);

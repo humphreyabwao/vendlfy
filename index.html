@@ -277,7 +277,7 @@
                                 <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                             </svg>
                         </div>
-                        <div class="stat-value">0.00</div>
+                        <div class="stat-value" id="dashboardTodaysSales">0.00</div>
                     </div>
 
                     <div class="stat-card">
@@ -290,7 +290,7 @@
                                 <path d="M8 17v-3"></path>
                             </svg>
                         </div>
-                        <div class="stat-value">0.00</div>
+                        <div class="stat-value" id="dashboardTodaysExpenses">0.00</div>
                     </div>
 
                     <div class="stat-card">
@@ -300,7 +300,7 @@
                                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
                             </svg>
                         </div>
-                        <div class="stat-value profit">0.00</div>
+                        <div class="stat-value profit" id="dashboardProfitLoss">0.00</div>
                     </div>
 
                     <div class="stat-card">
@@ -313,7 +313,7 @@
                                 <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                             </svg>
                         </div>
-                        <div class="stat-value">0</div>
+                        <div class="stat-value" id="dashboardTotalCustomers">0</div>
                     </div>
 
                     <div class="stat-card">
@@ -1290,9 +1290,123 @@
             <div class="page" id="expenses-page">
                 <div class="page-header">
                     <h2>Expenses</h2>
+                    <div class="page-header-actions">
+                        <button class="btn-export-pdf" onclick="window.expenseManager.exportToPDF()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                <polyline points="10 9 9 9 8 9"></polyline>
+                            </svg>
+                            Export PDF
+                        </button>
+                        <button class="btn-expense" data-page="add-expense" onclick="document.querySelector('[data-page=\'add-expense\']').click()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            Add Expense
+                        </button>
+                    </div>
                 </div>
                 <div class="page-content">
-                    <!-- Expenses content will go here -->
+                    <!-- Stats Cards -->
+                    <div class="stats-grid" style="margin-bottom: 2rem;">
+                        <div class="expense-stat-card">
+                            <div class="stat-icon-clean">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                </svg>
+                            </div>
+                            <div class="stat-details">
+                                <span class="stat-value-expense stat-red" id="expensesTodayAmount">KSh 0</span>
+                                <span class="stat-label">Today's Expenses</span>
+                            </div>
+                        </div>
+                        
+                        <div class="expense-stat-card">
+                            <div class="stat-icon-clean">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                            </div>
+                            <div class="stat-details">
+                                <span class="stat-value-expense stat-orange" id="expensesMonthAmount">KSh 0</span>
+                                <span class="stat-label">This Month</span>
+                            </div>
+                        </div>
+                        
+                        <div class="expense-stat-card">
+                            <div class="stat-icon-clean">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                            </div>
+                            <div class="stat-details">
+                                <span class="stat-value-expense stat-yellow" id="expensesPendingCount">0</span>
+                                <span class="stat-label">Pending Approval</span>
+                            </div>
+                        </div>
+                        
+                        <div class="expense-stat-card">
+                            <div class="stat-icon-clean">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+                            <div class="stat-details">
+                                <span class="stat-value-expense stat-green" id="expensesApprovedCount">0</span>
+                                <span class="stat-label">Approved (Month)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Search and Filter -->
+                    <div class="search-filter-container">
+                        <div class="search-box">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.35-4.35"></path>
+                            </svg>
+                            <input type="text" id="expenseSearch" placeholder="Search expenses by description, category, vendor...">
+                        </div>
+                        <div class="filter-buttons">
+                            <button class="expense-filter-btn active" data-filter="all">All</button>
+                            <button class="expense-filter-btn" data-filter="pending">Pending</button>
+                            <button class="expense-filter-btn" data-filter="approved">Approved</button>
+                            <button class="expense-filter-btn" data-filter="rejected">Rejected</button>
+                        </div>
+                    </div>
+
+                    <!-- Expenses Table -->
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Description</th>
+                                    <th>Category</th>
+                                    <th>Vendor</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="expensesTableBody">
+                                <tr>
+                                    <td colspan="7" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                                        Loading expenses...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -1300,9 +1414,141 @@
             <div class="page" id="add-expense-page">
                 <div class="page-header">
                     <h2>Add Expense</h2>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">Record a new business expense</p>
                 </div>
                 <div class="page-content">
-                    <!-- Add expense content will go here -->
+                    <div class="expense-form-wrapper">
+                        <form id="addExpenseForm" class="expense-form-enhanced">
+                            
+                            <!-- Basic Information Section -->
+                            <div class="form-section">
+                                <h3 class="form-section-title">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                                    </svg>
+                                    Basic Information
+                                </h3>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Date <span class="required">*</span></label>
+                                        <input type="date" name="date" class="form-input" required>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label>Category <span class="required">*</span></label>
+                                        <select name="category" class="form-input" required>
+                                            <option value="">Select Category</option>
+                                            <option value="Rent">🏠 Rent</option>
+                                            <option value="Utilities">⚡ Utilities</option>
+                                            <option value="Salaries">👥 Salaries</option>
+                                            <option value="Inventory">📦 Inventory</option>
+                                            <option value="Marketing">📢 Marketing</option>
+                                            <option value="Supplies">✏️ Supplies</option>
+                                            <option value="Transport">🚗 Transport</option>
+                                            <option value="Maintenance">🔧 Maintenance</option>
+                                            <option value="Other">📋 Other</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group form-group-full">
+                                        <label>Description <span class="required">*</span></label>
+                                        <input type="text" name="description" class="form-input" placeholder="Brief description of the expense" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Financial Details Section -->
+                            <div class="form-section">
+                                <h3 class="form-section-title">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="12" y1="1" x2="12" y2="23"></line>
+                                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                    </svg>
+                                    Financial Details
+                                </h3>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Amount (KES) <span class="required">*</span></label>
+                                        <div class="input-with-icon">
+                                            <span class="input-icon">KSh</span>
+                                            <input type="number" name="amount" class="form-input input-with-prefix" step="0.01" min="0" placeholder="0.00" required>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label>Payment Method</label>
+                                        <select name="paymentMethod" class="form-input">
+                                            <option value="">Select Method</option>
+                                            <option value="Cash">💵 Cash</option>
+                                            <option value="M-Pesa">📱 M-Pesa</option>
+                                            <option value="Bank Transfer">🏦 Bank Transfer</option>
+                                            <option value="Card">💳 Card</option>
+                                            <option value="Cheque">📝 Cheque</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label>Status</label>
+                                        <select name="status" class="form-input">
+                                            <option value="pending">⏳ Pending</option>
+                                            <option value="approved">✅ Approved</option>
+                                            <option value="rejected">❌ Rejected</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Additional Information Section -->
+                            <div class="form-section">
+                                <h3 class="form-section-title">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                                        <polyline points="10 9 9 9 8 9"></polyline>
+                                    </svg>
+                                    Additional Information
+                                </h3>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Vendor / Supplier</label>
+                                        <input type="text" name="vendor" class="form-input" placeholder="Supplier or vendor name">
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label>Reference Number</label>
+                                        <input type="text" name="reference" class="form-input" placeholder="Invoice #, Receipt #, etc.">
+                                    </div>
+                                    
+                                    <div class="form-group form-group-full">
+                                        <label>Notes</label>
+                                        <textarea name="notes" class="form-input" rows="4" placeholder="Additional notes or comments about this expense..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Form Actions -->
+                            <div class="form-actions-enhanced">
+                                <button type="button" class="btn-cancel" onclick="document.querySelector('[data-page=\'expenses\']').click()">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                    Cancel
+                                </button>
+                                <button type="submit" class="btn-submit">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                    Add Expense
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
 

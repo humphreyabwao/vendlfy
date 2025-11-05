@@ -606,6 +606,18 @@ class POSSystem {
                 // Don't throw - sale is already saved
             }
             
+            // Refresh dashboard stats if available (non-critical)
+            if (typeof window.refreshDashboardStats === 'function') {
+                try {
+                    console.log('📊 Refreshing dashboard stats...');
+                    await window.refreshDashboardStats();
+                    console.log('✅ Dashboard stats refreshed');
+                } catch (dashError) {
+                    console.error('⚠️ Error refreshing dashboard:', dashError);
+                    // Don't throw - sale is already saved
+                }
+            }
+            
             // Reload POS inventory (non-critical)
             try {
                 console.log('🔄 Reloading POS inventory...');

@@ -506,6 +506,20 @@ class DataManager {
     // EXPENSE OPERATIONS
     async createExpense(expenseData) {
         try {
+            // Use localStorage if Firebase not configured
+            if (this.useLocalStorage) {
+                const newExpense = {
+                    id: this.generateLocalId(),
+                    ...expenseData,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                this.cache.expenses.push(newExpense);
+                this.saveToLocalStorage();
+                return newExpense;
+            }
+            
+            // Use Firebase
             const expensesRef = collection(db, 'expenses');
             const newExpense = this.addBranchData({
                 ...expenseData,
@@ -535,6 +549,20 @@ class DataManager {
 
     async getExpenses(filters = {}) {
         try {
+            // Use localStorage if Firebase not configured
+            if (this.useLocalStorage) {
+                let expenses = this.cache.expenses || [];
+                
+                if (filters.startDate) {
+                    expenses = expenses.filter(e => e.createdAt >= filters.startDate);
+                }
+                if (filters.endDate) {
+                    expenses = expenses.filter(e => e.createdAt <= filters.endDate);
+                }
+                
+                return expenses;
+            }
+            
             const conditions = [];
             
             if (filters.startDate) {
@@ -554,6 +582,64 @@ class DataManager {
         } catch (error) {
             console.error('Error getting expenses:', error);
             return [];
+        }
+    }
+
+    async updateExpense(expenseId, updates) {
+        try {
+            // Use localStorage if Firebase not configured
+            if (this.useLocalStorage) {
+                const index = this.cache.expenses.findIndex(expense => expense.id === expenseId);
+                if (index !== -1) {
+                    this.cache.expenses[index] = {
+                        ...this.cache.expenses[index],
+                        ...updates,
+                        updatedAt: new Date().toISOString()
+                    };
+                    this.saveToLocalStorage();
+                    return this.cache.expenses[index];
+                }
+                throw new Error('Expense not found in localStorage');
+            }
+            
+            // Use Firebase
+            const expenseRef = doc(db, 'expenses', expenseId);
+            const updateData = {
+                ...updates,
+                updatedAt: new Date().toISOString()
+            };
+            
+            await updateDoc(expenseRef, updateData);
+            
+            // Try to sync to central, but don't fail if it errors
+            try {
+                await this.syncToCentral('expenses', expenseId, updates);
+            } catch (syncError) {
+                console.warn('⚠️ Could not sync to central, but expense was updated:', syncError);
+            }
+            
+            return { id: expenseId, ...updateData };
+        } catch (error) {
+            console.error('Error updating expense:', error);
+            throw error;
+        }
+    }
+
+    async deleteExpense(expenseId) {
+        try {
+            // Use localStorage if Firebase not configured
+            if (this.useLocalStorage) {
+                this.cache.expenses = this.cache.expenses.filter(expense => expense.id !== expenseId);
+                this.saveToLocalStorage();
+                return;
+            }
+            
+            // Use Firebase
+            const expenseRef = doc(db, 'expenses', expenseId);
+            await deleteDoc(expenseRef);
+        } catch (error) {
+            console.error('Error deleting expense:', error);
+            throw error;
         }
     }
 
