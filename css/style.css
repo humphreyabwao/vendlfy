@@ -2830,6 +2830,21 @@ textarea.form-input {
 
 .pos-modal-body {
     padding: 24px;
+    max-height: 70vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Hide scrollbar but keep functionality */
+.pos-modal-body::-webkit-scrollbar {
+    width: 0px;
+    display: none;
+}
+
+/* Firefox - hide scrollbar */
+.pos-modal-body {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 
 .pos-modal-footer {
@@ -2838,6 +2853,41 @@ textarea.form-input {
     display: flex;
     gap: 12px;
     justify-content: flex-end;
+    flex-wrap: wrap;
+    position: sticky;
+    bottom: 0;
+    background: var(--bg-primary);
+    z-index: 10;
+}
+
+.pos-modal-footer .btn {
+    min-width: 100px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.pos-modal-footer .btn-primary {
+    background: var(--primary-color);
+    color: white;
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}
+
+.pos-modal-footer .btn-primary:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+}
+
+.pos-modal-footer .btn-secondary {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.pos-modal-footer .btn-secondary:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
 }
 
 /* Receipt Modal */
@@ -2873,51 +2923,109 @@ textarea.form-input {
     width: 100%;
     margin: 20px 0;
     border-collapse: collapse;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    overflow: hidden;
 }
 
 .receipt-table th {
     text-align: left;
-    padding: 8px 4px;
-    border-bottom: 1px solid #000;
-    font-size: 11px;
+    padding: 12px 12px;
+    border-bottom: 2px solid var(--border-color);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: var(--bg-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .receipt-table td {
-    padding: 8px 4px;
-    font-size: 11px;
+    padding: 10px 12px;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.receipt-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.receipt-table tbody tr:hover {
+    background: var(--bg-tertiary);
 }
 
 .receipt-totals {
-    border-top: 2px dashed #000;
+    border-top: 2px solid var(--border-color);
     padding-top: 16px;
     margin-top: 16px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 16px;
 }
 
 .receipt-row {
     display: flex;
     justify-content: space-between;
-    padding: 6px 0;
-    font-size: 12px;
+    padding: 8px 0;
+    font-size: 13px;
+    color: var(--text-primary);
 }
 
 .receipt-total {
-    font-size: 16px;
+    font-size: 18px;
     font-weight: bold;
-    border-top: 1px solid #000;
+    border-top: 2px solid var(--primary-color);
     padding-top: 12px;
     margin-top: 12px;
+    color: var(--primary-color);
 }
 
 .receipt-footer {
     text-align: center;
-    border-top: 2px dashed #000;
+    border-top: 2px dashed var(--border-color);
     padding-top: 20px;
     margin-top: 20px;
 }
 
 .receipt-footer p {
     font-size: 13px;
+    color: var(--text-secondary);
 }
+
+/* Enhanced Print Button Styling */
+.pos-modal-footer .btn-primary {
+    background: var(--primary-green);
+    color: white;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+    transition: all 0.2s ease;
+}
+
+.pos-modal-footer .btn-primary:hover {
+    background: #059669;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.pos-modal-footer .btn-primary svg {
+    width: 18px;
+    height: 18px;
+}
+
+.pos-modal-footer .btn-secondary {
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
 
 /* POS Notifications */
 .pos-notification {
@@ -3042,6 +3150,20 @@ textarea.form-input {
     border: 1px solid var(--border-color);
     border-radius: 12px;
     overflow: hidden;
+    max-height: calc(100vh - 350px);
+    overflow-y: auto;
+}
+
+/* Hide scrollbar but keep functionality */
+.sales-table-wrapper::-webkit-scrollbar {
+    width: 0px;
+    display: none;
+}
+
+/* Firefox - hide scrollbar */
+.sales-table-wrapper {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 
 .sales-table {
@@ -3129,11 +3251,12 @@ textarea.form-input {
 .action-buttons-inline {
     display: flex;
     gap: 6px;
+    justify-content: flex-end;
 }
 
 .btn-icon-sm {
-    width: 30px;
-    height: 30px;
+    width: 32px;
+    height: 32px;
     border: 1px solid var(--border-color);
     background: var(--bg-secondary);
     border-radius: 6px;
@@ -3149,7 +3272,41 @@ textarea.form-input {
     background: var(--primary-blue);
     border-color: var(--primary-blue);
     color: white;
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+}
+
+/* View button specific styling */
+.btn-icon-sm[title*="View"] {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.btn-icon-sm[title*="View"]:hover {
+    background: var(--primary-color);
+    color: white;
+}
+
+/* Print button specific styling */
+.btn-icon-sm[title*="Print"] {
+    border-color: var(--primary-green);
+    color: var(--primary-green);
+}
+
+.btn-icon-sm[title*="Print"]:hover {
+    background: var(--primary-green);
+    color: white;
+}
+
+/* Delete button specific styling */
+.btn-icon-sm[title*="Delete"] {
+    border-color: var(--primary-red);
+    color: var(--primary-red);
+}
+
+.btn-icon-sm[title*="Delete"]:hover {
+    background: var(--primary-red);
+    color: white;
 }
 
 /* Sale Details Modal */
@@ -3158,6 +3315,20 @@ textarea.form-input {
     border-radius: 8px;
     padding: 16px;
     margin-bottom: 20px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* Hide scrollbar but keep functionality */
+.sale-details-info::-webkit-scrollbar {
+    width: 0px;
+    display: none;
+}
+
+/* Firefox - hide scrollbar */
+.sale-details-info {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 
 .info-row {
