@@ -2,11 +2,13 @@
 import branchManager from './branch-manager.js';
 import dataManager from './data-manager.js';
 import inventoryManager from './inventory.js';
+import addItemManager from './add-item.js';
 
 // Make managers globally available
 window.branchManager = branchManager;
 window.dataManager = dataManager;
 window.inventoryManager = inventoryManager;
+window.addItemManager = addItemManager;
 
 // App Initialization
 document.addEventListener('DOMContentLoaded', async function() {
@@ -231,6 +233,11 @@ function initNavigation() {
                 // Initialize inventory page if that's what we're navigating to
                 if (pageId === 'inventory') {
                     inventoryManager.init();
+                }
+                
+                // Initialize add-item page
+                if (pageId === 'add-item') {
+                    addItemManager.init();
                 }
             }
             

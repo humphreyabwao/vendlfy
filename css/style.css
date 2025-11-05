@@ -1142,6 +1142,295 @@ body {
     border-color: var(--primary-blue);
 }
 
+/* Form Styles */
+.form-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.item-form {
+    background-color: var(--bg-primary);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.form-section {
+    padding: 32px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.form-section:last-of-type {
+    border-bottom: none;
+}
+
+.form-section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.form-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.required {
+    color: var(--primary-red);
+    font-weight: bold;
+}
+
+.form-input {
+    padding: 12px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.2s;
+    min-height: 44px;
+}
+
+.form-input:focus {
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    background-color: var(--bg-primary);
+}
+
+.form-input:hover {
+    border-color: var(--primary-blue);
+}
+
+.form-input::placeholder {
+    color: var(--text-tertiary);
+}
+
+textarea.form-input {
+    resize: vertical;
+    min-height: 100px;
+    line-height: 1.5;
+}
+
+.input-with-button {
+    display: flex;
+    gap: 10px;
+}
+
+.input-with-button .form-input {
+    flex: 1;
+}
+
+.btn-input-action {
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--bg-secondary);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.btn-input-action:hover {
+    background-color: var(--primary-blue);
+    border-color: var(--primary-blue);
+    color: white;
+    transform: scale(1.05);
+}
+
+.barcode-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.btn-sm {
+    padding: 10px 16px;
+    font-size: 13px;
+    min-height: 40px;
+}
+
+.barcode-preview {
+    background-color: var(--bg-secondary);
+    border: 2px dashed var(--border-color);
+    border-radius: 12px;
+    padding: 32px;
+    text-align: center;
+    margin-top: 8px;
+}
+
+.barcode-preview canvas {
+    max-width: 100%;
+    height: auto;
+    margin-bottom: 20px;
+    background: white;
+    padding: 16px;
+    border-radius: 8px;
+}
+
+.barcode-size-selector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.barcode-size-selector .form-label {
+    margin: 0;
+    font-size: 13px;
+}
+
+.form-input-sm {
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Montserrat', sans-serif;
+    font-size: 13px;
+    outline: none;
+    min-width: 150px;
+}
+
+.form-actions {
+    padding: 24px 32px;
+    background-color: var(--bg-secondary);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    border-top: 2px solid var(--border-color);
+}
+
+.form-actions .btn {
+    min-width: 140px;
+}
+
+/* Barcode Scanner Modal */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-lg {
+    max-width: 800px;
+}
+
+#barcodeScannerContainer {
+    position: relative;
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+    background-color: #000;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+#barcodeScannerVideo {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.scanner-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80%;
+    height: 60%;
+    border: 2px solid var(--primary-green);
+    border-radius: 8px;
+    pointer-events: none;
+}
+
+.scanner-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--primary-green);
+    box-shadow: 0 0 10px var(--primary-green);
+    animation: scan 2s linear infinite;
+}
+
+@keyframes scan {
+    0%, 100% {
+        top: 0;
+    }
+    50% {
+        top: 100%;
+    }
+}
+
+.scanner-result {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.scanner-result svg {
+    color: var(--primary-green);
+    margin-bottom: 16px;
+}
+
+.scanner-result h4 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.barcode-value {
+    font-size: 24px;
+    font-family: 'Courier New', monospace;
+    color: var(--primary-blue);
+    font-weight: 600;
+}
+
+.modal-body {
+    padding: 24px;
+}
+
 /* Stats Grid */
 .stats-grid {
     display: grid;
@@ -1779,5 +2068,26 @@ body {
 
     .action-buttons {
         flex-wrap: wrap;
+    }
+
+    /* Form responsive styles */
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+
+    .form-actions .btn {
+        width: 100%;
+    }
+
+    .barcode-actions {
+        flex-direction: column;
+    }
+
+    .barcode-actions .btn {
+        width: 100%;
     }
 }
