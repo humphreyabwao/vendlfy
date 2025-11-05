@@ -1,5 +1,5 @@
 // Data Management System with Branch Support
-import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy, limit } from './firebase-config.js';
+import { db, isFirebaseConfigured, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy, limit } from './firebase-config.js';
 import branchManager from './branch-manager.js';
 
 class DataManager {
@@ -11,6 +11,36 @@ class DataManager {
             expenses: [],
             orders: []
         };
+        this.useLocalStorage = !isFirebaseConfigured;
+        
+        if (this.useLocalStorage) {
+            console.warn('⚠️ Using localStorage as fallback - Firebase not configured');
+            this.loadFromLocalStorage();
+        }
+    }
+    
+    // LocalStorage fallback methods
+    loadFromLocalStorage() {
+        try {
+            const data = localStorage.getItem('vendlfy_data');
+            if (data) {
+                this.cache = JSON.parse(data);
+            }
+        } catch (error) {
+            console.error('Error loading from localStorage:', error);
+        }
+    }
+    
+    saveToLocalStorage() {
+        try {
+            localStorage.setItem('vendlfy_data', JSON.stringify(this.cache));
+        } catch (error) {
+            console.error('Error saving to localStorage:', error);
+        }
+    }
+    
+    generateLocalId() {
+        return 'local_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     }
 
     // Add branch ID to data
@@ -104,6 +134,24 @@ class DataManager {
     // INVENTORY OPERATIONS
     async createInventoryItem(itemData) {
         try {
+            // Use localStorage if Firebase not configured
+            if (this.useLocalStorage) {
+                console.log('📦 Saving to localStorage (Firebase not configured)');
+                const newItem = this.addBranchData({
+                    ...itemData,
+                    id: this.generateLocalId(),
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                });
+                
+                this.cache.inventory.push(newItem);
+                this.saveToLocalStorage();
+                console.log('✅ Item saved to localStorage:', newItem);
+                return newItem;
+            }
+            
+            // Use Firebase
+            console.log('🔥 Saving to Firestore...');
             const inventoryRef = collection(db, 'inventory');
             const newItem = this.addBranchData({
                 ...itemData,
@@ -112,18 +160,53 @@ class DataManager {
                 syncedToCentral: false
             });
             
+            console.log('📤 Sending data to Firestore:', newItem);
             const docRef = await addDoc(inventoryRef, newItem);
+            console.log('✅ Item saved to Firestore with ID:', docRef.id);
+            
             await this.syncToCentral('inventory', docRef.id, newItem);
             
-            return { id: docRef.id, ...newItem };
+            const savedItem = { id: docRef.id, ...newItem };
+            console.log('✅ Complete item data:', savedItem);
+            return savedItem;
         } catch (error) {
-            console.error('Error creating inventory item:', error);
+            console.error('❌ Error creating inventory item:', error);
+            console.error('Error details:', error.message);
+            console.error('Error stack:', error.stack);
             throw error;
         }
     }
 
     async getInventory(filters = {}) {
         try {
+            // Use localStorage if Firebase not configured
+            if (this.useLocalStorage) {
+                let items = [...this.cache.inventory];
+                
+                // Apply filters
+                if (filters.category) {
+                    items = items.filter(item => item.category === filters.category);
+                }
+                if (filters.inStock) {
+                    items = items.filter(item => item.quantity > 0);
+                }
+                if (filters.status) {
+                    items = items.filter(item => item.status === filters.status);
+                }
+                if (filters.search) {
+                    const searchLower = filters.search.toLowerCase();
+                    items = items.filter(item => 
+                        item.name?.toLowerCase().includes(searchLower) ||
+                        item.sku?.toLowerCase().includes(searchLower) ||
+                        item.barcode?.toLowerCase().includes(searchLower)
+                    );
+                }
+                
+                console.log(`📦 Retrieved ${items.length} items from localStorage`);
+                return items;
+            }
+            
+            // Use Firebase
             const conditions = [];
             
             if (filters.category) {
@@ -148,6 +231,22 @@ class DataManager {
 
     async updateInventoryItem(itemId, updates) {
         try {
+            // Use localStorage if Firebase not configured
+            if (this.useLocalStorage) {
+                const index = this.cache.inventory.findIndex(item => item.id === itemId);
+                if (index !== -1) {
+                    this.cache.inventory[index] = {
+                        ...this.cache.inventory[index],
+                        ...updates,
+                        updatedAt: new Date().toISOString()
+                    };
+                    this.saveToLocalStorage();
+                    console.log('✅ Item updated in localStorage');
+                }
+                return;
+            }
+            
+            // Use Firebase
             const itemRef = doc(db, 'inventory', itemId);
             await updateDoc(itemRef, {
                 ...updates,
@@ -157,6 +256,26 @@ class DataManager {
             await this.syncToCentral('inventory', itemId, updates);
         } catch (error) {
             console.error('Error updating inventory:', error);
+            throw error;
+        }
+    }
+    
+    async deleteInventoryItem(itemId) {
+        try {
+            // Use localStorage if Firebase not configured
+            if (this.useLocalStorage) {
+                this.cache.inventory = this.cache.inventory.filter(item => item.id !== itemId);
+                this.saveToLocalStorage();
+                console.log('✅ Item deleted from localStorage');
+                return;
+            }
+            
+            // Use Firebase
+            const itemRef = doc(db, 'inventory', itemId);
+            await deleteDoc(itemRef);
+            console.log('✅ Item deleted from Firebase');
+        } catch (error) {
+            console.error('Error deleting inventory:', error);
             throw error;
         }
     }

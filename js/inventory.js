@@ -533,6 +533,14 @@ class InventoryManager {
 
     // Attach event listeners
     attachEventListeners() {
+        // Refresh button
+        const refreshBtn = document.getElementById('refreshInventoryBtn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', async () => {
+                await this.handleRefresh(refreshBtn);
+            });
+        }
+
         // Add New Item button
         const addItemBtn = document.getElementById('addInventoryItemBtn');
         if (addItemBtn) {
@@ -964,10 +972,10 @@ class InventoryManager {
         if (!confirmed) return;
 
         try {
-            // TODO: Implement actual delete from database
-            // await dataManager.deleteInventoryItem(itemId);
+            // Delete from database
+            await dataManager.deleteInventoryItem(itemId);
             
-            // For now, remove from local array
+            // Remove from local array
             this.items = this.items.filter(i => i.id !== itemId);
             this.selectedItems.delete(itemId);
             
@@ -976,6 +984,39 @@ class InventoryManager {
         } catch (error) {
             console.error('Error deleting item:', error);
             window.showNotification('Failed to delete item', 'error');
+        }
+    }
+    
+    // Refresh inventory data
+    async refresh() {
+        this.showLoading(true);
+        await this.loadInventory();
+        this.applyFilters();
+        this.updateStatsUI();
+        this.renderTable();
+        this.showLoading(false);
+    }
+    
+    // Handle refresh button click
+    async handleRefresh(button) {
+        // Add spinning animation
+        button.classList.add('spinning');
+        button.disabled = true;
+        
+        try {
+            console.log('🔄 Refreshing inventory from Firestore...');
+            await this.refresh();
+            window.showNotification('Inventory refreshed successfully', 'success');
+            console.log('✅ Inventory refreshed');
+        } catch (error) {
+            console.error('Error refreshing inventory:', error);
+            window.showNotification('Failed to refresh inventory', 'error');
+        } finally {
+            // Remove spinning animation
+            setTimeout(() => {
+                button.classList.remove('spinning');
+                button.disabled = false;
+            }, 500);
         }
     }
 }
