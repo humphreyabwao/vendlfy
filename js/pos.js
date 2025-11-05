@@ -78,7 +78,7 @@ class POSSystem {
     renderStats() {
         const statsHTML = `
             <div class="pos-stat-card">
-                <div class="pos-stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="pos-stat-icon" style="background: #667eea;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="12" y1="1" x2="12" y2="23"></line>
                         <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
@@ -90,7 +90,7 @@ class POSSystem {
                 </div>
             </div>
             <div class="pos-stat-card">
-                <div class="pos-stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <div class="pos-stat-icon" style="background: #f5576c;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                     </svg>
@@ -101,7 +101,7 @@ class POSSystem {
                 </div>
             </div>
             <div class="pos-stat-card">
-                <div class="pos-stat-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <div class="pos-stat-icon" style="background: #4facfe;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
                     </svg>
@@ -112,7 +112,7 @@ class POSSystem {
                 </div>
             </div>
             <div class="pos-stat-card">
-                <div class="pos-stat-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                <div class="pos-stat-icon" style="background: #fa709a;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="9" cy="21" r="1"></circle>
                         <circle cx="20" cy="21" r="1"></circle>
