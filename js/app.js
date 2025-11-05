@@ -3,12 +3,14 @@ import branchManager from './branch-manager.js';
 import dataManager from './data-manager.js';
 import inventoryManager from './inventory.js';
 import addItemManager from './add-item.js';
+import posSystem from './pos.js';
 
 // Make managers globally available
 window.branchManager = branchManager;
 window.dataManager = dataManager;
 window.inventoryManager = inventoryManager;
 window.addItemManager = addItemManager;
+window.posSystem = posSystem;
 
 // App Initialization
 document.addEventListener('DOMContentLoaded', async function() {
@@ -238,6 +240,11 @@ function initNavigation() {
                 // Initialize add-item page
                 if (pageId === 'add-item') {
                     addItemManager.init();
+                }
+                
+                // Initialize POS page
+                if (pageId === 'pos') {
+                    posSystem.init();
                 }
             }
             
