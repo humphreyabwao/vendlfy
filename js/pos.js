@@ -11,6 +11,7 @@ class POSSystem {
         this.tax = 0;
         this.taxType = 'percent'; // 'percent' or 'fixed'
         this.inventory = [];
+        this.heldSales = []; // Store held sales
         this.todayStats = {
             sales: 0,
             profit: 0,
@@ -534,36 +535,54 @@ class POSSystem {
                 createdAt: new Date().toISOString()
             };
 
-            // Save sale
-            const sale = await dataManager.createSale(saleData);
+            let sale = null;
+            let saleCreated = false;
 
-            // Update inventory stock
-            for (const item of this.cart) {
-                if (item.isManual) continue; // Skip manual entries (not in inventory)
-                
-                const inventoryItem = this.inventory.find(i => i.id === item.id);
-                if (inventoryItem) {
-                    // Use quantity or stock field (matches the structure from add-item.js)
-                    const currentStock = inventoryItem.quantity || inventoryItem.stock || 0;
-                    const newStock = currentStock - item.quantity;
-                    
-                    // Update using 'quantity' field to match add-item.js structure
-                    await dataManager.updateInventoryItem(item.id, { 
-                        quantity: newStock,
-                        stock: newStock // Update both for compatibility
-                    });
-                    
-                    // Update local cache
-                    if ('quantity' in inventoryItem) {
-                        inventoryItem.quantity = newStock;
-                    }
-                    if ('stock' in inventoryItem) {
-                        inventoryItem.stock = newStock;
-                    }
-                }
+            try {
+                // Save sale to database
+                console.log('💾 Saving sale to database...');
+                sale = await dataManager.createSale(saleData);
+                saleCreated = true;
+                console.log('✅ Sale saved successfully:', sale.id);
+            } catch (saleError) {
+                console.error('❌ Failed to save sale to database:', saleError);
+                throw new Error(`Failed to save sale: ${saleError.message}`);
             }
 
-            // Clear cart and reset
+            // Update inventory stock (non-critical - sale already saved)
+            try {
+                console.log('📦 Updating inventory stock...');
+                for (const item of this.cart) {
+                    if (item.isManual) continue; // Skip manual entries (not in inventory)
+                    
+                    const inventoryItem = this.inventory.find(i => i.id === item.id);
+                    if (inventoryItem) {
+                        // Use quantity or stock field (matches the structure from add-item.js)
+                        const currentStock = inventoryItem.quantity || inventoryItem.stock || 0;
+                        const newStock = currentStock - item.quantity;
+                        
+                        // Update using 'quantity' field to match add-item.js structure
+                        await dataManager.updateInventoryItem(item.id, { 
+                            quantity: newStock,
+                            stock: newStock // Update both for compatibility
+                        });
+                        
+                        // Update local cache
+                        if ('quantity' in inventoryItem) {
+                            inventoryItem.quantity = newStock;
+                        }
+                        if ('stock' in inventoryItem) {
+                            inventoryItem.stock = newStock;
+                        }
+                    }
+                }
+                console.log('✅ Inventory updated successfully');
+            } catch (inventoryError) {
+                console.error('⚠️ Error updating inventory (sale was saved):', inventoryError);
+                // Don't throw - sale is already saved
+            }
+
+            // Clear cart and reset UI
             this.cart = [];
             this.discount = 0;
             this.tax = 0;
@@ -576,32 +595,64 @@ class POSSystem {
             this.renderCart();
             this.updateTotals();
 
-            // Reload stats
-            await this.loadTodayStats();
-            this.renderStats();
+            // Reload stats (non-critical)
+            try {
+                console.log('📊 Reloading stats...');
+                await this.loadTodayStats();
+                this.renderStats();
+                console.log('✅ Stats reloaded');
+            } catch (statsError) {
+                console.error('⚠️ Error reloading stats:', statsError);
+                // Don't throw - sale is already saved
+            }
             
-            // Reload POS inventory to reflect stock changes
-            await this.loadInventory();
+            // Reload POS inventory (non-critical)
+            try {
+                console.log('🔄 Reloading POS inventory...');
+                await this.loadInventory();
+                console.log('✅ POS inventory reloaded');
+            } catch (loadError) {
+                console.error('⚠️ Error reloading POS inventory:', loadError);
+                // Don't throw - sale is already saved
+            }
             
-            // Refresh inventory if on inventory page
+            // Refresh inventory page if active (non-critical)
             if (window.inventoryManager && typeof window.inventoryManager.refresh === 'function') {
                 try {
+                    console.log('🔄 Refreshing inventory manager...');
                     await window.inventoryManager.refresh();
-                    console.log('✅ Inventory refreshed after sale');
-                } catch (error) {
-                    console.error('Error refreshing inventory:', error);
+                    console.log('✅ Inventory manager refreshed');
+                } catch (refreshError) {
+                    console.error('⚠️ Error refreshing inventory manager:', refreshError);
+                    // Don't throw - sale is already saved
                 }
             }
 
-            // Show success message
+            // Show success message (always show if sale was saved)
             this.showNotification(`Sale completed! Total: KES ${this.formatCurrency(total)}`, 'success');
             
-            // Print receipt (optional)
-            this.showReceiptDialog(sale);
+            // Show receipt dialog (non-critical)
+            try {
+                console.log('🧾 Showing receipt...');
+                this.showReceiptDialog(sale);
+            } catch (receiptError) {
+                console.error('⚠️ Error showing receipt:', receiptError);
+                // Don't throw - sale is already saved, just log it
+            }
 
         } catch (error) {
-            console.error('Error completing sale:', error);
-            this.showNotification('Error completing sale', 'error');
+            console.error('❌ Error completing sale:', error);
+            console.error('Error message:', error.message);
+            console.error('Error stack:', error.stack);
+            
+            // Show detailed error to help debug
+            const errorMsg = error.message || 'Unknown error occurred';
+            this.showNotification(`Sale Error: ${errorMsg}`, 'error');
+            
+            // If sale was actually saved despite error, inform user
+            if (error.message && error.message.includes('refresh')) {
+                this.showNotification('Sale may have been saved. Check All Sales page.', 'info');
+            }
         } finally {
             if (completeSaleBtn) {
                 completeSaleBtn.disabled = false;
@@ -613,6 +664,201 @@ class POSSystem {
                 `;
             }
         }
+    }
+
+    // Hold current sale for later
+    async holdSale() {
+        if (this.cart.length === 0) {
+            this.showNotification('Cart is empty. Add items before holding.', 'error');
+            return;
+        }
+
+        const holdData = {
+            cart: JSON.parse(JSON.stringify(this.cart)), // Deep copy
+            discount: this.discount,
+            discountType: this.discountType,
+            tax: this.tax,
+            taxType: this.taxType,
+            heldAt: new Date().toISOString(),
+            heldBy: branchManager.getCurrentBranch()?.name || 'Unknown'
+        };
+
+        try {
+            // Save to Firestore
+            const heldSale = await dataManager.createHeldSale(holdData);
+            
+            // Also save to localStorage as backup
+            const heldSales = JSON.parse(localStorage.getItem('heldSales') || '[]');
+            heldSales.push({ id: heldSale.id, ...holdData });
+            localStorage.setItem('heldSales', JSON.stringify(heldSales));
+
+            // Clear current cart
+            this.clearCart();
+
+            this.showNotification('Sale held successfully! Access from "Load Held Sales"', 'success');
+            console.log('✅ Sale held:', heldSale.id);
+        } catch (error) {
+            console.error('❌ Error holding sale:', error);
+            this.showNotification('Error holding sale', 'error');
+        }
+    }
+
+    // Generate quote from current cart
+    async generateQuote() {
+        if (this.cart.length === 0) {
+            this.showNotification('Cart is empty. Add items before generating quote.', 'error');
+            return;
+        }
+
+        // Calculate totals
+        const subtotal = this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const discountAmount = this.discountType === 'percentage' 
+            ? subtotal * (this.discount / 100)
+            : this.discount;
+        const taxableAmount = subtotal - discountAmount;
+        const taxAmount = this.taxType === 'percentage'
+            ? taxableAmount * (this.tax / 100)
+            : this.tax;
+        const total = taxableAmount + taxAmount;
+
+        // Create quote data
+        const quoteData = {
+            quoteNumber: `Q-${Date.now()}`,
+            items: this.cart.map(item => ({
+                id: item.id || 'manual',
+                name: item.name,
+                barcode: item.barcode || '',
+                price: item.price,
+                quantity: item.quantity,
+                total: item.price * item.quantity
+            })),
+            subtotal: subtotal,
+            discount: discountAmount,
+            discountType: this.discountType,
+            discountValue: this.discount,
+            tax: taxAmount,
+            taxType: this.taxType,
+            taxValue: this.tax,
+            total: total,
+            status: 'quote',
+            validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
+            createdAt: new Date().toISOString(),
+            branch: branchManager.getCurrentBranch()?.name || 'Main Branch'
+        };
+
+        try {
+            // Save quote to Firestore
+            const quote = await dataManager.createQuote(quoteData);
+            
+            this.showNotification('Quote generated successfully!', 'success');
+            this.showQuoteDialog(quote);
+            console.log('✅ Quote generated:', quote.id);
+        } catch (error) {
+            console.error('❌ Error generating quote:', error);
+            this.showNotification('Error generating quote', 'error');
+        }
+    }
+
+    // Show quote dialog (similar to receipt but for quotes)
+    showQuoteDialog(quote) {
+        const modal = document.createElement('div');
+        modal.className = 'pos-modal';
+        
+        const validUntilDate = new Date(quote.validUntil).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+
+        modal.innerHTML = `
+            <div class="pos-modal-content" style="max-width: 500px;">
+                <div class="pos-modal-header">
+                    <h3>Quotation</h3>
+                    <button onclick="this.closest('.pos-modal').remove()" class="pos-modal-close">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div class="pos-modal-body">
+                    <div class="receipt-content">
+                        <div class="receipt-header">
+                            <h2>QUOTATION</h2>
+                            <p><strong>Quote #:</strong> ${quote.quoteNumber}</p>
+                            <p><strong>Valid Until:</strong> ${validUntilDate}</p>
+                            <p>${new Date(quote.createdAt).toLocaleString()}</p>
+                            <p><strong>Branch:</strong> ${quote.branch}</p>
+                        </div>
+                        
+                        <div class="receipt-items">
+                            <table style="width: 100%; margin: 15px 0;">
+                                <thead>
+                                    <tr style="border-bottom: 2px solid #333;">
+                                        <th style="text-align: left; padding: 8px 0;">Item</th>
+                                        <th style="text-align: center;">Qty</th>
+                                        <th style="text-align: right;">Price</th>
+                                        <th style="text-align: right;">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${quote.items.map(item => `
+                                        <tr>
+                                            <td style="padding: 8px 0;">${item.name}</td>
+                                            <td style="text-align: center;">${item.quantity}</td>
+                                            <td style="text-align: right;">KES ${this.formatCurrency(item.price)}</td>
+                                            <td style="text-align: right;">KES ${this.formatCurrency(item.total)}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="receipt-totals" style="border-top: 2px solid #333; padding-top: 10px; margin-top: 10px;">
+                            <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+                                <span>Subtotal:</span>
+                                <span>KES ${this.formatCurrency(quote.subtotal)}</span>
+                            </div>
+                            ${quote.discount > 0 ? `
+                                <div style="display: flex; justify-content: space-between; margin: 5px 0; color: #10b981;">
+                                    <span>Discount (${quote.discountType === 'percentage' ? quote.discountValue + '%' : 'KES ' + this.formatCurrency(quote.discountValue)}):</span>
+                                    <span>-KES ${this.formatCurrency(quote.discount)}</span>
+                                </div>
+                            ` : ''}
+                            ${quote.tax > 0 ? `
+                                <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+                                    <span>Tax (${quote.taxType === 'percentage' ? quote.taxValue + '%' : 'KES ' + this.formatCurrency(quote.taxValue)}):</span>
+                                    <span>KES ${this.formatCurrency(quote.tax)}</span>
+                                </div>
+                            ` : ''}
+                            <div style="display: flex; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 2px solid #333; font-size: 1.2em; font-weight: bold;">
+                                <span>TOTAL:</span>
+                                <span>KES ${this.formatCurrency(quote.total)}</span>
+                            </div>
+                        </div>
+
+                        <div class="receipt-footer" style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #666; text-align: center; font-size: 0.9em; color: #666;">
+                            <p><strong>This is a quotation, not an invoice.</strong></p>
+                            <p>Valid for 30 days from the date of issue.</p>
+                            <p>Terms and conditions apply.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="pos-modal-footer">
+                    <button onclick="window.print()" class="btn btn-primary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                            <rect x="6" y="14" width="12" height="8"></rect>
+                        </svg>
+                        Print Quote
+                    </button>
+                    <button onclick="this.closest('.pos-modal').remove()" class="btn btn-secondary">Close</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
     }
 
     // Show manual entry dialog

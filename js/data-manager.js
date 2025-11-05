@@ -75,6 +75,24 @@ class DataManager {
     // SALES OPERATIONS
     async createSale(saleData) {
         try {
+            // Use localStorage if Firebase not configured
+            if (this.useLocalStorage) {
+                console.log('💾 Saving sale to localStorage (Firebase not configured)');
+                const newSale = this.addBranchData({
+                    ...saleData,
+                    id: this.generateLocalId(),
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                });
+                
+                this.cache.sales.push(newSale);
+                this.saveToLocalStorage();
+                console.log('✅ Sale saved to localStorage:', newSale);
+                return newSale;
+            }
+            
+            // Use Firebase - Real-time sync to Firestore
+            console.log('🔥 Saving sale to Firestore (real-time)...');
             const salesRef = collection(db, 'sales');
             const newSale = this.addBranchData({
                 ...saleData,
@@ -83,20 +101,50 @@ class DataManager {
                 syncedToCentral: false
             });
             
+            console.log('📤 Sending sale data to Firestore:', newSale);
             const docRef = await addDoc(salesRef, newSale);
+            console.log('✅ Sale saved to Firestore with ID:', docRef.id);
             
             // Sync to central if not central branch
-            await this.syncToCentral('sales', docRef.id, newSale);
+            try {
+                await this.syncToCentral('sales', docRef.id, newSale);
+                console.log('✅ Sale synced to central branch');
+            } catch (syncError) {
+                console.warn('⚠️ Could not sync to central branch:', syncError.message);
+            }
             
             return { id: docRef.id, ...newSale };
         } catch (error) {
-            console.error('Error creating sale:', error);
+            console.error('❌ Error creating sale:', error);
+            console.error('Error message:', error.message);
+            console.error('Error stack:', error.stack);
             throw error;
         }
     }
 
     async getSales(filters = {}) {
         try {
+            // Use localStorage if Firebase not configured
+            if (this.useLocalStorage) {
+                let sales = [...this.cache.sales];
+                
+                // Apply filters
+                if (filters.startDate) {
+                    const startDate = new Date(filters.startDate);
+                    sales = sales.filter(sale => new Date(sale.createdAt) >= startDate);
+                }
+                if (filters.endDate) {
+                    const endDate = new Date(filters.endDate);
+                    sales = sales.filter(sale => new Date(sale.createdAt) <= endDate);
+                }
+                if (filters.limit) {
+                    sales = sales.slice(0, filters.limit);
+                }
+                
+                return sales;
+            }
+            
+            // Use Firebase
             const conditions = [];
             
             if (filters.startDate) {
@@ -129,6 +177,136 @@ class DataManager {
         return await this.getSales({
             startDate: today.toISOString()
         });
+    }
+
+    // ============================================
+    // HELD SALES OPERATIONS
+    // ============================================
+
+    async createHeldSale(heldData) {
+        const currentBranch = branchManager.getCurrentBranch();
+        
+        const heldSaleData = {
+            ...heldData,
+            branchId: currentBranch?.id || 'main',
+            branchName: currentBranch?.name || 'Main Branch',
+            status: 'held',
+            createdAt: new Date().toISOString()
+        };
+
+        try {
+            const docRef = await addDoc(collection(db, 'heldSales'), heldSaleData);
+            console.log('✅ Held sale saved to Firestore:', docRef.id);
+            return { id: docRef.id, ...heldSaleData };
+        } catch (error) {
+            console.error('❌ Error saving held sale to Firestore:', error);
+            // Fallback to localStorage
+            const id = `held_${Date.now()}`;
+            const heldSales = JSON.parse(localStorage.getItem('heldSales') || '[]');
+            heldSales.push({ id, ...heldSaleData });
+            localStorage.setItem('heldSales', JSON.stringify(heldSales));
+            return { id, ...heldSaleData };
+        }
+    }
+
+    async getHeldSales() {
+        const currentBranch = branchManager.getCurrentBranch();
+
+        try {
+            let q = collection(db, 'heldSales');
+            
+            if (currentBranch) {
+                q = query(q, where('branchId', '==', currentBranch.id));
+            }
+
+            const querySnapshot = await getDocs(q);
+            const heldSales = [];
+            
+            querySnapshot.forEach((doc) => {
+                heldSales.push({ id: doc.id, ...doc.data() });
+            });
+
+            console.log(`✅ Fetched ${heldSales.length} held sales from Firestore`);
+            return heldSales;
+        } catch (error) {
+            console.error('❌ Error fetching held sales from Firestore:', error);
+            // Fallback to localStorage
+            const heldSales = JSON.parse(localStorage.getItem('heldSales') || '[]');
+            return heldSales.filter(sale => 
+                !currentBranch || sale.branchId === currentBranch.id
+            );
+        }
+    }
+
+    async deleteHeldSale(heldSaleId) {
+        try {
+            await deleteDoc(doc(db, 'heldSales', heldSaleId));
+            console.log('✅ Held sale deleted from Firestore:', heldSaleId);
+        } catch (error) {
+            console.error('❌ Error deleting held sale from Firestore:', error);
+            // Fallback to localStorage
+            const heldSales = JSON.parse(localStorage.getItem('heldSales') || '[]');
+            const filtered = heldSales.filter(sale => sale.id !== heldSaleId);
+            localStorage.setItem('heldSales', JSON.stringify(filtered));
+        }
+    }
+
+    // ============================================
+    // QUOTES OPERATIONS
+    // ============================================
+
+    async createQuote(quoteData) {
+        const currentBranch = branchManager.getCurrentBranch();
+        
+        const quoteDataWithBranch = {
+            ...quoteData,
+            branchId: currentBranch?.id || 'main',
+            branchName: currentBranch?.name || 'Main Branch',
+            createdAt: new Date().toISOString()
+        };
+
+        try {
+            const docRef = await addDoc(collection(db, 'quotes'), quoteDataWithBranch);
+            console.log('✅ Quote saved to Firestore:', docRef.id);
+            return { id: docRef.id, ...quoteDataWithBranch };
+        } catch (error) {
+            console.error('❌ Error saving quote to Firestore:', error);
+            // Fallback to localStorage
+            const id = `quote_${Date.now()}`;
+            const quotes = JSON.parse(localStorage.getItem('quotes') || '[]');
+            quotes.push({ id, ...quoteDataWithBranch });
+            localStorage.setItem('quotes', JSON.stringify(quotes));
+            return { id, ...quoteDataWithBranch };
+        }
+    }
+
+    async getQuotes(filters = {}) {
+        const currentBranch = branchManager.getCurrentBranch();
+
+        try {
+            let q = collection(db, 'quotes');
+            
+            if (currentBranch) {
+                q = query(q, where('branchId', '==', currentBranch.id));
+            }
+
+            const querySnapshot = await getDocs(q);
+            const quotes = [];
+            
+            querySnapshot.forEach((doc) => {
+                quotes.push({ id: doc.id, ...doc.data() });
+            });
+
+            console.log(`✅ Fetched ${quotes.length} quotes from Firestore`);
+            return quotes;
+        } catch (error) {
+            console.error('❌ Error fetching quotes from Firestore:', error);
+            // Fallback to localStorage
+            const quotes = JSON.parse(localStorage.getItem('quotes') || '[]');
+            return quotes.filter(quote => 
+                !currentBranch || quote.branchId === currentBranch.id
+            );
+        }
     }
 
     // INVENTORY OPERATIONS

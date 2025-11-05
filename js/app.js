@@ -4,6 +4,7 @@ import dataManager from './data-manager.js';
 import inventoryManager from './inventory.js';
 import addItemManager from './add-item.js';
 import posSystem from './pos.js';
+import salesManager from './sales.js';
 
 // Make managers globally available
 window.branchManager = branchManager;
@@ -11,6 +12,7 @@ window.dataManager = dataManager;
 window.inventoryManager = inventoryManager;
 window.addItemManager = addItemManager;
 window.posSystem = posSystem;
+window.salesManager = salesManager;
 
 // App Initialization
 document.addEventListener('DOMContentLoaded', async function() {
@@ -245,6 +247,11 @@ function initNavigation() {
                 // Initialize POS page
                 if (pageId === 'pos') {
                     posSystem.init();
+                }
+                
+                // Initialize All Sales page
+                if (pageId === 'all-sales') {
+                    salesManager.init();
                 }
             }
             

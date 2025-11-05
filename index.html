@@ -985,6 +985,16 @@
                         <p class="page-subtitle">Real-time sales processing system</p>
                     </div>
                     <div class="page-header-right">
+                        <button class="btn btn-secondary btn-sm" onclick="document.querySelector('[data-page=\'all-sales\']').click();">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                <polyline points="10 9 9 9 8 9"></polyline>
+                            </svg>
+                            View All Sales
+                        </button>
                         <button class="btn btn-icon" onclick="posSystem.loadInventory(); posSystem.loadTodayStats(); posSystem.renderStats();" title="Refresh">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="23 4 23 10 17 10"></polyline>
@@ -1124,7 +1134,7 @@
 
                                 <!-- Quick Actions -->
                                 <div class="pos-quick-actions">
-                                    <button class="pos-quick-btn" onclick="alert('Hold sale feature coming soon')">
+                                    <button class="pos-quick-btn" onclick="window.posManager.holdSale()">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <circle cx="12" cy="12" r="10"></circle>
                                             <line x1="12" y1="8" x2="12" y2="12"></line>
@@ -1132,7 +1142,7 @@
                                         </svg>
                                         Hold
                                     </button>
-                                    <button class="pos-quick-btn" onclick="alert('Quote feature coming soon')">
+                                    <button class="pos-quick-btn" onclick="window.posManager.generateQuote()">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                                             <polyline points="14 2 14 8 20 8"></polyline>
@@ -1159,10 +1169,31 @@
             <!-- All Sales -->
             <div class="page" id="all-sales-page">
                 <div class="page-header">
-                    <h2>All Sales</h2>
+                    <div class="page-header-left">
+                        <h2>All Sales</h2>
+                        <p class="page-subtitle">View and manage all sales transactions</p>
+                    </div>
+                    <div class="page-header-right">
+                        <select id="salesDateRange" class="filter-select">
+                            <option value="today">Today</option>
+                            <option value="yesterday">Yesterday</option>
+                            <option value="week">Last 7 Days</option>
+                            <option value="month">Last 30 Days</option>
+                            <option value="all">All Time</option>
+                        </select>
+                        <button class="btn btn-icon" id="refreshSalesBtn" title="Refresh sales data">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="23 4 23 10 17 10"></polyline>
+                                <polyline points="1 20 1 14 7 14"></polyline>
+                                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <div class="page-content">
-                    <!-- All sales content will go here -->
+                    <div id="salesTableContainer">
+                        <!-- Sales table will be rendered here -->
+                    </div>
                 </div>
             </div>
 
