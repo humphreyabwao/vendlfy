@@ -943,8 +943,119 @@ class InventoryManager {
             return;
         }
 
-        // Create modal or show details
-        alert(`Item Details:\n\nName: ${item.name}\nSKU: ${item.sku}\nCategory: ${item.category}\nQuantity: ${item.quantity}\nPrice: ${window.formatCurrency(item.price)}`);
+        // Create modal
+        const modal = document.createElement('div');
+        modal.className = 'pos-modal';
+        
+        const stockStatus = item.quantity <= item.reorderLevel ? 'Low Stock' : 'In Stock';
+        const stockClass = item.quantity <= item.reorderLevel ? 'status-pending' : 'status-completed';
+        
+        modal.innerHTML = `
+            <div class="pos-modal-content" style="max-width: 600px;">
+                <div class="pos-modal-header">
+                    <h3>Item Details - ${item.name}</h3>
+                    <button class="pos-modal-close" onclick="this.closest('.pos-modal').remove()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div class="pos-modal-body">
+                    <div class="item-details-grid">
+                        <div class="detail-section">
+                            <h4>Basic Information</h4>
+                            <div class="detail-row">
+                                <span class="detail-label">Name:</span>
+                                <span class="detail-value">${item.name}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">SKU:</span>
+                                <span class="detail-value">${item.sku || 'N/A'}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Barcode:</span>
+                                <span class="detail-value">${item.barcode || 'N/A'}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Category:</span>
+                                <span class="detail-value">${item.category || 'Uncategorized'}</span>
+                            </div>
+                            ${item.description ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Description:</span>
+                                <span class="detail-value">${item.description}</span>
+                            </div>
+                            ` : ''}
+                        </div>
+
+                        <div class="detail-section">
+                            <h4>Pricing & Stock</h4>
+                            <div class="detail-row">
+                                <span class="detail-label">Selling Price:</span>
+                                <span class="detail-value">KES ${window.formatCurrency(item.price || item.sellingPrice || 0)}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Buying Price:</span>
+                                <span class="detail-value">KES ${window.formatCurrency(item.cost || item.buyingPrice || 0)}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Profit Margin:</span>
+                                <span class="detail-value">KES ${window.formatCurrency((item.price || item.sellingPrice || 0) - (item.cost || item.buyingPrice || 0))}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Current Stock:</span>
+                                <span class="detail-value"><strong>${item.quantity || item.stock || 0} units</strong></span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Reorder Level:</span>
+                                <span class="detail-value">${item.reorderLevel || 0} units</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Status:</span>
+                                <span class="status-badge ${stockClass}">${stockStatus}</span>
+                            </div>
+                        </div>
+
+                        ${item.supplier || item.location ? `
+                        <div class="detail-section">
+                            <h4>Additional Information</h4>
+                            ${item.supplier ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Supplier:</span>
+                                <span class="detail-value">${item.supplier}</span>
+                            </div>
+                            ` : ''}
+                            ${item.location ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Location:</span>
+                                <span class="detail-value">${item.location}</span>
+                            </div>
+                            ` : ''}
+                            ${item.dateAdded ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Date Added:</span>
+                                <span class="detail-value">${window.formatDate(item.dateAdded)}</span>
+                            </div>
+                            ` : ''}
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+                <div class="pos-modal-footer">
+                    <button class="btn-secondary" onclick="this.closest('.pos-modal').remove()">Close</button>
+                    <button class="btn-primary" onclick="this.closest('.pos-modal').remove(); window.inventoryManager.editItem('${itemId}')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                        Edit Item
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
     }
 
     // Edit item
@@ -955,10 +1066,151 @@ class InventoryManager {
             return;
         }
 
-        // Navigate to edit page or open modal
-        window.showNotification('Edit functionality coming soon', 'info');
-        // TODO: Implement edit modal or navigate to edit page
+        // Create edit modal
+        const modal = document.createElement('div');
+        modal.className = 'pos-modal';
+        
+        modal.innerHTML = `
+            <div class="pos-modal-content" style="max-width: 700px;">
+                <div class="pos-modal-header">
+                    <h3>Edit Item - ${item.name}</h3>
+                    <button class="pos-modal-close" onclick="this.closest('.pos-modal').remove()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div class="pos-modal-body">
+                    <form id="editItemForm" class="edit-item-form">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Item Name *</label>
+                                <input type="text" id="editItemName" class="form-input" value="${item.name}" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>SKU</label>
+                                <input type="text" id="editItemSKU" class="form-input" value="${item.sku || ''}" readonly style="background: var(--bg-tertiary); cursor: not-allowed;">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Barcode</label>
+                                <input type="text" id="editItemBarcode" class="form-input" value="${item.barcode || ''}">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Category</label>
+                                <select id="editItemCategory" class="form-input">
+                                    <option value="">Select Category</option>
+                                    <option value="Electronics" ${item.category === 'Electronics' ? 'selected' : ''}>Electronics</option>
+                                    <option value="Clothing" ${item.category === 'Clothing' ? 'selected' : ''}>Clothing</option>
+                                    <option value="Food & Beverages" ${item.category === 'Food & Beverages' ? 'selected' : ''}>Food & Beverages</option>
+                                    <option value="Home & Garden" ${item.category === 'Home & Garden' ? 'selected' : ''}>Home & Garden</option>
+                                    <option value="Sports" ${item.category === 'Sports' ? 'selected' : ''}>Sports</option>
+                                    <option value="Books" ${item.category === 'Books' ? 'selected' : ''}>Books</option>
+                                    <option value="Other" ${item.category === 'Other' ? 'selected' : ''}>Other</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Selling Price (KES) *</label>
+                                <input type="number" id="editItemPrice" class="form-input" value="${item.price || item.sellingPrice || 0}" step="0.01" min="0" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Buying Price (KES)</label>
+                                <input type="number" id="editItemCost" class="form-input" value="${item.cost || item.buyingPrice || 0}" step="0.01" min="0">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Quantity *</label>
+                                <input type="number" id="editItemQuantity" class="form-input" value="${item.quantity || item.stock || 0}" min="0" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Reorder Level</label>
+                                <input type="number" id="editItemReorder" class="form-input" value="${item.reorderLevel || 5}" min="0">
+                            </div>
+                            
+                            <div class="form-group form-group-full">
+                                <label>Description</label>
+                                <textarea id="editItemDescription" class="form-input" rows="3">${item.description || ''}</textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Supplier</label>
+                                <input type="text" id="editItemSupplier" class="form-input" value="${item.supplier || ''}">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Location</label>
+                                <input type="text" id="editItemLocation" class="form-input" value="${item.location || ''}">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="pos-modal-footer">
+                    <button class="btn-secondary" onclick="this.closest('.pos-modal').remove()">Cancel</button>
+                    <button class="btn-primary" onclick="window.inventoryManager.saveItemChanges('${itemId}')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        Save Changes
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
     }
+
+    // Save item changes
+    async saveItemChanges(itemId) {
+        const form = document.getElementById('editItemForm');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        const updates = {
+            name: document.getElementById('editItemName').value,
+            barcode: document.getElementById('editItemBarcode').value,
+            category: document.getElementById('editItemCategory').value,
+            price: parseFloat(document.getElementById('editItemPrice').value) || 0,
+            sellingPrice: parseFloat(document.getElementById('editItemPrice').value) || 0,
+            cost: parseFloat(document.getElementById('editItemCost').value) || 0,
+            buyingPrice: parseFloat(document.getElementById('editItemCost').value) || 0,
+            quantity: parseInt(document.getElementById('editItemQuantity').value) || 0,
+            stock: parseInt(document.getElementById('editItemQuantity').value) || 0,
+            reorderLevel: parseInt(document.getElementById('editItemReorder').value) || 5,
+            description: document.getElementById('editItemDescription').value,
+            supplier: document.getElementById('editItemSupplier').value,
+            location: document.getElementById('editItemLocation').value
+        };
+
+        try {
+            // Update in database
+            await dataManager.updateInventoryItem(itemId, updates);
+            
+            // Update local item
+            const item = this.items.find(i => i.id === itemId);
+            if (item) {
+                Object.assign(item, updates);
+            }
+            
+            // Close modal
+            document.querySelector('.pos-modal').remove();
+            
+            // Refresh display
+            await this.refresh();
+            window.showNotification('Item updated successfully', 'success');
+        } catch (error) {
+            console.error('Error updating item:', error);
+            window.showNotification('Failed to update item', 'error');
+        }
+    }
+
 
     // Delete item
     async deleteItem(itemId) {
