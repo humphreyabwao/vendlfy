@@ -458,10 +458,260 @@
             <!-- Inventory -->
             <div class="page" id="inventory-page">
                 <div class="page-header">
-                    <h2>Inventory</h2>
+                    <div class="page-header-left">
+                        <h2>Inventory Management</h2>
+                        <p class="page-subtitle">Monitor and manage your stock levels</p>
+                    </div>
+                    <div class="page-header-right">
+                        <div class="export-dropdown">
+                            <button class="btn btn-secondary" id="exportInventoryBtn">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                                Export
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </button>
+                            <div class="export-menu">
+                                <a href="#" class="export-option" data-format="excel">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                    </svg>
+                                    Export as Excel
+                                </a>
+                                <a href="#" class="export-option" data-format="pdf">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                                        <polyline points="10 9 9 9 8 9"></polyline>
+                                    </svg>
+                                    Export as PDF
+                                </a>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" id="addInventoryItemBtn">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            Add New Item
+                        </button>
+                    </div>
                 </div>
+
+                <!-- Inventory Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Total Stock Value</span>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="1" x2="12" y2="23"></line>
+                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                            </svg>
+                        </div>
+                        <div class="stat-value" id="totalStockValue">KSh 0.00</div>
+                        <div class="stat-footer">
+                            <span class="stat-info" id="totalItemsCount">0 items in stock</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Low Stock Items</span>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                <line x1="12" y1="9" x2="12" y2="13"></line>
+                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                            </svg>
+                        </div>
+                        <div class="stat-value" id="lowStockCount">0</div>
+                        <div class="stat-footer">
+                            <span class="stat-info">Items below reorder level</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Out of Stock / Expired</span>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="15" y1="9" x2="9" y2="15"></line>
+                                <line x1="9" y1="9" x2="15" y2="15"></line>
+                            </svg>
+                        </div>
+                        <div class="stat-value" id="outOfStockCount">0</div>
+                        <div class="stat-footer">
+                            <span class="stat-info" id="stockStatusText">All items in stock</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Stock Movement (30d)</span>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                                <polyline points="17 6 23 6 23 12"></polyline>
+                            </svg>
+                        </div>
+                        <div class="stat-value" id="stockMovement">0</div>
+                        <div class="stat-footer">
+                            <span class="stat-info">Items sold this month</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Inventory Search and Filters -->
+                <div class="inventory-controls">
+                    <div class="inventory-search">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.35-4.35"></path>
+                        </svg>
+                        <input type="text" id="inventorySearchInput" placeholder="Search by name, SKU, or category...">
+                    </div>
+                    
+                    <div class="inventory-filters">
+                        <select id="inventoryCategoryFilter" class="filter-select">
+                            <option value="">All Categories</option>
+                            <option value="electronics">Electronics</option>
+                            <option value="clothing">Clothing</option>
+                            <option value="food">Food & Beverages</option>
+                            <option value="beauty">Beauty & Personal Care</option>
+                            <option value="home">Home & Garden</option>
+                            <option value="sports">Sports & Outdoors</option>
+                            <option value="other">Other</option>
+                        </select>
+
+                        <select id="inventoryStatusFilter" class="filter-select">
+                            <option value="">All Status</option>
+                            <option value="in-stock">In Stock</option>
+                            <option value="low-stock">Low Stock</option>
+                            <option value="out-of-stock">Out of Stock</option>
+                            <option value="expired">Expired</option>
+                        </select>
+
+                        <select id="inventorySortBy" class="filter-select">
+                            <option value="name-asc">Name (A-Z)</option>
+                            <option value="name-desc">Name (Z-A)</option>
+                            <option value="quantity-asc">Quantity (Low-High)</option>
+                            <option value="quantity-desc">Quantity (High-Low)</option>
+                            <option value="value-asc">Value (Low-High)</option>
+                            <option value="value-desc">Value (High-Low)</option>
+                        </select>
+
+                        <button class="btn-icon" id="clearFiltersBtn" title="Clear Filters">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
                 <div class="page-content">
-                    <!-- Inventory content will go here -->
+                    <!-- Inventory Table -->
+                    <div class="data-table-container">
+                        <div class="table-header">
+                            <h3>Inventory Items</h3>
+                            <div class="table-info">
+                                <span id="inventoryResultsCount">0 items</span>
+                            </div>
+                        </div>
+                        
+                        <div class="table-wrapper">
+                            <table class="data-table" id="inventoryTable">
+                                <thead>
+                                    <tr>
+                                        <th>
+                                            <input type="checkbox" id="selectAllInventory" class="checkbox">
+                                        </th>
+                                        <th>Product Name</th>
+                                        <th>SKU/Barcode</th>
+                                        <th>Category</th>
+                                        <th>Quantity</th>
+                                        <th>Price</th>
+                                        <th>Value</th>
+                                        <th>Supplier</th>
+                                        <th>Status</th>
+                                        <th>Date Added</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inventoryTableBody">
+                                    <!-- Inventory rows will be inserted here -->
+                                </tbody>
+                            </table>
+                            
+                            <!-- Empty State -->
+                            <div class="empty-state" id="inventoryEmptyState">
+                                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                                </svg>
+                                <h3>No inventory items yet</h3>
+                                <p>Start by adding your first inventory item</p>
+                                <button class="btn btn-primary" onclick="document.getElementById('addInventoryItemBtn').click()">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                    Add First Item
+                                </button>
+                            </div>
+
+                            <!-- Loading State -->
+                            <div class="loading-state" id="inventoryLoadingState" style="display: none;">
+                                <div class="spinner"></div>
+                                <p>Loading inventory...</p>
+                            </div>
+                        </div>
+
+                        <!-- Pagination -->
+                        <div class="table-pagination" id="inventoryPagination">
+                            <div class="pagination-info">
+                                Showing <span id="paginationStart">0</span> to <span id="paginationEnd">0</span> of <span id="paginationTotal">0</span> items
+                            </div>
+                            <div class="pagination-controls">
+                                <button class="btn-pagination" id="firstPageBtn" disabled>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="11 17 6 12 11 7"></polyline>
+                                        <polyline points="18 17 13 12 18 7"></polyline>
+                                    </svg>
+                                </button>
+                                <button class="btn-pagination" id="prevPageBtn" disabled>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="15 18 9 12 15 6"></polyline>
+                                    </svg>
+                                </button>
+                                <div class="page-numbers" id="pageNumbers"></div>
+                                <button class="btn-pagination" id="nextPageBtn">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="9 18 15 12 9 6"></polyline>
+                                    </svg>
+                                </button>
+                                <button class="btn-pagination" id="lastPageBtn">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="13 17 18 12 13 7"></polyline>
+                                        <polyline points="6 17 11 12 6 7"></polyline>
+                                    </svg>
+                                </button>
+                            </div>
+                            <select class="items-per-page" id="itemsPerPage">
+                                <option value="25">25 per page</option>
+                                <option value="50" selected>50 per page</option>
+                                <option value="100">100 per page</option>
+                                <option value="250">250 per page</option>
+                                <option value="500">500 per page</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
             </div>
 

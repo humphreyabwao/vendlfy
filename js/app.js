@@ -1,10 +1,12 @@
 // Import branch and data managers
 import branchManager from './branch-manager.js';
 import dataManager from './data-manager.js';
+import inventoryManager from './inventory.js';
 
 // Make managers globally available
 window.branchManager = branchManager;
 window.dataManager = dataManager;
+window.inventoryManager = inventoryManager;
 
 // App Initialization
 document.addEventListener('DOMContentLoaded', async function() {
@@ -86,8 +88,14 @@ async function handleBranchChange(event) {
     // Refresh dashboard stats
     await refreshDashboardStats();
     
+    // Refresh inventory if on inventory page
+    const inventoryPage = document.getElementById('inventory-page');
+    if (inventoryPage && inventoryPage.classList.contains('active')) {
+        await inventoryManager.refresh();
+    }
+    
     // Show notification
-    showNotification(`Switched to ${branch.name}`, 'success');
+    window.showNotification(`Switched to ${branch.name}`, 'success');
 }
 
 // Dashboard Initialization
@@ -219,6 +227,11 @@ function initNavigation() {
             const targetPage = document.getElementById(pageId + '-page');
             if (targetPage) {
                 targetPage.classList.add('active');
+                
+                // Initialize inventory page if that's what we're navigating to
+                if (pageId === 'inventory') {
+                    inventoryManager.init();
+                }
             }
             
             // Close sidebar on mobile after selection
@@ -297,8 +310,8 @@ function updateStatValue(statId, value, className = null, isCurrency = true) {
     });
 }
 
-// Utility Functions
-function showNotification(message, type = 'info') {
+// Utility Functions - Make them global
+window.showNotification = function showNotification(message, type = 'info') {
     // Simple notification display
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
@@ -308,7 +321,7 @@ function showNotification(message, type = 'info') {
         top: 80px;
         right: 20px;
         padding: 16px 24px;
-        background: ${type === 'success' ? 'var(--primary-green)' : 'var(--primary-blue)'};
+        background: ${type === 'success' ? 'var(--primary-green)' : type === 'info' ? 'var(--primary-blue)' : 'var(--primary-orange)'};
         color: white;
         border-radius: 8px;
         box-shadow: var(--shadow-lg);
@@ -327,12 +340,31 @@ function showNotification(message, type = 'info') {
     }, 3000);
 }
 
+window.formatCurrency = function formatCurrency(amount) {
+    return `KSh ${amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+}
+
+window.formatDate = function formatDate(date) {
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+window.formatDateTime = function formatDateTime(date) {
+    return new Intl.DateTimeFormat('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    }).format(new Date(date));
+}
+
+// Local function that uses global formatCurrency
 function formatCurrency(amount) {
-    return new Intl.NumberFormat('en-KE', {
-        style: 'currency',
-        currency: 'KES',
-        minimumFractionDigits: 2
-    }).format(amount);
+    return window.formatCurrency(amount);
 }
 
 function formatDate(date) {
