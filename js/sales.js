@@ -346,7 +346,273 @@ class SalesManager {
                 this.showNotification('Sales refreshed', 'success');
             });
         }
+
+        // Export to Excel button
+        const exportExcelBtn = document.getElementById('exportExcelBtn');
+        if (exportExcelBtn) {
+            exportExcelBtn.addEventListener('click', () => {
+                this.exportToExcel();
+            });
+        }
+
+        // Export to PDF button
+        const exportPdfBtn = document.getElementById('exportPdfBtn');
+        if (exportPdfBtn) {
+            exportPdfBtn.addEventListener('click', () => {
+                this.exportToPDF();
+            });
+        }
     }
+
+    // Export to Excel (CSV format)
+    exportToExcel() {
+        if (this.filteredSales.length === 0) {
+            this.showNotification('No sales data to export', 'error');
+            return;
+        }
+
+        try {
+            // Get date range label
+            const dateRangeSelect = document.getElementById('salesDateRange');
+            const dateRangeLabel = dateRangeSelect?.options[dateRangeSelect.selectedIndex]?.text || 'All';
+
+            // Create CSV content
+            let csv = 'Sale ID,Date,Time,Items,Subtotal,Discount,Tax,Total,Profit,Payment Method,Status\n';
+
+            this.filteredSales.forEach(sale => {
+                const date = new Date(sale.createdAt);
+                const dateStr = date.toLocaleDateString();
+                const timeStr = date.toLocaleTimeString();
+                const itemsCount = sale.items?.length || 0;
+                const subtotal = sale.subtotal || 0;
+                const discount = sale.discount || 0;
+                const tax = sale.tax || 0;
+                const total = sale.total || 0;
+                const profit = sale.profit || 0;
+                const paymentMethod = sale.paymentMethod || 'cash';
+                const status = sale.status || 'completed';
+
+                csv += `${sale.id},"${dateStr}","${timeStr}",${itemsCount},${subtotal},${discount},${tax},${total},${profit},"${paymentMethod}","${status}"\n`;
+            });
+
+            // Create download link
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            const filename = `sales_${dateRangeLabel.toLowerCase().replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            this.showNotification(`Exported ${this.filteredSales.length} sales to Excel`, 'success');
+            console.log('✅ Sales exported to Excel:', filename);
+        } catch (error) {
+            console.error('❌ Error exporting to Excel:', error);
+            this.showNotification('Error exporting to Excel', 'error');
+        }
+    }
+
+    // Export to PDF
+    exportToPDF() {
+        if (this.filteredSales.length === 0) {
+            this.showNotification('No sales data to export', 'error');
+            return;
+        }
+
+        try {
+            // Get date range label
+            const dateRangeSelect = document.getElementById('salesDateRange');
+            const dateRangeLabel = dateRangeSelect?.options[dateRangeSelect.selectedIndex]?.text || 'All Time';
+            const currentBranch = branchManager.getCurrentBranch();
+            const branchName = currentBranch?.name || 'All Branches';
+
+            // Calculate totals
+            const totalRevenue = this.filteredSales.reduce((sum, sale) => sum + (sale.total || 0), 0);
+            const totalProfit = this.filteredSales.reduce((sum, sale) => sum + (sale.profit || 0), 0);
+            const totalDiscount = this.filteredSales.reduce((sum, sale) => sum + (sale.discount || 0), 0);
+            const totalTax = this.filteredSales.reduce((sum, sale) => sum + (sale.tax || 0), 0);
+
+            // Create PDF content (HTML that will be printed)
+            const printWindow = window.open('', '', 'width=800,height=600');
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Sales Report - ${dateRangeLabel}</title>
+                    <style>
+                        * { margin: 0; padding: 0; box-sizing: border-box; }
+                        body { 
+                            font-family: Arial, sans-serif; 
+                            padding: 20px;
+                            color: #333;
+                        }
+                        .header { 
+                            text-align: center; 
+                            margin-bottom: 30px;
+                            border-bottom: 3px solid #667eea;
+                            padding-bottom: 15px;
+                        }
+                        .header h1 { 
+                            font-size: 24px; 
+                            color: #667eea;
+                            margin-bottom: 5px;
+                        }
+                        .header p { 
+                            font-size: 12px; 
+                            color: #666;
+                            margin: 3px 0;
+                        }
+                        .summary {
+                            display: grid;
+                            grid-template-columns: repeat(4, 1fr);
+                            gap: 15px;
+                            margin-bottom: 25px;
+                        }
+                        .summary-card {
+                            background: #f8f9fa;
+                            padding: 12px;
+                            border-radius: 6px;
+                            border-left: 3px solid #667eea;
+                        }
+                        .summary-card h3 {
+                            font-size: 11px;
+                            color: #666;
+                            text-transform: uppercase;
+                            margin-bottom: 5px;
+                        }
+                        .summary-card p {
+                            font-size: 18px;
+                            font-weight: bold;
+                            color: #333;
+                        }
+                        table { 
+                            width: 100%; 
+                            border-collapse: collapse;
+                            margin-top: 10px;
+                            font-size: 11px;
+                        }
+                        th, td { 
+                            padding: 10px 8px; 
+                            text-align: left; 
+                            border-bottom: 1px solid #ddd;
+                        }
+                        th { 
+                            background: #667eea; 
+                            color: white;
+                            font-weight: 600;
+                            text-transform: uppercase;
+                            font-size: 10px;
+                            letter-spacing: 0.5px;
+                        }
+                        tr:hover { background: #f8f9fa; }
+                        .text-right { text-align: right; }
+                        .text-center { text-align: center; }
+                        .footer {
+                            margin-top: 30px;
+                            padding-top: 15px;
+                            border-top: 2px solid #ddd;
+                            text-align: center;
+                            font-size: 10px;
+                            color: #666;
+                        }
+                        @media print {
+                            body { padding: 0; }
+                            .summary { page-break-inside: avoid; }
+                            table { page-break-inside: auto; }
+                            tr { page-break-inside: avoid; page-break-after: auto; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h1>SALES REPORT</h1>
+                        <p><strong>Period:</strong> ${dateRangeLabel}</p>
+                        <p><strong>Branch:</strong> ${branchName}</p>
+                        <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
+                        <p><strong>Total Transactions:</strong> ${this.filteredSales.length}</p>
+                    </div>
+
+                    <div class="summary">
+                        <div class="summary-card">
+                            <h3>Total Revenue</h3>
+                            <p>KES ${this.formatCurrency(totalRevenue)}</p>
+                        </div>
+                        <div class="summary-card">
+                            <h3>Total Profit</h3>
+                            <p>KES ${this.formatCurrency(totalProfit)}</p>
+                        </div>
+                        <div class="summary-card">
+                            <h3>Total Discount</h3>
+                            <p>KES ${this.formatCurrency(totalDiscount)}</p>
+                        </div>
+                        <div class="summary-card">
+                            <h3>Total Tax</h3>
+                            <p>KES ${this.formatCurrency(totalTax)}</p>
+                        </div>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date & Time</th>
+                                <th class="text-center">Items</th>
+                                <th class="text-right">Subtotal</th>
+                                <th class="text-right">Discount</th>
+                                <th class="text-right">Tax</th>
+                                <th class="text-right">Total</th>
+                                <th class="text-right">Profit</th>
+                                <th class="text-center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${this.filteredSales.map(sale => {
+                                const date = new Date(sale.createdAt);
+                                return `
+                                    <tr>
+                                        <td>${date.toLocaleDateString()} ${date.toLocaleTimeString()}</td>
+                                        <td class="text-center">${sale.items?.length || 0}</td>
+                                        <td class="text-right">KES ${this.formatCurrency(sale.subtotal || 0)}</td>
+                                        <td class="text-right">KES ${this.formatCurrency(sale.discount || 0)}</td>
+                                        <td class="text-right">KES ${this.formatCurrency(sale.tax || 0)}</td>
+                                        <td class="text-right"><strong>KES ${this.formatCurrency(sale.total || 0)}</strong></td>
+                                        <td class="text-right">KES ${this.formatCurrency(sale.profit || 0)}</td>
+                                        <td class="text-center">${sale.status || 'completed'}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+
+                    <div class="footer">
+                        <p>This is a computer-generated report from Vendlfy POS System</p>
+                        <p>Generated on ${new Date().toLocaleString()}</p>
+                    </div>
+
+                    <script>
+                        window.onload = function() {
+                            window.print();
+                            // Close window after printing (optional)
+                            // setTimeout(() => window.close(), 1000);
+                        };
+                    </script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+
+            this.showNotification(`Preparing PDF export for ${this.filteredSales.length} sales`, 'success');
+            console.log('✅ Sales exported to PDF');
+        } catch (error) {
+            console.error('❌ Error exporting to PDF:', error);
+            this.showNotification('Error exporting to PDF', 'error');
+        }
+    }
+
 
     // Format currency
     formatCurrency(amount) {
