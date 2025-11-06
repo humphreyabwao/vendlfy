@@ -179,6 +179,21 @@ class DataManager {
         });
     }
 
+    async updateSale(saleId, updates) {
+        try {
+            const saleRef = doc(db, 'sales', saleId);
+            await updateDoc(saleRef, {
+                ...updates,
+                updatedAt: new Date().toISOString()
+            });
+            console.log('✅ Sale updated successfully:', saleId);
+            return true;
+        } catch (error) {
+            console.error('Error updating sale:', error);
+            throw error;
+        }
+    }
+
     // ============================================
     // HELD SALES OPERATIONS
     // ============================================

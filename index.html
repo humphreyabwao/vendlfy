@@ -1219,20 +1219,402 @@
             <!-- B2B Sales -->
             <div class="page" id="b2b-sales-page">
                 <div class="page-header">
-                    <h2>B2B Sales</h2>
+                    <div class="page-header-left">
+                        <h2>B2B / Wholesale Sales</h2>
+                        <p class="page-subtitle">Manage wholesale orders and bulk sales</p>
+                    </div>
+                    <div class="page-header-right">
+                        <button class="btn btn-secondary" id="sellAsRetailerBtn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="9" cy="21" r="1"></circle>
+                                <circle cx="20" cy="21" r="1"></circle>
+                                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                            </svg>
+                            Sell as Retailer
+                        </button>
+                        <button class="btn btn-primary" id="newWholesaleBtn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            New Wholesale Sale
+                        </button>
+                    </div>
                 </div>
                 <div class="page-content">
-                    <!-- B2B sales content will go here -->
+                    <!-- Stats Cards -->
+                    <div class="stats-grid">
+                        <div class="stat-card primary">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Total B2B Sales</span>
+                                <div class="stat-value" id="b2bTotalSales">KES 0</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card warning">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Pending Orders</span>
+                                <div class="stat-value" id="b2bPendingOrders">0</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card success">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Wholesale Customers</span>
+                                <div class="stat-value" id="b2bTotalCustomers">0</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card info">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                                    <polyline points="17 6 23 6 23 12"></polyline>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Avg. Order Value</span>
+                                <div class="stat-value" id="b2bAvgOrderValue">KES 0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Search and Filters -->
+                    <div class="search-filter-section">
+                        <div class="search-box-wrapper">
+                            <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.35-4.35"></path>
+                            </svg>
+                            <input 
+                                type="text" 
+                                id="b2bSearchInput" 
+                                class="search-input" 
+                                placeholder="Search by invoice #, customer name, or phone..."
+                            >
+                        </div>
+                        <div class="filter-buttons">
+                            <button class="b2b-filter-btn active" data-filter="status" data-value="all">All Status</button>
+                            <button class="b2b-filter-btn" data-filter="status" data-value="pending">Pending</button>
+                            <button class="b2b-filter-btn" data-filter="status" data-value="completed">Completed</button>
+                            <button class="b2b-filter-btn" data-filter="status" data-value="cancelled">Cancelled</button>
+                            <button class="b2b-filter-btn" data-filter="dateRange" data-value="today">Today</button>
+                            <button class="b2b-filter-btn" data-filter="dateRange" data-value="week">This Week</button>
+                            <button class="b2b-filter-btn" data-filter="dateRange" data-value="month">This Month</button>
+                        </div>
+                    </div>
+
+                    <!-- B2B Sales Table -->
+                    <div class="table-container">
+                        <div class="table-header">
+                            <h3>Wholesale Sales Transactions</h3>
+                            <div class="table-actions">
+                                <button class="btn btn-secondary btn-sm" onclick="window.b2bSalesManager.exportToExcel()">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="7 10 12 15 17 10"></polyline>
+                                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                                    </svg>
+                                    Export Excel
+                                </button>
+                                <button class="btn btn-secondary btn-sm" onclick="window.b2bSalesManager.exportToPDF()">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                                        <polyline points="10 9 9 9 8 9"></polyline>
+                                    </svg>
+                                    Export PDF
+                                </button>
+                            </div>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="data-table" id="b2bSalesTable">
+                                <thead>
+                                    <tr>
+                                        <th>Invoice #</th>
+                                        <th>Date & Time</th>
+                                        <th>Customer</th>
+                                        <th>Phone</th>
+                                        <th>Items</th>
+                                        <th>Amount</th>
+                                        <th>Payment Method</th>
+                                        <th>Credit Terms</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="b2bSalesTableBody">
+                                    <tr>
+                                        <td colspan="10" style="text-align: center; padding: 3rem;">
+                                            <div class="empty-state-inline">
+                                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                                                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                                                </svg>
+                                                <p>No B2B sales found. Create your first wholesale order!</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- New B2B Sale -->
             <div class="page" id="new-b2b-sale-page">
                 <div class="page-header">
-                    <h2>New B2B Sale</h2>
+                    <div class="page-header-left">
+                        <h2>New Wholesale Order</h2>
+                        <p class="page-subtitle">Create bulk orders with wholesale pricing</p>
+                    </div>
+                    <div class="page-header-right">
+                        <button class="btn btn-danger" id="clearB2BCart">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                            Clear Cart
+                        </button>
+                        <button class="btn btn-primary" id="completeB2BSale">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                            Complete Sale
+                        </button>
+                    </div>
                 </div>
                 <div class="page-content">
-                    <!-- New B2B sale content will go here -->
+                    <div class="b2b-form-vertical">
+                        
+                        <!-- Customer Information Section -->
+                        <div class="b2b-form-card">
+                            <h3 class="section-title">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                                Customer Information
+                            </h3>
+                            <div class="form-grid-2">
+                                <div class="form-group">
+                                    <label for="b2bCustomerSelect">Select Customer *</label>
+                                    <select id="b2bCustomerSelect" class="form-input-clean" required>
+                                        <option value="">Choose a customer...</option>
+                                    </select>
+                                </div>
+                                <div class="customer-quick-info" id="customerQuickInfo">
+                                    <div class="info-placeholder">Select a customer to see details</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Search and Add Products Section -->
+                        <div class="b2b-form-card">
+                            <h3 class="section-title">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <path d="m21 21-4.35-4.35"></path>
+                                </svg>
+                                Search & Add Products
+                            </h3>
+                            
+                            <!-- Search Bar -->
+                            <div class="product-search-wrapper">
+                                <svg class="search-icon-input" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <path d="m21 21-4.35-4.35"></path>
+                                </svg>
+                                <input 
+                                    type="text" 
+                                    id="b2bProductSearch" 
+                                    class="product-search-input" 
+                                    placeholder="Search products by name, SKU, or category..."
+                                    autocomplete="off"
+                                >
+                                <div id="b2bSearchResults" class="search-results-dropdown"></div>
+                            </div>
+
+                            <!-- OR Divider -->
+                            <div class="or-divider">
+                                <span>OR</span>
+                            </div>
+
+                            <!-- Manual Product Entry -->
+                            <div class="manual-entry-section">
+                                <div class="form-grid-4">
+                                    <div class="form-group">
+                                        <label for="manualProductName">Product Name *</label>
+                                        <input type="text" id="manualProductName" class="form-input-clean" placeholder="Enter product name">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="manualProductPrice">Unit Price (KES) *</label>
+                                        <input type="number" id="manualProductPrice" class="form-input-clean" placeholder="0.00" step="0.01" min="0">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="manualProductQty">Quantity *</label>
+                                        <input type="number" id="manualProductQty" class="form-input-clean" placeholder="10" min="1" value="10">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>&nbsp;</label>
+                                        <button type="button" id="addManualItemBtn" class="btn btn-primary btn-block">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                                            </svg>
+                                            Add Manual Item
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Shopping Cart Section -->
+                        <div class="b2b-form-card cart-section-large">
+                            <div class="cart-header">
+                                <h3 class="section-title">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="9" cy="21" r="1"></circle>
+                                        <circle cx="20" cy="21" r="1"></circle>
+                                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                                    </svg>
+                                    Order Items
+                                    <span class="cart-count" id="cartItemCount">0 items</span>
+                                </h3>
+                            </div>
+                            <div class="cart-table-container">
+                                <table class="cart-table-wide">
+                                    <thead>
+                                        <tr>
+                                            <th width="5%">#</th>
+                                            <th width="35%">Product Name</th>
+                                            <th width="12%">SKU</th>
+                                            <th width="15%">Unit Price</th>
+                                            <th width="15%">Quantity</th>
+                                            <th width="15%">Total</th>
+                                            <th width="3%"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="b2bCartTableBody">
+                                        <tr class="empty-cart-row">
+                                            <td colspan="7">
+                                                <div class="empty-cart-message">
+                                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                                        <circle cx="9" cy="21" r="1"></circle>
+                                                        <circle cx="20" cy="21" r="1"></circle>
+                                                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                                                    </svg>
+                                                    <p>Cart is empty</p>
+                                                    <span>Search or manually add products to create an order</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Payment & Summary Section -->
+                        <div class="form-grid-2">
+                            <!-- Payment Terms -->
+                            <div class="b2b-form-card">
+                                <h3 class="section-title">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                                        <line x1="1" y1="10" x2="23" y2="10"></line>
+                                    </svg>
+                                    Payment & Terms
+                                </h3>
+                                <div class="form-grid-2">
+                                    <div class="form-group">
+                                        <label for="b2bPaymentMethod">Payment Method</label>
+                                        <select id="b2bPaymentMethod" class="form-input-clean">
+                                            <option value="cash">Cash</option>
+                                            <option value="mpesa">M-Pesa</option>
+                                            <option value="bank_transfer">Bank Transfer</option>
+                                            <option value="cheque">Cheque</option>
+                                            <option value="credit">Credit Account</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="b2bCreditTerm">Credit Terms</label>
+                                        <select id="b2bCreditTerm" class="form-input-clean">
+                                            <option value="immediate">Immediate Payment</option>
+                                            <option value="net30">Net 30 Days</option>
+                                            <option value="net60">Net 60 Days</option>
+                                            <option value="net90">Net 90 Days</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-grid-2" style="margin-top: 1rem;">
+                                    <div class="form-group">
+                                        <label for="b2bDiscountValue">Discount Value</label>
+                                        <input type="number" id="b2bDiscountValue" class="form-input-clean" value="0" min="0" step="0.01">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="b2bDiscountType">Discount Type</label>
+                                        <select id="b2bDiscountType" class="form-input-clean">
+                                            <option value="percent">Percentage (%)</option>
+                                            <option value="fixed">Fixed Amount (KES)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Order Summary -->
+                            <div class="b2b-form-card summary-highlight">
+                                <h3 class="section-title">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                    </svg>
+                                    Order Summary
+                                </h3>
+                                <div class="summary-rows">
+                                    <div class="summary-row-clean">
+                                        <span>Subtotal:</span>
+                                        <strong id="b2bSubtotal">KES 0.00</strong>
+                                    </div>
+                                    <div class="summary-row-clean">
+                                        <span>Discount:</span>
+                                        <strong id="b2bDiscountAmount" class="text-danger">KES 0.00</strong>
+                                    </div>
+                                    <div class="summary-divider-clean"></div>
+                                    <div class="summary-row-clean grand-total-clean">
+                                        <span>Grand Total:</span>
+                                        <strong id="b2bGrandTotal">KES 0.00</strong>
+                                    </div>
+                                    <div class="summary-info-clean">
+                                        <p id="b2bDueDate">Payment: Immediate</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
             </div>
 

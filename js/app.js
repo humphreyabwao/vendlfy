@@ -7,6 +7,8 @@ import posSystem from './pos.js';
 import salesManager from './sales.js';
 import expenseManager from './expenses.js';
 import customerManager from './customers.js';
+import b2bSalesManager from './b2b-sales.js';
+import newB2BSaleManager from './new-b2b-sale.js';
 
 // Make managers globally available
 window.branchManager = branchManager;
@@ -17,6 +19,8 @@ window.posSystem = posSystem;
 window.salesManager = salesManager;
 window.expenseManager = expenseManager;
 window.customerManager = customerManager;
+window.b2bSalesManager = b2bSalesManager;
+window.newB2BSaleManager = newB2BSaleManager;
 
 // App Initialization
 document.addEventListener('DOMContentLoaded', async function() {
@@ -297,6 +301,16 @@ function initNavigation() {
                     if (form) {
                         form.reset();
                     }
+                }
+                
+                // Initialize B2B Sales page
+                if (pageId === 'b2b-sales') {
+                    b2bSalesManager.init();
+                }
+                
+                // Initialize New B2B Sale page
+                if (pageId === 'new-b2b-sale') {
+                    newB2BSaleManager.init();
                 }
             }
             
