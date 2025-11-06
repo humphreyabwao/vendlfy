@@ -14,6 +14,7 @@ import supplierManager from './suppliers.js';
 import newOrderManager from './new-order.js';
 import accountsManager from './accounts.js';
 import reportsManager from './reports.js';
+import userManager from './user-manager.js';
 
 // Make managers globally available
 window.branchManager = branchManager;
@@ -31,6 +32,7 @@ window.supplierManager = supplierManager;
 window.newOrderManager = newOrderManager;
 window.accountsManager = accountsManager;
 window.reportsManager = reportsManager;
+window.userManager = userManager;
 
 // App Initialization
 document.addEventListener('DOMContentLoaded', async function() {
@@ -51,6 +53,9 @@ async function initBranchSystem() {
     try {
         // Initialize branches
         await branchManager.initializeBranches();
+        
+        // Start real-time listeners
+        branchManager.startRealtimeListener();
         
         // Populate branch selector
         await populateBranchSelector();

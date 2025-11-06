@@ -1,11 +1,13 @@
 // Branch Management System
-import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy, isFirebaseConfigured } from './firebase-config.js';
+import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot, isFirebaseConfigured } from './firebase-config.js';
 
 class BranchManager {
     constructor() {
         this.currentBranch = this.loadCurrentBranch();
         this.branches = [];
         this.useLocalStorage = !isFirebaseConfigured; // Fallback to localStorage if Firebase not configured
+        this.branchesListener = null; // Real-time listener
+        this.callbacks = []; // Callbacks for real-time updates
     }
 
     // Check if Firebase is available
@@ -289,6 +291,89 @@ class BranchManager {
             isCentral: false
         });
         window.dispatchEvent(new CustomEvent('branchChanged', { detail: this.currentBranch }));
+    }
+
+    // Start real-time listener for branches
+    startRealtimeListener() {
+        if (!this.isFirebaseAvailable()) {
+            console.warn('⚠️ Firebase not available, real-time updates disabled');
+            return;
+        }
+
+        if (this.branchesListener) {
+            console.log('🔄 Real-time listener already active');
+            return;
+        }
+
+        console.log('👂 Starting real-time branch listener...');
+        const branchesRef = collection(db, 'branches');
+        const q = query(branchesRef, orderBy('createdAt', 'asc'));
+
+        this.branchesListener = onSnapshot(q, (snapshot) => {
+            console.log('🔔 Branch data changed, updating...');
+            
+            this.branches = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+
+            console.log(`✅ Real-time update: ${this.branches.length} branches loaded`);
+            
+            // Notify all callbacks
+            this.callbacks.forEach(callback => {
+                try {
+                    callback(this.branches);
+                } catch (error) {
+                    console.error('Error in branch update callback:', error);
+                }
+            });
+
+            // Update branch selector if available
+            if (window.populateBranchSelector) {
+                window.populateBranchSelector();
+            }
+
+            // Dispatch custom event for other components
+            window.dispatchEvent(new CustomEvent('branchesUpdated', { 
+                detail: { branches: this.branches }
+            }));
+
+        }, (error) => {
+            console.error('❌ Real-time listener error:', error);
+        });
+
+        console.log('✅ Real-time branch listener started');
+    }
+
+    // Stop real-time listener
+    stopRealtimeListener() {
+        if (this.branchesListener) {
+            console.log('🔇 Stopping real-time branch listener...');
+            this.branchesListener();
+            this.branchesListener = null;
+        }
+    }
+
+    // Add callback for real-time updates
+    onBranchesUpdated(callback) {
+        if (typeof callback === 'function') {
+            this.callbacks.push(callback);
+            console.log('✅ Added branch update callback');
+        }
+    }
+
+    // Remove callback
+    offBranchesUpdated(callback) {
+        const index = this.callbacks.indexOf(callback);
+        if (index > -1) {
+            this.callbacks.splice(index, 1);
+            console.log('✅ Removed branch update callback');
+        }
+    }
+
+    // Get branch by ID (helper method for UI)
+    getBranchById(branchId) {
+        return this.branches.find(branch => branch.id === branchId);
     }
 }
 

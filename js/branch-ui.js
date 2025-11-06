@@ -233,8 +233,29 @@ function showNotification(message, type = 'info') {
     }, 3000);
 }
 
+// Initialize real-time updates
+function initRealtimeUpdates() {
+    // Start real-time listener for branches
+    branchManager.startRealtimeListener();
+    
+    // Add callback for UI updates
+    branchManager.onBranchesUpdated((branches) => {
+        console.log('🔄 UI: Branches updated, refreshing list...');
+        loadBranchesList();
+    });
+    
+    // Listen for custom events
+    window.addEventListener('branchesUpdated', (event) => {
+        console.log('🔄 UI: Received branches updated event');
+        // UI is already updated by the callback above
+    });
+}
+
 // Listen for navigation to admin page
 window.addEventListener('DOMContentLoaded', () => {
+    // Initialize real-time updates
+    initRealtimeUpdates();
+    
     // Load branches when admin page is accessed
     const navLinks = document.querySelectorAll('[data-page="admin"]');
     navLinks.forEach(link => {
