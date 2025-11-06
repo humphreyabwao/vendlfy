@@ -1,4 +1,6 @@
 // Orders Manager
+import { db, collection, getDocs, doc, updateDoc, query, where, orderBy as firestoreOrderBy } from './firebase-config.js';
+
 const ordersManager = {
     orders: [],
     suppliers: [],
@@ -7,17 +9,30 @@ const ordersManager = {
 
     init() {
         console.log('Initializing Orders Manager...');
-        this.loadOrders();
-        this.loadSuppliers();
-        this.setupEventListeners();
-        this.renderStats();
-        this.renderOrdersTable();
-        
-        // Auto-refresh every 30 seconds
-        setInterval(() => {
+        this.waitForFirebase().then(() => {
             this.loadOrders();
             this.loadSuppliers();
-        }, 30000);
+            this.setupEventListeners();
+            this.renderStats();
+            this.renderOrdersTable();
+            
+            // Auto-refresh every 30 seconds
+            setInterval(() => {
+                this.loadOrders();
+                this.loadSuppliers();
+            }, 30000);
+        });
+    },
+
+    async waitForFirebase() {
+        let attempts = 0;
+        while (!window.db && attempts < 50) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
+        }
+        if (!window.db) {
+            console.error('Firebase not available after waiting');
+        }
     },
 
     setupEventListeners() {
@@ -54,57 +69,117 @@ const ordersManager = {
 
     async loadOrders() {
         try {
-            const branchId = window.branchManager?.currentBranch;
-            if (!branchId) {
-                console.log('No branch selected');
+            if (!window.db) {
+                console.error('Firestore database not initialized');
+                this.renderOrdersTable();
                 return;
             }
 
-            const ordersRef = window.db.collection('orders')
-                .where('branchId', '==', branchId)
-                .orderBy('createdAt', 'desc');
+            const branchId = window.branchManager?.currentBranch;
+            if (!branchId) {
+                console.log('No branch selected');
+                this.orders = [];
+                this.filteredOrders = [];
+                this.renderStats();
+                this.renderOrdersTable();
+                return;
+            }
 
-            const snapshot = await ordersRef.get();
+            console.log('Loading orders for branch:', branchId);
+
+            const ordersRef = collection(db, 'orders');
+            
+            // Try loading ALL orders first to see if any exist
+            console.log('Attempting to load ALL orders from Firestore...');
+            const allSnapshot = await getDocs(ordersRef);
+            console.log(`Found ${allSnapshot.size} total orders in database`);
+            
+            if (allSnapshot.size > 0) {
+                console.log('Sample order data:', allSnapshot.docs[0].data());
+            }
+            
+            // Now filter by branch
+            const q = query(
+                ordersRef,
+                where('branchId', '==', branchId),
+                firestoreOrderBy('createdAt', 'desc')
+            );
+
+            const snapshot = await getDocs(q);
             this.orders = [];
 
-            snapshot.forEach(doc => {
+            snapshot.forEach(docSnap => {
                 this.orders.push({
-                    id: doc.id,
-                    ...doc.data()
+                    id: docSnap.id,
+                    ...docSnap.data()
                 });
             });
 
-            console.log(`Loaded ${this.orders.length} orders`);
-            this.filteredOrders = [...this.orders];
+            console.log(`✅ Loaded ${this.orders.length} orders for branch ${branchId}`);
+            
+            // Apply current filter
+            if (this.currentFilter === 'all') {
+                this.filteredOrders = [...this.orders];
+            } else {
+                this.filteredOrders = this.orders.filter(o => o.status === this.currentFilter);
+            }
+            
+            console.log(`Displaying ${this.filteredOrders.length} orders after filter: ${this.currentFilter}`);
             this.renderStats();
             this.renderOrdersTable();
         } catch (error) {
-            console.error('Error loading orders:', error);
+            console.error('❌ Error loading orders:', error);
+            console.error('Error details:', error.message);
+            console.error('Error code:', error.code);
+            
+            if (error.message && error.message.includes('index')) {
+                console.error('⚠️ FIRESTORE INDEX REQUIRED:');
+                console.error('Collection: orders');
+                console.error('Fields: branchId (Ascending), createdAt (Descending)');
+                console.error('Click the error link above to auto-create the index');
+            }
+            
+            this.renderStats();
+            this.renderOrdersTable();
         }
     },
 
     async loadSuppliers() {
         try {
+            if (!window.db) {
+                console.error('Firestore database not initialized');
+                return;
+            }
+
             const branchId = window.branchManager?.currentBranch;
-            if (!branchId) return;
+            if (!branchId) {
+                console.log('No branch selected for suppliers');
+                return;
+            }
 
-            const suppliersRef = window.db.collection('suppliers')
-                .where('branchId', '==', branchId);
+            console.log('Loading suppliers for orders page...');
 
-            const snapshot = await suppliersRef.get();
+            const suppliersRef = collection(db, 'suppliers');
+            const q = query(
+                suppliersRef,
+                where('branchId', '==', branchId)
+            );
+
+            const snapshot = await getDocs(q);
             this.suppliers = [];
 
-            snapshot.forEach(doc => {
+            snapshot.forEach(docSnap => {
                 this.suppliers.push({
-                    id: doc.id,
-                    ...doc.data()
+                    id: docSnap.id,
+                    ...docSnap.data()
                 });
             });
 
-            console.log(`Loaded ${this.suppliers.length} suppliers`);
+            console.log(`✅ Loaded ${this.suppliers.length} suppliers for orders`);
             this.renderStats();
         } catch (error) {
-            console.error('Error loading suppliers:', error);
+            console.error('❌ Error loading suppliers:', error);
+            console.error('Error details:', error.message);
         }
     },
 
@@ -135,7 +210,13 @@ const ordersManager = {
 
     renderOrdersTable() {
         const tbody = document.getElementById('ordersTableBody');
-        if (!tbody) return;
+        if (!tbody) {
+            console.error('❌ Table body element not found: ordersTableBody');
+            return;
+        }
+
+        console.log(`📊 Rendering ${this.filteredOrders.length} orders to table...`);
+        console.log('Current orders data:', this.filteredOrders);
 
         if (this.filteredOrders.length === 0) {
             tbody.innerHTML = `
@@ -151,52 +232,65 @@ const ordersManager = {
                     </td>
                 </tr>
             `;
+            console.log('✅ Rendered empty state for orders table');
             return;
         }
 
-        tbody.innerHTML = this.filteredOrders.map(order => `
-            <tr>
-                <td><strong>#${order.orderNumber || order.id.substring(0, 8).toUpperCase()}</strong></td>
-                <td>${this.formatDate(order.createdAt)}</td>
-                <td>${order.supplierName || 'N/A'}</td>
-                <td style="text-align: center;">${order.items?.length || 0}</td>
-                <td style="text-align: right;"><strong>KSh ${this.formatNumber(order.totalAmount || 0)}</strong></td>
-                <td style="text-align: center;">
-                    <span class="status-badge ${this.getPaymentStatusClass(order.paymentStatus)}">
-                        ${this.capitalizeFirst(order.paymentStatus || 'pending')}
-                    </span>
-                </td>
-                <td style="text-align: center;">
-                    <span class="status-badge ${this.getDeliveryStatusClass(order.deliveryStatus)}">
-                        ${this.capitalizeFirst(order.deliveryStatus || 'pending')}
-                    </span>
-                </td>
-                <td>${order.expectedDelivery ? this.formatDate(order.expectedDelivery) : 'TBD'}</td>
-                <td style="text-align: center;">
-                    <div class="table-actions">
-                        <button class="btn-icon" onclick="ordersManager.viewOrder('${order.id}')" title="View Details">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                <circle cx="12" cy="12" r="3"></circle>
-                            </svg>
-                        </button>
-                        <button class="btn-icon" onclick="ordersManager.editOrder('${order.id}')" title="Edit Order">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                            </svg>
-                        </button>
-                        ${order.deliveryStatus !== 'delivered' ? `
-                        <button class="btn-icon" onclick="ordersManager.markAsDelivered('${order.id}')" title="Mark as Delivered">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="20 6 9 17 4 12"></polyline>
-                            </svg>
-                        </button>
-                        ` : ''}
-                    </div>
-                </td>
-            </tr>
-        `).join('');
+        try {
+            const rows = this.filteredOrders.map(order => {
+                console.log('Rendering order:', order.id);
+                return `
+                <tr>
+                    <td><strong>#${order.orderNumber || order.id.substring(0, 8).toUpperCase()}</strong></td>
+                    <td>${this.formatDate(order.createdAt)}</td>
+                    <td>${order.supplierName || 'N/A'}</td>
+                    <td style="text-align: center;">${order.items?.length || 0}</td>
+                    <td style="text-align: right;"><strong>KSh ${this.formatNumber(order.totalAmount || 0)}</strong></td>
+                    <td style="text-align: center;">
+                        <span class="status-badge ${this.getPaymentStatusClass(order.paymentStatus)}">
+                            ${this.capitalizeFirst(order.paymentStatus || 'pending')}
+                        </span>
+                    </td>
+                    <td style="text-align: center;">
+                        <span class="status-badge ${this.getDeliveryStatusClass(order.deliveryStatus)}">
+                            ${this.capitalizeFirst(order.deliveryStatus || 'pending')}
+                        </span>
+                    </td>
+                    <td>${order.expectedDelivery || order.expectedDeliveryDate ? this.formatDate(order.expectedDelivery || order.expectedDeliveryDate) : 'TBD'}</td>
+                    <td style="text-align: center;">
+                        <div class="table-actions">
+                            <button class="btn-icon" onclick="ordersManager.viewOrder('${order.id}')" title="View Details">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </button>
+                            <button class="btn-icon" onclick="ordersManager.editOrder('${order.id}')" title="Edit Order">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                            </button>
+                            ${order.deliveryStatus !== 'delivered' ? `
+                            <button class="btn-icon" onclick="ordersManager.markAsDelivered('${order.id}')" title="Mark as Delivered">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </button>
+                            ` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `;
+            }).join('');
+            
+            tbody.innerHTML = rows;
+            console.log(`✅ Successfully rendered ${this.filteredOrders.length} orders to table`);
+        } catch (error) {
+            console.error('❌ Error rendering orders table:', error);
+        }
+        
+        console.log('✅ Orders table rendering complete');
     },
 
     filterOrders(status) {
@@ -384,24 +478,32 @@ const ordersManager = {
 
     async updateInventoryFromOrder(item) {
         try {
-            const inventoryRef = window.db.collection('inventory')
-                .where('branchId', '==', window.branchManager?.currentBranch)
-                .where('name', '==', item.name || item.itemName);
+            const inventoryRef = collection(db, 'inventory');
+            const q = query(
+                inventoryRef,
+                where('branchId', '==', window.branchManager?.currentBranch),
+                where('name', '==', item.name || item.itemName)
+            );
 
-            const snapshot = await inventoryRef.get();
+            const snapshot = await getDocs(q);
             
             if (!snapshot.empty) {
-                const doc = snapshot.docs[0];
-                const currentStock = doc.data().stock || 0;
+                const docSnap = snapshot.docs[0];
+                const currentStock = docSnap.data().stock || 0;
                 const newStock = currentStock + (item.quantity || 0);
 
-                await window.dataManager.updateInventory(doc.id, {
+                await window.dataManager.updateInventory(docSnap.id, {
                     stock: newStock,
                     lastRestocked: new Date()
                 });
+                
+                console.log(`✅ Updated inventory for ${item.name}: ${currentStock} → ${newStock}`);
+            } else {
+                console.log(`⚠️ Inventory item not found: ${item.name}`);
             }
         } catch (error) {
-            console.error('Error updating inventory:', error);
+            console.error('❌ Error updating inventory:', error);
+            console.error('Error details:', error.message);
         }
     },
 

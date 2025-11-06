@@ -85,6 +85,17 @@ const supplierManager = {
             console.log('Loading suppliers for branch:', branchId);
 
             const suppliersRef = collection(db, 'suppliers');
+            
+            // Try loading ALL suppliers first to see if any exist
+            console.log('Attempting to load ALL suppliers from Firestore...');
+            const allSnapshot = await getDocs(suppliersRef);
+            console.log(`Found ${allSnapshot.size} total suppliers in database`);
+            
+            if (allSnapshot.size > 0) {
+                console.log('Sample supplier data:', allSnapshot.docs[0].data());
+            }
+            
+            // Now filter by branch
             const q = query(
                 suppliersRef,
                 where('branchId', '==', branchId),
@@ -101,7 +112,7 @@ const supplierManager = {
                 });
             });
 
-            console.log(`✅ Loaded ${this.suppliers.length} suppliers`);
+            console.log(`✅ Loaded ${this.suppliers.length} suppliers for branch ${branchId}`);
             
             // Apply current filter
             if (this.currentFilter === 'all') {
@@ -120,6 +131,7 @@ const supplierManager = {
         } catch (error) {
             console.error('❌ Error loading suppliers:', error);
             console.error('Error details:', error.message);
+            console.error('Error code:', error.code);
             
             // If it's an index error, show helpful message
             if (error.message && error.message.includes('index')) {
@@ -245,7 +257,8 @@ const supplierManager = {
             return;
         }
 
-        console.log(`Rendering ${this.filteredSuppliers.length} suppliers to table...`);
+        console.log(`📊 Rendering ${this.filteredSuppliers.length} suppliers to table...`);
+        console.log('Current suppliers data:', this.filteredSuppliers);
 
         if (this.filteredSuppliers.length === 0) {
             tbody.innerHTML = `
@@ -263,52 +276,60 @@ const supplierManager = {
                     </td>
                 </tr>
             `;
-            console.log('Rendered empty state');
+            console.log('✅ Rendered empty state for suppliers table');
             return;
         }
 
-        tbody.innerHTML = this.filteredSuppliers.map(supplier => `
-            <tr>
-                <td><strong>${this.escapeHtml(supplier.name)}</strong></td>
-                <td>${this.escapeHtml(supplier.company || 'N/A')}</td>
-                <td>${this.escapeHtml(supplier.email)}</td>
-                <td>${this.escapeHtml(supplier.phone)}</td>
-                <td style="text-align: center;">
-                    ${supplier.category ? `<span class="category-badge">${this.capitalizeFirst(supplier.category)}</span>` : 'N/A'}
-                </td>
-                <td>${this.escapeHtml(supplier.city || supplier.address || 'N/A')}</td>
-                <td style="text-align: center;">
-                    <span class="status-badge ${supplier.status === 'active' ? 'completed' : 'cancelled'}">
-                        ${this.capitalizeFirst(supplier.status || 'active')}
-                    </span>
-                </td>
-                <td>${this.formatDate(supplier.createdAt)}</td>
-                <td style="text-align: center;">
-                    <div class="table-actions">
-                        <button class="btn-icon" onclick="supplierManager.viewSupplier('${supplier.id}')" title="View Details">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                <circle cx="12" cy="12" r="3"></circle>
-                            </svg>
-                        </button>
-                        <button class="btn-icon" onclick="supplierManager.editSupplier('${supplier.id}')" title="Edit Supplier">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                            </svg>
-                        </button>
-                        <button class="btn-icon" onclick="supplierManager.deleteSupplier('${supplier.id}')" title="Delete Supplier">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="3 6 5 6 21 6"></polyline>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                            </svg>
-                        </button>
-                    </div>
-                </td>
-            </tr>
-        `).join('');
-        
-        console.log('✅ Table rendered successfully');
+        try {
+            const rows = this.filteredSuppliers.map(supplier => {
+                console.log('Rendering supplier:', supplier.name);
+                return `
+                <tr>
+                    <td><strong>${this.escapeHtml(supplier.name)}</strong></td>
+                    <td>${this.escapeHtml(supplier.company || 'N/A')}</td>
+                    <td>${this.escapeHtml(supplier.email)}</td>
+                    <td>${this.escapeHtml(supplier.phone)}</td>
+                    <td style="text-align: center;">
+                        ${supplier.category ? `<span class="category-badge">${this.capitalizeFirst(supplier.category)}</span>` : 'N/A'}
+                    </td>
+                    <td>${this.escapeHtml(supplier.city || supplier.address || 'N/A')}</td>
+                    <td style="text-align: center;">
+                        <span class="status-badge ${supplier.status === 'active' ? 'completed' : 'cancelled'}">
+                            ${this.capitalizeFirst(supplier.status || 'active')}
+                        </span>
+                    </td>
+                    <td>${this.formatDate(supplier.createdAt)}</td>
+                    <td style="text-align: center;">
+                        <div class="table-actions">
+                            <button class="btn-icon" onclick="supplierManager.viewSupplier('${supplier.id}')" title="View Details">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </button>
+                            <button class="btn-icon" onclick="supplierManager.editSupplier('${supplier.id}')" title="Edit Supplier">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                            </button>
+                            <button class="btn-icon" onclick="supplierManager.deleteSupplier('${supplier.id}')" title="Delete Supplier">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            }).join('');
+            
+            tbody.innerHTML = rows;
+            console.log(`✅ Successfully rendered ${this.filteredSuppliers.length} suppliers to table`);
+        } catch (error) {
+            console.error('❌ Error rendering suppliers table:', error);
+        }
     },
 
     filterSuppliers(status) {
