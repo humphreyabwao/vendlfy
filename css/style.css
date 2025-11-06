@@ -88,6 +88,43 @@ body {
     color: var(--text-primary);
     overflow-x: hidden;
     transition: background-color var(--transition-speed), color var(--transition-speed);
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+/* Custom Scrollbar for Webkit browsers */
+body::-webkit-scrollbar {
+    width: 10px;
+}
+
+body::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+body::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+body::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Dark theme scrollbar */
+[data-theme="dark"] body {
+    scrollbar-color: #475569 #1e293b;
+}
+
+[data-theme="dark"] body::-webkit-scrollbar-track {
+    background: #1e293b;
+}
+
+[data-theme="dark"] body::-webkit-scrollbar-thumb {
+    background: #475569;
+}
+
+[data-theme="dark"] body::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
 }
 
 /* Top Bar */
@@ -5864,6 +5901,28 @@ textarea.form-input {
 
 .table-wrapper {
     overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+/* Webkit scrollbar for table wrapper */
+.table-wrapper::-webkit-scrollbar {
+    height: 8px;
+}
+
+.table-wrapper::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 10px;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+    transition: background 0.3s ease;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
 }
 
 .data-table {
@@ -7226,6 +7285,85 @@ textarea.form-input {
 }
 
 [data-theme="dark"] #ordersTable th:nth-child(4),
+[data-theme="dark"] #ordersTable td:nth-child(4) {
+    text-align: center;
+}
+
+/* Pagination Styles */
+.pagination-container {
+    padding: 1.5rem;
+    background: var(--bg-primary);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.pagination {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pagination-btn {
+    min-width: 36px;
+    height: 36px;
+    padding: 0 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'Montserrat', sans-serif;
+}
+
+.pagination-btn:hover:not(:disabled) {
+    background: var(--bg-tertiary);
+    border-color: var(--primary-blue);
+    color: var(--primary-blue);
+    transform: translateY(-2px);
+}
+
+.pagination-btn.active {
+    background: var(--primary-blue);
+    color: white;
+    border-color: var(--primary-blue);
+}
+
+.pagination-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.pagination-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.pagination-info {
+    margin-left: 1rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* Dark theme pagination */
+[data-theme="dark"] .pagination-btn:hover:not(:disabled) {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: var(--primary-blue);
+    color: var(--primary-blue);
+}
+
+[data-theme="dark"] .pagination-btn.active {
+    background: var(--primary-blue);
+    color: white;
+}
 [data-theme="dark"] #ordersTable td:nth-child(4),
 [data-theme="dark"] #ordersTable th:nth-child(6),
 [data-theme="dark"] #ordersTable td:nth-child(6),

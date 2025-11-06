@@ -1,5 +1,5 @@
 // Orders Manager
-import { db, collection, getDocs, doc, updateDoc, query, where, orderBy as firestoreOrderBy } from './firebase-config.js';
+import { db, collection, getDocs, doc, updateDoc, query, where, orderBy as firestoreOrderBy, serverTimestamp } from './firebase-config.js';
 
 const ordersManager = {
     orders: [],
@@ -8,6 +8,9 @@ const ordersManager = {
     currentFilter: 'all',
     initialized: false,
     refreshInterval: null,
+    currentPage: 1,
+    itemsPerPage: 10,
+    totalPages: 1,
 
     init() {
         if (this.initialized) {
@@ -263,12 +266,21 @@ const ordersManager = {
                     </td>
                 </tr>
             `;
+            this.renderPagination();
             console.log('✅ Rendered empty state for orders table');
             return;
         }
 
+        // Calculate pagination
+        this.totalPages = Math.ceil(this.filteredOrders.length / this.itemsPerPage);
+        const startIndex = (this.currentPage - 1) * this.itemsPerPage;
+        const endIndex = startIndex + this.itemsPerPage;
+        const paginatedOrders = this.filteredOrders.slice(startIndex, endIndex);
+
+        console.log(`Showing ${paginatedOrders.length} orders (page ${this.currentPage} of ${this.totalPages})`);
+
         try {
-            const rows = this.filteredOrders.map(order => {
+            const rows = paginatedOrders.map(order => {
                 console.log('Rendering order:', order.id);
                 return `
                 <tr>
@@ -316,12 +328,86 @@ const ordersManager = {
             }).join('');
             
             tbody.innerHTML = rows;
-            console.log(`✅ Successfully rendered ${this.filteredOrders.length} orders to table`);
+            this.renderPagination();
+            console.log(`✅ Successfully rendered ${paginatedOrders.length} orders to table (page ${this.currentPage})`);
         } catch (error) {
             console.error('❌ Error rendering orders table:', error);
         }
         
         console.log('✅ Orders table rendering complete');
+    },
+
+    renderPagination() {
+        const paginationContainer = document.getElementById('ordersPagination');
+        if (!paginationContainer || this.totalPages <= 1) {
+            if (paginationContainer) paginationContainer.innerHTML = '';
+            return;
+        }
+
+        const maxVisiblePages = 5;
+        let startPage = Math.max(1, this.currentPage - Math.floor(maxVisiblePages / 2));
+        let endPage = Math.min(this.totalPages, startPage + maxVisiblePages - 1);
+
+        if (endPage - startPage + 1 < maxVisiblePages) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+
+        let paginationHTML = `
+            <div class="pagination">
+                <button class="pagination-btn" ${this.currentPage === 1 ? 'disabled' : ''} 
+                        onclick="ordersManager.goToPage(1)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="11 17 6 12 11 7"></polyline>
+                        <polyline points="18 17 13 12 18 7"></polyline>
+                    </svg>
+                </button>
+                <button class="pagination-btn" ${this.currentPage === 1 ? 'disabled' : ''} 
+                        onclick="ordersManager.goToPage(${this.currentPage - 1})">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+        `;
+
+        for (let i = startPage; i <= endPage; i++) {
+            paginationHTML += `
+                <button class="pagination-btn ${i === this.currentPage ? 'active' : ''}" 
+                        onclick="ordersManager.goToPage(${i})">${i}</button>
+            `;
+        }
+
+        paginationHTML += `
+                <button class="pagination-btn" ${this.currentPage === this.totalPages ? 'disabled' : ''} 
+                        onclick="ordersManager.goToPage(${this.currentPage + 1})">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </button>
+                <button class="pagination-btn" ${this.currentPage === this.totalPages ? 'disabled' : ''} 
+                        onclick="ordersManager.goToPage(${this.totalPages})">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="13 17 18 12 13 7"></polyline>
+                        <polyline points="6 17 11 12 6 7"></polyline>
+                    </svg>
+                </button>
+                <span class="pagination-info">
+                    Showing ${(this.currentPage - 1) * this.itemsPerPage + 1}-${Math.min(this.currentPage * this.itemsPerPage, this.filteredOrders.length)} of ${this.filteredOrders.length}
+                </span>
+            </div>
+        `;
+
+        paginationContainer.innerHTML = paginationHTML;
+    },
+
+    goToPage(page) {
+        if (page < 1 || page > this.totalPages || page === this.currentPage) {
+            return;
+        }
+        this.currentPage = page;
+        this.renderOrdersTable();
+        
+        // Scroll to top of table
+        document.querySelector('#ordersTable')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     },
 
     filterOrders(status) {
@@ -539,8 +625,132 @@ const ordersManager = {
     },
 
     editOrder(orderId) {
-        // Navigate to edit order page
-        this.showNotification('Edit order functionality coming soon!', 'info');
+        const order = this.orders.find(o => o.id === orderId);
+        if (!order) {
+            this.showNotification('Order not found', 'error');
+            return;
+        }
+
+        const modal = document.createElement('div');
+        modal.className = 'pos-modal';
+        modal.innerHTML = `
+            <div class="pos-modal-content" style="max-width: 600px;">
+                <div class="pos-modal-header">
+                    <h3>Edit Order #${order.orderNumber || order.id.substring(0, 8).toUpperCase()}</h3>
+                    <button class="pos-modal-close" onclick="this.closest('.pos-modal').remove()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div class="pos-modal-body">
+                    <form id="editOrderForm" style="display: grid; gap: 1rem;">
+                        <div class="form-group">
+                            <label>Supplier</label>
+                            <select id="editOrderSupplier" class="form-control" disabled>
+                                <option value="${order.supplierId}">${order.supplierName} - ${order.supplierCompany || ''}</option>
+                            </select>
+                        </div>
+
+                        <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="form-group">
+                                <label>Payment Status</label>
+                                <select id="editPaymentStatus" class="form-control">
+                                    <option value="pending" ${order.paymentStatus === 'pending' ? 'selected' : ''}>Pending</option>
+                                    <option value="partial" ${order.paymentStatus === 'partial' ? 'selected' : ''}>Partial</option>
+                                    <option value="paid" ${order.paymentStatus === 'paid' ? 'selected' : ''}>Paid</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Delivery Status</label>
+                                <select id="editDeliveryStatus" class="form-control">
+                                    <option value="pending" ${order.deliveryStatus === 'pending' ? 'selected' : ''}>Pending</option>
+                                    <option value="processing" ${order.deliveryStatus === 'processing' ? 'selected' : ''}>Processing</option>
+                                    <option value="shipped" ${order.deliveryStatus === 'shipped' ? 'selected' : ''}>Shipped</option>
+                                    <option value="delivered" ${order.deliveryStatus === 'delivered' ? 'selected' : ''}>Delivered</option>
+                                    <option value="cancelled" ${order.deliveryStatus === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Expected Delivery Date</label>
+                            <input type="date" id="editExpectedDate" class="form-control" 
+                                   value="${order.expectedDeliveryDate || order.expectedDelivery || ''}">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Notes</label>
+                            <textarea id="editOrderNotes" class="form-control" rows="3">${order.notes || ''}</textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Order Status</label>
+                            <select id="editOrderStatus" class="form-control">
+                                <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>Pending</option>
+                                <option value="processing" ${order.status === 'processing' ? 'selected' : ''}>Processing</option>
+                                <option value="completed" ${order.status === 'completed' ? 'selected' : ''}>Completed</option>
+                                <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+                            </select>
+                        </div>
+
+                        <div class="pos-modal-footer" style="margin-top: 1rem;">
+                            <button type="button" class="btn btn-secondary" onclick="this.closest('.pos-modal').remove()">Cancel</button>
+                            <button type="submit" class="btn btn-primary">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                    <polyline points="7 3 7 8 15 8"></polyline>
+                                </svg>
+                                Update Order
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Handle form submission
+        const form = document.getElementById('editOrderForm');
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await this.updateOrder(orderId);
+        });
+
+        // Show modal
+        setTimeout(() => modal.classList.add('active'), 10);
+    },
+
+    async updateOrder(orderId) {
+        try {
+            const updateData = {
+                paymentStatus: document.getElementById('editPaymentStatus').value,
+                deliveryStatus: document.getElementById('editDeliveryStatus').value,
+                expectedDeliveryDate: document.getElementById('editExpectedDate').value,
+                notes: document.getElementById('editOrderNotes').value.trim(),
+                status: document.getElementById('editOrderStatus').value,
+                updatedAt: serverTimestamp()
+            };
+
+            const orderRef = doc(db, 'orders', orderId);
+            await updateDoc(orderRef, updateData);
+
+            console.log('✅ Order updated successfully');
+            this.showNotification('Order updated successfully!', 'success');
+            
+            // Close modal
+            document.querySelector('.pos-modal').remove();
+            
+            // Reload orders
+            await this.loadOrders();
+        } catch (error) {
+            console.error('❌ Error updating order:', error);
+            this.showNotification('Failed to update order: ' + error.message, 'error');
+        }
     },
 
     showExportModal() {
