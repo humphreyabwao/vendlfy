@@ -876,21 +876,49 @@ body {
 }
 
 .table-wrapper::-webkit-scrollbar {
-    height: 4px;
+    height: 10px;
 }
 
 .table-wrapper::-webkit-scrollbar-track {
-    background: #f3f4f6;
-    border-radius: 2px;
+    background: #e5e7eb;
+    border-radius: 5px;
 }
 
 .table-wrapper::-webkit-scrollbar-thumb {
-    background: #d1d5db;
-    border-radius: 2px;
+    background: #9ca3af;
+    border-radius: 5px;
+    transition: background 0.2s;
+    border: 2px solid #e5e7eb;
 }
 
 .table-wrapper::-webkit-scrollbar-thumb:hover {
-    background: #9ca3af;
+    background: #3b82f6;
+    border-color: #dbeafe;
+}
+
+/* Dark theme scrollbar */
+[data-theme="dark"] .table-wrapper::-webkit-scrollbar-track {
+    background: #374151;
+}
+
+[data-theme="dark"] .table-wrapper::-webkit-scrollbar-thumb {
+    background: #6b7280;
+    border-color: #374151;
+}
+
+[data-theme="dark"] .table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #3b82f6;
+    border-color: #1e3a8a;
+}
+
+/* Firefox scrollbar support */
+.table-wrapper {
+    scrollbar-width: auto;
+    scrollbar-color: #9ca3af #e5e7eb;
+}
+
+[data-theme="dark"] .table-wrapper {
+    scrollbar-color: #6b7280 #374151;
 }
 
 .table-container {
@@ -938,6 +966,7 @@ body {
     border-bottom: 2px solid var(--border-color);
     white-space: nowrap;
     font-size: 13px;
+    vertical-align: middle;
 }
 
 .data-table tbody tr {
@@ -953,6 +982,7 @@ body {
     padding: 14px 16px;
     color: var(--text-primary);
     vertical-align: middle;
+    text-align: left;
 }
 
 .checkbox {
@@ -3425,16 +3455,48 @@ textarea.form-input {
     overflow-y: auto;
 }
 
-/* Hide scrollbar but keep functionality */
+/* Slim scrollbar for sales table */
 .sales-table-wrapper::-webkit-scrollbar {
-    width: 0px;
-    display: none;
+    width: 6px;
+    height: 6px;
 }
 
-/* Firefox - hide scrollbar */
+.sales-table-wrapper::-webkit-scrollbar-track {
+    background: #f3f4f6;
+    border-radius: 3px;
+}
+
+.sales-table-wrapper::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 3px;
+    transition: background 0.2s;
+}
+
+.sales-table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #3b82f6;
+}
+
+/* Dark theme scrollbar for sales table */
+[data-theme="dark"] .sales-table-wrapper::-webkit-scrollbar-track {
+    background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .sales-table-wrapper::-webkit-scrollbar-thumb {
+    background: #4b5563;
+}
+
+[data-theme="dark"] .sales-table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #3b82f6;
+}
+
+/* Firefox - slim scrollbar */
 .sales-table-wrapper {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5db #f3f4f6;
+}
+
+[data-theme="dark"] .sales-table-wrapper {
+    scrollbar-color: #4b5563 var(--bg-tertiary);
 }
 
 .sales-table {
@@ -5089,6 +5151,49 @@ textarea.form-input {
     border-radius: 8px;
 }
 
+/* Slim scrollbar for cart table container */
+.cart-table-container::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.cart-table-container::-webkit-scrollbar-track {
+    background: #f3f4f6;
+    border-radius: 3px;
+}
+
+.cart-table-container::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 3px;
+    transition: background 0.2s;
+}
+
+.cart-table-container::-webkit-scrollbar-thumb:hover {
+    background: #3b82f6;
+}
+
+[data-theme="dark"] .cart-table-container::-webkit-scrollbar-track {
+    background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .cart-table-container::-webkit-scrollbar-thumb {
+    background: #4b5563;
+}
+
+[data-theme="dark"] .cart-table-container::-webkit-scrollbar-thumb:hover {
+    background: #3b82f6;
+}
+
+/* Firefox scrollbar for cart table container */
+.cart-table-container {
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5db #f3f4f6;
+}
+
+[data-theme="dark"] .cart-table-container {
+    scrollbar-color: #4b5563 var(--bg-tertiary);
+}
+
 .cart-table-wide {
     width: 100%;
     border-collapse: collapse;
@@ -5375,6 +5480,49 @@ textarea.form-input {
     overflow-y: auto;
 }
 
+/* Slim scrollbar for cart table wrapper */
+.cart-table-wrapper::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.cart-table-wrapper::-webkit-scrollbar-track {
+    background: #f3f4f6;
+    border-radius: 3px;
+}
+
+.cart-table-wrapper::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 3px;
+    transition: background 0.2s;
+}
+
+.cart-table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #3b82f6;
+}
+
+[data-theme="dark"] .cart-table-wrapper::-webkit-scrollbar-track {
+    background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .cart-table-wrapper::-webkit-scrollbar-thumb {
+    background: #4b5563;
+}
+
+[data-theme="dark"] .cart-table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #3b82f6;
+}
+
+/* Firefox scrollbar for cart table wrapper */
+.cart-table-wrapper {
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5db #f3f4f6;
+}
+
+[data-theme="dark"] .cart-table-wrapper {
+    scrollbar-color: #4b5563 var(--bg-tertiary);
+}
+
 .cart-table {
     width: 100%;
     border-collapse: collapse;
@@ -5655,6 +5803,7 @@ textarea.form-input {
     font-weight: 600;
     color: #6b7280;
     white-space: nowrap;
+    vertical-align: middle;
 }
 
 .data-table td {
@@ -5662,6 +5811,99 @@ textarea.form-input {
     border-bottom: 1px solid #f3f4f6;
     font-size: 0.875rem;
     color: #374151;
+    vertical-align: middle;
+}
+
+/* B2B Sales Table - Proper Column Alignment */
+#b2bSalesTable th,
+#b2bSalesTable td {
+    text-align: left;
+    vertical-align: middle;
+    padding: 0.875rem 1rem;
+    white-space: nowrap;
+}
+
+/* Specific column alignments */
+#b2bSalesTable th:nth-child(1),
+#b2bSalesTable td:nth-child(1) {
+    text-align: left; /* Invoice # */
+}
+
+#b2bSalesTable th:nth-child(2),
+#b2bSalesTable td:nth-child(2) {
+    text-align: left; /* Date & Time */
+}
+
+#b2bSalesTable th:nth-child(3),
+#b2bSalesTable td:nth-child(3) {
+    text-align: left; /* Customer */
+}
+
+#b2bSalesTable th:nth-child(4),
+#b2bSalesTable td:nth-child(4) {
+    text-align: left; /* Phone */
+}
+
+#b2bSalesTable th:nth-child(5),
+#b2bSalesTable td:nth-child(5) {
+    text-align: center; /* Items Count */
+}
+
+#b2bSalesTable th:nth-child(6),
+#b2bSalesTable td:nth-child(6) {
+    text-align: right; /* Amount */
+    font-weight: 600;
+}
+
+#b2bSalesTable th:nth-child(7),
+#b2bSalesTable td:nth-child(7) {
+    text-align: center; /* Payment Method */
+}
+
+#b2bSalesTable th:nth-child(8),
+#b2bSalesTable td:nth-child(8) {
+    text-align: center; /* Credit Terms */
+}
+
+#b2bSalesTable th:nth-child(9),
+#b2bSalesTable td:nth-child(9) {
+    text-align: center; /* Status */
+}
+
+#b2bSalesTable th:nth-child(10),
+#b2bSalesTable td:nth-child(10) {
+    text-align: center; /* Actions */
+}
+
+/* Ensure proper spacing and alignment for table content */
+#b2bSalesTable .status-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.375rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+#b2bSalesTable .payment-badge,
+#b2bSalesTable .credit-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.375rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+#b2bSalesTable .table-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    align-items: center;
 }
 
 .data-table tbody tr:hover {
@@ -6171,6 +6413,31 @@ textarea.form-input {
 [data-theme="dark"] .data-table td {
     color: var(--text-primary);
     border-bottom-color: var(--border-color);
+}
+
+/* B2B Table Dark Theme - Proper Alignment */
+[data-theme="dark"] #b2bSalesTable th,
+[data-theme="dark"] #b2bSalesTable td {
+    vertical-align: middle;
+}
+
+[data-theme="dark"] #b2bSalesTable th:nth-child(6),
+[data-theme="dark"] #b2bSalesTable td:nth-child(6) {
+    text-align: right;
+    font-weight: 600;
+}
+
+[data-theme="dark"] #b2bSalesTable th:nth-child(5),
+[data-theme="dark"] #b2bSalesTable td:nth-child(5),
+[data-theme="dark"] #b2bSalesTable th:nth-child(7),
+[data-theme="dark"] #b2bSalesTable td:nth-child(7),
+[data-theme="dark"] #b2bSalesTable th:nth-child(8),
+[data-theme="dark"] #b2bSalesTable td:nth-child(8),
+[data-theme="dark"] #b2bSalesTable th:nth-child(9),
+[data-theme="dark"] #b2bSalesTable td:nth-child(9),
+[data-theme="dark"] #b2bSalesTable th:nth-child(10),
+[data-theme="dark"] #b2bSalesTable td:nth-child(10) {
+    text-align: center;
 }
 
 [data-theme="dark"] .data-table tbody tr:hover {
