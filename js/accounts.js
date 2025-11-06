@@ -62,7 +62,7 @@ const accountsManager = {
         const exportBtn = document.getElementById('exportFinancialReportBtn');
         if (exportBtn) {
             exportBtn.addEventListener('click', () => {
-                this.exportFinancialReport();
+                this.showExportModal();
             });
         }
 
@@ -647,7 +647,19 @@ const accountsManager = {
         return ((current - previous) / previous) * 100;
     },
 
+    showExportModal() {
+        const modal = document.getElementById('exportFormatModal');
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+    },
+
     exportFinancialReport() {
+        // Legacy CSV export - now called by exportAsCSV()
+        this.exportAsCSV();
+    },
+
+    exportAsCSV() {
         const financials = this.calculateFinancials();
         const csvData = [];
 
@@ -667,6 +679,20 @@ const accountsManager = {
         csvData.push(['Accounts Receivable', `KSh ${this.formatNumber(financials.accountsReceivable)}`]);
         csvData.push([]);
 
+        // Revenue Breakdown
+        csvData.push(['Revenue Breakdown']);
+        csvData.push(['POS Sales', `KSh ${this.formatNumber(financials.posSales)}`]);
+        csvData.push(['B2B Sales', `KSh ${this.formatNumber(financials.b2bSales)}`]);
+        csvData.push([]);
+
+        // Expense Breakdown
+        csvData.push(['Expense Breakdown']);
+        Object.entries(financials.expensesByCategory).forEach(([category, amount]) => {
+            csvData.push([category, `KSh ${this.formatNumber(amount)}`]);
+        });
+        csvData.push(['Orders (Inventory)', `KSh ${this.formatNumber(financials.ordersCost)}`]);
+        csvData.push([]);
+
         // Convert to CSV string
         const csvString = csvData.map(row => row.join(',')).join('\n');
         const blob = new Blob([csvString], { type: 'text/csv' });
@@ -676,7 +702,246 @@ const accountsManager = {
         a.download = `financial-report-${new Date().toISOString().split('T')[0]}.csv`;
         a.click();
 
-        this.showNotification('Financial report exported successfully', 'success');
+        this.closeExportModal();
+        this.showNotification('Financial report exported as CSV successfully', 'success');
+    },
+
+    exportAsPDF() {
+        const financials = this.calculateFinancials();
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        // Title
+        doc.setFontSize(20);
+        doc.setTextColor(99, 102, 241);
+        doc.text('Vendify Financial Report', 14, 20);
+
+        // Metadata
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 28);
+        doc.text(`Branch: ${window.branchManager?.currentBranch || 'N/A'}`, 14, 34);
+
+        let yPos = 45;
+
+        // Financial Overview Section
+        doc.setFontSize(14);
+        doc.setTextColor(0, 0, 0);
+        doc.text('Financial Overview', 14, yPos);
+        yPos += 8;
+
+        doc.autoTable({
+            startY: yPos,
+            head: [['Metric', 'Amount']],
+            body: [
+                ['Total Revenue', `KSh ${this.formatNumber(financials.totalRevenue)}`],
+                ['Total Expenses', `KSh ${this.formatNumber(financials.totalExpenses + financials.ordersCost)}`],
+                ['Net Profit', `KSh ${this.formatNumber(financials.netProfit)}`],
+                ['Profit Margin', `${financials.profitMargin.toFixed(2)}%`],
+                ['Cash Balance', `KSh ${this.formatNumber(financials.cashBalance)}`],
+                ['Accounts Receivable', `KSh ${this.formatNumber(financials.accountsReceivable)}`]
+            ],
+            theme: 'striped',
+            headStyles: { fillColor: [99, 102, 241] },
+            margin: { left: 14, right: 14 }
+        });
+
+        yPos = doc.lastAutoTable.finalY + 15;
+
+        // Revenue Breakdown
+        doc.setFontSize(14);
+        doc.text('Revenue Breakdown', 14, yPos);
+        yPos += 8;
+
+        doc.autoTable({
+            startY: yPos,
+            head: [['Source', 'Amount', 'Percentage']],
+            body: [
+                ['POS Sales', `KSh ${this.formatNumber(financials.posSales)}`, `${((financials.posSales / financials.totalRevenue) * 100).toFixed(1)}%`],
+                ['B2B Sales', `KSh ${this.formatNumber(financials.b2bSales)}`, `${((financials.b2bSales / financials.totalRevenue) * 100).toFixed(1)}%`]
+            ],
+            theme: 'striped',
+            headStyles: { fillColor: [34, 197, 94] },
+            margin: { left: 14, right: 14 }
+        });
+
+        yPos = doc.lastAutoTable.finalY + 15;
+
+        // Expense Breakdown
+        if (yPos > 250) {
+            doc.addPage();
+            yPos = 20;
+        }
+
+        doc.setFontSize(14);
+        doc.text('Expense Breakdown', 14, yPos);
+        yPos += 8;
+
+        const expenseData = Object.entries(financials.expensesByCategory).map(([category, amount]) => [
+            category,
+            `KSh ${this.formatNumber(amount)}`,
+            `${((amount / (financials.totalExpenses + financials.ordersCost)) * 100).toFixed(1)}%`
+        ]);
+        expenseData.push([
+            'Orders (Inventory)',
+            `KSh ${this.formatNumber(financials.ordersCost)}`,
+            `${((financials.ordersCost / (financials.totalExpenses + financials.ordersCost)) * 100).toFixed(1)}%`
+        ]);
+
+        doc.autoTable({
+            startY: yPos,
+            head: [['Category', 'Amount', 'Percentage']],
+            body: expenseData,
+            theme: 'striped',
+            headStyles: { fillColor: [239, 68, 68] },
+            margin: { left: 14, right: 14 }
+        });
+
+        // Save PDF
+        doc.save(`financial-report-${new Date().toISOString().split('T')[0]}.pdf`);
+        
+        this.closeExportModal();
+        this.showNotification('Financial report exported as PDF successfully', 'success');
+    },
+
+    exportAsExcel() {
+        const financials = this.calculateFinancials();
+        const XLSX = window.XLSX;
+
+        // Create a new workbook
+        const wb = XLSX.utils.book_new();
+
+        // Sheet 1: Overview
+        const overviewData = [
+            ['Vendify Financial Report'],
+            ['Generated:', new Date().toLocaleString()],
+            ['Branch:', window.branchManager?.currentBranch || 'N/A'],
+            [],
+            ['Financial Overview'],
+            ['Metric', 'Amount'],
+            ['Total Revenue', financials.totalRevenue],
+            ['Total Expenses', financials.totalExpenses + financials.ordersCost],
+            ['Net Profit', financials.netProfit],
+            ['Profit Margin', `${financials.profitMargin.toFixed(2)}%`],
+            ['Cash Balance', financials.cashBalance],
+            ['Accounts Receivable', financials.accountsReceivable]
+        ];
+        const ws1 = XLSX.utils.aoa_to_sheet(overviewData);
+        
+        // Set column widths
+        ws1['!cols'] = [{ wch: 25 }, { wch: 20 }];
+        
+        // Add styling to headers
+        const range = XLSX.utils.decode_range(ws1['!ref']);
+        for (let R = range.s.r; R <= range.e.r; ++R) {
+            for (let C = range.s.c; C <= range.e.c; ++C) {
+                const cell_address = { c: C, r: R };
+                const cell_ref = XLSX.utils.encode_cell(cell_address);
+                if (!ws1[cell_ref]) continue;
+                
+                // Style headers
+                if (R === 0 || R === 4 || R === 5) {
+                    if (!ws1[cell_ref].s) ws1[cell_ref].s = {};
+                    ws1[cell_ref].s.font = { bold: true };
+                }
+            }
+        }
+        
+        XLSX.utils.book_append_sheet(wb, ws1, 'Overview');
+
+        // Sheet 2: Revenue Breakdown
+        const revenueData = [
+            ['Revenue Breakdown'],
+            ['Source', 'Amount', 'Percentage'],
+            ['POS Sales', financials.posSales, `${((financials.posSales / financials.totalRevenue) * 100).toFixed(1)}%`],
+            ['B2B Sales', financials.b2bSales, `${((financials.b2bSales / financials.totalRevenue) * 100).toFixed(1)}%`],
+            [],
+            ['Total Revenue', financials.totalRevenue, '100%']
+        ];
+        const ws2 = XLSX.utils.aoa_to_sheet(revenueData);
+        ws2['!cols'] = [{ wch: 20 }, { wch: 18 }, { wch: 15 }];
+        XLSX.utils.book_append_sheet(wb, ws2, 'Revenue');
+
+        // Sheet 3: Expense Breakdown
+        const expenseData = [['Expense Breakdown'], ['Category', 'Amount', 'Percentage']];
+        Object.entries(financials.expensesByCategory).forEach(([category, amount]) => {
+            expenseData.push([
+                category,
+                amount,
+                `${((amount / (financials.totalExpenses + financials.ordersCost)) * 100).toFixed(1)}%`
+            ]);
+        });
+        expenseData.push([
+            'Orders (Inventory)',
+            financials.ordersCost,
+            `${((financials.ordersCost / (financials.totalExpenses + financials.ordersCost)) * 100).toFixed(1)}%`
+        ]);
+        expenseData.push([]);
+        expenseData.push(['Total Expenses', financials.totalExpenses + financials.ordersCost, '100%']);
+        
+        const ws3 = XLSX.utils.aoa_to_sheet(expenseData);
+        ws3['!cols'] = [{ wch: 25 }, { wch: 18 }, { wch: 15 }];
+        XLSX.utils.book_append_sheet(wb, ws3, 'Expenses');
+
+        // Sheet 4: Monthly Summary (if available)
+        if (this.sales.length > 0 || this.b2bSales.length > 0 || this.expenses.length > 0) {
+            const monthlySummaryData = [
+                ['Monthly Financial Summary'],
+                ['Month', 'Revenue', 'Expenses', 'Net Profit', 'Profit Margin']
+            ];
+
+            // Get last 12 months
+            const months = [];
+            for (let i = 11; i >= 0; i--) {
+                const date = new Date();
+                date.setMonth(date.getMonth() - i);
+                months.push({
+                    name: date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+                    start: new Date(date.getFullYear(), date.getMonth(), 1),
+                    end: new Date(date.getFullYear(), date.getMonth() + 1, 0)
+                });
+            }
+
+            months.forEach(month => {
+                const monthSales = this.sales.filter(sale => {
+                    const saleDate = sale.timestamp.toDate();
+                    return saleDate >= month.start && saleDate <= month.end;
+                });
+                const monthB2B = this.b2bSales.filter(sale => {
+                    const saleDate = sale.timestamp.toDate();
+                    return saleDate >= month.start && saleDate <= month.end;
+                });
+                const monthExpenses = this.expenses.filter(expense => {
+                    const expenseDate = expense.timestamp.toDate();
+                    return expenseDate >= month.start && expenseDate <= month.end;
+                });
+
+                const revenue = monthSales.reduce((sum, s) => sum + s.totalAmount, 0) +
+                               monthB2B.reduce((sum, s) => sum + s.totalAmount, 0);
+                const expenses = monthExpenses.reduce((sum, e) => sum + e.amount, 0);
+                const profit = revenue - expenses;
+                const margin = revenue > 0 ? ((profit / revenue) * 100).toFixed(2) + '%' : '0%';
+
+                monthlySummaryData.push([month.name, revenue, expenses, profit, margin]);
+            });
+
+            const ws4 = XLSX.utils.aoa_to_sheet(monthlySummaryData);
+            ws4['!cols'] = [{ wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }];
+            XLSX.utils.book_append_sheet(wb, ws4, 'Monthly Summary');
+        }
+
+        // Generate Excel file
+        XLSX.writeFile(wb, `financial-report-${new Date().toISOString().split('T')[0]}.xlsx`);
+        
+        this.closeExportModal();
+        this.showNotification('Financial report exported as Excel successfully', 'success');
+    },
+
+    closeExportModal() {
+        const modal = document.getElementById('exportFormatModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
     },
 
     showAllTransactionsModal() {

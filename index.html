@@ -8,6 +8,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
+    
+    <!-- Export Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
     <!-- Top Bar -->
@@ -2793,16 +2798,6 @@
                 </div>
             </div>
 
-            <!-- Accounts -->
-            <div class="page" id="accounts-page">
-                <div class="page-header">
-                    <h2>Accounts</h2>
-                </div>
-                <div class="page-content">
-                    <!-- Accounts content will go here -->
-                </div>
-            </div>
-
             <!-- Admin Panel -->
             <div class="page" id="admin-page">
                 <div class="page-header">
@@ -2896,6 +2891,58 @@
         </div>
     </div>
 
+    <!-- Export Format Modal -->
+    <div id="exportFormatModal" class="modal">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h2>Export Financial Report</h2>
+                <button class="close-modal" onclick="closeExportFormatModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 20px; color: var(--text-secondary);">Select the format to export your financial report:</p>
+                <div class="export-format-options" style="display: grid; gap: 15px;">
+                    <button class="export-format-btn" onclick="window.accountsManager.exportAsPDF()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                        <div>
+                            <div style="font-weight: 600; font-size: 16px;">PDF Document</div>
+                            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Professional formatted report</div>
+                        </div>
+                    </button>
+                    <button class="export-format-btn" onclick="window.accountsManager.exportAsCSV()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="12" y1="18" x2="12" y2="12"></line>
+                            <line x1="9" y1="15" x2="15" y2="15"></line>
+                        </svg>
+                        <div>
+                            <div style="font-weight: 600; font-size: 16px;">CSV File</div>
+                            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Comma-separated values for spreadsheets</div>
+                        </div>
+                    </button>
+                    <button class="export-format-btn" onclick="window.accountsManager.exportAsExcel()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <path d="M9 15l3-3-3-3"></path>
+                            <path d="M15 15l-3-3 3-3"></path>
+                        </svg>
+                        <div>
+                            <div style="font-weight: 600; font-size: 16px;">Excel Workbook</div>
+                            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Multi-sheet Excel file with formatting</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Firebase SDK -->
     <script type="module" src="js/firebase-config.js"></script>
     <script type="module" src="js/branch-manager.js"></script>
@@ -2903,5 +2950,23 @@
     <script type="module" src="js/branch-ui.js"></script>
     <script type="module" src="js/pos.js"></script>
     <script type="module" src="js/app.js"></script>
+    
+    <script>
+        // Export Modal Functions
+        function closeExportFormatModal() {
+            const modal = document.getElementById('exportFormatModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // Close modal when clicking outside
+        window.addEventListener('click', (e) => {
+            const modal = document.getElementById('exportFormatModal');
+            if (e.target === modal) {
+                closeExportFormatModal();
+            }
+        });
+    </script>
 </body>
 </html>
