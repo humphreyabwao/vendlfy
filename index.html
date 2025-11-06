@@ -197,6 +197,15 @@
                     </ul>
                 </li>
                 <li class="nav-item">
+                    <a href="#accounts" class="nav-link" data-page="accounts">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                            <line x1="1" y1="10" x2="23" y2="10"></line>
+                        </svg>
+                        <span>Accounts</span>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="#reports" class="nav-link" data-page="reports">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M3 3v18h18"></path>
@@ -205,15 +214,6 @@
                             <path d="M8 17v-3"></path>
                         </svg>
                         <span>Reports</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="#accounts" class="nav-link" data-page="accounts">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
-                            <line x1="1" y1="10" x2="23" y2="10"></line>
-                        </svg>
-                        <span>Accounts</span>
                     </a>
                 </li>
                 <li class="nav-item has-submenu">
@@ -2565,6 +2565,220 @@
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Accounts Module -->
+            <div class="page" id="accounts-page">
+                <div class="page-header">
+                    <div class="page-header-left">
+                        <h2>Financial Accounts</h2>
+                        <p class="page-subtitle">Comprehensive financial management and reporting</p>
+                    </div>
+                    <div class="page-header-right">
+                        <button class="btn btn-secondary" id="exportFinancialReportBtn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Export Report
+                        </button>
+                        <button class="btn btn-primary" id="refreshFinancialsBtn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="23 4 23 10 17 10"></polyline>
+                                <polyline points="1 20 1 14 7 14"></polyline>
+                                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                            </svg>
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+                <div class="page-content">
+                    <!-- Financial Overview Stats -->
+                    <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+                        <div class="stat-card success">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                </svg>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-label">Total Revenue</div>
+                                <div class="stat-value" id="totalRevenue">KSh 0</div>
+                                <div class="stat-subtitle" id="revenueGrowth">+0% from last month</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card warning">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="8.5" cy="7" r="4"></circle>
+                                    <polyline points="17 11 19 13 23 9"></polyline>
+                                </svg>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-label">Total Expenses</div>
+                                <div class="stat-value" id="totalExpenses">KSh 0</div>
+                                <div class="stat-subtitle" id="expensesChange">+0% from last month</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card primary">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                                </svg>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-label">Net Profit</div>
+                                <div class="stat-value" id="netProfit">KSh 0</div>
+                                <div class="stat-subtitle" id="profitMargin">0% Margin</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card info">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                                    <line x1="1" y1="10" x2="23" y2="10"></line>
+                                </svg>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-label">Cash Balance</div>
+                                <div class="stat-value" id="cashBalance">KSh 0</div>
+                                <div class="stat-subtitle" id="accountsReceivable">KSh 0 Receivable</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Financial Breakdown -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 2rem;">
+                        <!-- Revenue Breakdown -->
+                        <div class="financial-card">
+                            <div class="card-header">
+                                <h3>Revenue Breakdown</h3>
+                                <select id="revenueTimeframe" class="form-control" style="width: 150px;">
+                                    <option value="today">Today</option>
+                                    <option value="week">This Week</option>
+                                    <option value="month" selected>This Month</option>
+                                    <option value="year">This Year</option>
+                                </select>
+                            </div>
+                            <div class="card-body">
+                                <div class="breakdown-list" id="revenueBreakdown">
+                                    <div class="breakdown-item">
+                                        <div class="breakdown-info">
+                                            <span class="breakdown-label">POS Sales</span>
+                                            <span class="breakdown-percent">0%</span>
+                                        </div>
+                                        <div class="breakdown-bar">
+                                            <div class="breakdown-fill" style="width: 0%; background: #22c55e;"></div>
+                                        </div>
+                                        <span class="breakdown-amount">KSh 0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Expense Breakdown -->
+                        <div class="financial-card">
+                            <div class="card-header">
+                                <h3>Expense Breakdown</h3>
+                                <select id="expenseTimeframe" class="form-control" style="width: 150px;">
+                                    <option value="today">Today</option>
+                                    <option value="week">This Week</option>
+                                    <option value="month" selected>This Month</option>
+                                    <option value="year">This Year</option>
+                                </select>
+                            </div>
+                            <div class="card-body">
+                                <div class="breakdown-list" id="expenseBreakdown">
+                                    <div class="breakdown-item">
+                                        <div class="breakdown-info">
+                                            <span class="breakdown-label">Loading...</span>
+                                            <span class="breakdown-percent">0%</span>
+                                        </div>
+                                        <div class="breakdown-bar">
+                                            <div class="breakdown-fill" style="width: 0%; background: #f59e0b;"></div>
+                                        </div>
+                                        <span class="breakdown-amount">KSh 0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Payment Status & Transactions -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem;">
+                        <!-- Outstanding Payments -->
+                        <div class="financial-card">
+                            <div class="card-header">
+                                <h3>Outstanding Payments</h3>
+                                <span class="badge badge-warning" id="outstandingCount">0</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="transactions-list" id="outstandingPayments">
+                                    <div class="transaction-item">
+                                        <div class="empty-state-inline">
+                                            <p>No outstanding payments</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Transactions -->
+                        <div class="financial-card">
+                            <div class="card-header">
+                                <h3>Recent Transactions</h3>
+                                <button class="btn-link" id="viewAllTransactionsBtn">View All</button>
+                            </div>
+                            <div class="card-body">
+                                <div class="transactions-list" id="recentTransactions">
+                                    <div class="transaction-item">
+                                        <div class="empty-state-inline">
+                                            <p>No recent transactions</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Financial Summary Table -->
+                    <div class="table-container" style="margin-top: 1.5rem;">
+                        <div class="table-header">
+                            <h3>Monthly Financial Summary</h3>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <select id="summaryYear" class="form-control" style="width: 120px;">
+                                    <option value="2025">2025</option>
+                                    <option value="2024">2024</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="data-table" id="financialSummaryTable">
+                                <thead>
+                                    <tr>
+                                        <th>Month</th>
+                                        <th>Revenue</th>
+                                        <th>Expenses</th>
+                                        <th>Profit/Loss</th>
+                                        <th>Margin</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="financialSummaryBody">
+                                    <tr>
+                                        <td colspan="6" style="text-align: center; padding: 2rem;">Loading financial data...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
