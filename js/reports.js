@@ -80,6 +80,12 @@ const reportsManager = {
         if (exportExcelBtn) {
             exportExcelBtn.addEventListener('click', () => this.exportToExcel());
         }
+
+        // Custom Report Generator
+        const generateCustomReportBtn = document.getElementById('generateCustomReportBtn');
+        if (generateCustomReportBtn) {
+            generateCustomReportBtn.addEventListener('click', () => this.generateCustomReport());
+        }
     },
 
     async loadAllData() {
@@ -883,6 +889,1002 @@ const reportsManager = {
         } else {
             console.log(`${type.toUpperCase()}: ${message}`);
         }
+    },
+
+    // Custom Report Generator
+    generateCustomReport() {
+        const reportType = document.getElementById('reportTypeSelect').value;
+        const reportPeriod = document.getElementById('reportPeriodSelect').value;
+        const previewContainer = document.getElementById('customReportPreview');
+
+        if (!reportType) {
+            this.showNotification('Please select a report type', 'warning');
+            return;
+        }
+
+        // Set current period for data filtering
+        const originalPeriod = this.currentPeriod;
+        this.currentPeriod = reportPeriod;
+
+        let reportHtml = '';
+        const data = this.getFilteredData();
+        const branchName = window.branchManager?.branches?.find(b => b.id === window.branchManager?.currentBranch)?.name || 'Unknown Branch';
+        const periodLabel = this.getPeriodLabel(reportPeriod);
+
+        switch (reportType) {
+            case 'sales-summary':
+                reportHtml = this.generateSalesSummaryReport(data, branchName, periodLabel);
+                break;
+            case 'b2b-summary':
+                reportHtml = this.generateB2BSummaryReport(data, branchName, periodLabel);
+                break;
+            case 'expenses-summary':
+                reportHtml = this.generateExpensesSummaryReport(data, branchName, periodLabel);
+                break;
+            case 'inventory-status':
+                reportHtml = this.generateInventoryStatusReport(data, branchName, periodLabel);
+                break;
+            case 'profit-loss':
+                reportHtml = this.generateProfitLossReport(data, branchName, periodLabel);
+                break;
+            case 'top-products':
+                reportHtml = this.generateTopProductsReport(data, branchName, periodLabel);
+                break;
+            case 'customer-orders':
+                reportHtml = this.generateCustomerOrdersReport(data, branchName, periodLabel);
+                break;
+            case 'complete-overview':
+                reportHtml = this.generateCompleteOverviewReport(data, branchName, periodLabel);
+                break;
+            default:
+                this.showNotification('Invalid report type selected', 'error');
+                return;
+        }
+
+        // Restore original period
+        this.currentPeriod = originalPeriod;
+
+        // Display report preview
+        previewContainer.innerHTML = reportHtml;
+        this.showNotification('Report generated successfully', 'success');
+    },
+
+    getPeriodLabel(period) {
+        const labels = {
+            'today': 'Today',
+            'week': 'Last 7 Days',
+            'month': 'Last 30 Days',
+            'year': 'Last 12 Months',
+            'all': 'All Time'
+        };
+        return labels[period] || period;
+    },
+
+    generateSalesSummaryReport(data, branchName, periodLabel) {
+        const totalRevenue = data.sales.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0);
+        const totalTransactions = data.sales.length;
+        const avgTransaction = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
+
+        return `
+            <div class="report-preview-content">
+                <div class="report-preview-header">
+                    <h2>Sales Summary Report</h2>
+                    <div class="report-meta">
+                        <span><strong>Branch:</strong> ${branchName}</span>
+                        <span><strong>Period:</strong> ${periodLabel}</span>
+                        <span><strong>Generated:</strong> ${new Date().toLocaleDateString()}</span>
+                    </div>
+                </div>
+
+                <div class="report-preview-section">
+                    <h3>Summary Statistics</h3>
+                    <div class="report-stats-grid">
+                        <div class="report-stat-item">
+                            <div class="report-stat-label">Total Revenue</div>
+                            <div class="report-stat-value">${this.formatCurrency(totalRevenue)}</div>
+                        </div>
+                        <div class="report-stat-item">
+                            <div class="report-stat-label">Total Transactions</div>
+                            <div class="report-stat-value">${totalTransactions}</div>
+                        </div>
+                        <div class="report-stat-item">
+                            <div class="report-stat-label">Average Transaction</div>
+                            <div class="report-stat-value">${this.formatCurrency(avgTransaction)}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="report-preview-section">
+                    <h3>Transaction Details</h3>
+                    <table class="report-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Items</th>
+                                <th>Payment Method</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.sales.slice(0, 50).map(sale => `
+                                <tr>
+                                    <td>${this.formatDate(this.parseDate(sale))}</td>
+                                    <td>${sale.items?.length || 0} items</td>
+                                    <td>${sale.paymentMethod || 'N/A'}</td>
+                                    <td class="report-amount-positive">${this.formatCurrency(parseFloat(sale.total) || 0)}</td>
+                                </tr>
+                            `).join('')}
+                            ${data.sales.length > 50 ? `<tr><td colspan="4" style="text-align: center; font-style: italic;">Showing first 50 of ${data.sales.length} transactions</td></tr>` : ''}
+                        </tbody>
+                        <tfoot>
+                            <tr class="report-total-row">
+                                <td colspan="3"><strong>Total</strong></td>
+                                <td><strong>${this.formatCurrency(totalRevenue)}</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div style="margin-top: 24px; text-align: center;">
+                    <button class="btn btn-primary" onclick="reportsManager.printCustomReport()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                            <rect x="6" y="14" width="12" height="8"></rect>
+                        </svg>
+                        Print Report
+                    </button>
+                </div>
+            </div>
+        `;
+    },
+
+    generateB2BSummaryReport(data, branchName, periodLabel) {
+        const totalRevenue = data.b2bSales.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0);
+        const totalOrders = data.b2bSales.length;
+        const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+        return `
+            <div class="report-preview-content">
+                <div class="report-preview-header">
+                    <h2>B2B Sales Report</h2>
+                    <div class="report-meta">
+                        <span><strong>Branch:</strong> ${branchName}</span>
+                        <span><strong>Period:</strong> ${periodLabel}</span>
+                        <span><strong>Generated:</strong> ${new Date().toLocaleDateString()}</span>
+                    </div>
+                </div>
+
+                <div class="report-preview-section">
+                    <h3>Summary Statistics</h3>
+                    <div class="report-stats-grid">
+                        <div class="report-stat-item">
+                            <div class="report-stat-label">Total B2B Revenue</div>
+                            <div class="report-stat-value">${this.formatCurrency(totalRevenue)}</div>
+                        </div>
+                        <div class="report-stat-item">
+                            <div class="report-stat-label">Total Orders</div>
+                            <div class="report-stat-value">${totalOrders}</div>
+                        </div>
+                        <div class="report-stat-item">
+                            <div class="report-stat-label">Average Order Value</div>
+                            <div class="report-stat-value">${this.formatCurrency(avgOrderValue)}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="report-preview-section">
+                    <h3>B2B Orders</h3>
+                    <table class="report-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Customer</th>
+                                <th>Items</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.b2bSales.slice(0, 50).map(sale => `
+                                <tr>
+                                    <td>${this.formatDate(this.parseDate(sale))}</td>
+                                    <td>${sale.customerName || 'N/A'}</td>
+                                    <td>${sale.items?.length || 0} items</td>
+                                    <td class="report-amount-positive">${this.formatCurrency(parseFloat(sale.total) || 0)}</td>
+                                </tr>
+                            `).join('')}
+                            ${data.b2bSales.length > 50 ? `<tr><td colspan="4" style="text-align: center; font-style: italic;">Showing first 50 of ${data.b2bSales.length} orders</td></tr>` : ''}
+                        </tbody>
+                        <tfoot>
+                            <tr class="report-total-row">
+                                <td colspan="3"><strong>Total</strong></td>
+                                <td><strong>${this.formatCurrency(totalRevenue)}</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div style="margin-top: 24px; text-align: center;">
+                    <button class="btn btn-primary" onclick="reportsManager.printCustomReport()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                            <rect x="6" y="14" width="12" height="8"></rect>
+                        </svg>
+                        Print Report
+                    </button>
+                </div>
+            </div>
+        `;
+    },
+
+    generateExpensesSummaryReport(data, branchName, periodLabel) {
+        const totalExpenses = data.expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+        const expensesByCategory = {};
+        data.expenses.forEach(e => {
+            const cat = e.category || 'Other';
+            expensesByCategory[cat] = (expensesByCategory[cat] || 0) + (parseFloat(e.amount) || 0);
+        });
+
+        return `
+            <div class="report-preview-content">
+                <div class="report-preview-header">
+                    <h2>Expenses Report</h2>
+                    <div class="report-meta">
+                        <span><strong>Branch:</strong> ${branchName}</span>
+                        <span><strong>Period:</strong> ${periodLabel}</span>
+                        <span><strong>Generated:</strong> ${new Date().toLocaleDateString()}</span>
+                    </div>
+                </div>
+
+                <div class="report-preview-section">
+                    <h3>Summary Statistics</h3>
+                    <div class="report-stats-grid">
+                        <div class="report-stat-item">
+                            <div class="report-stat-label">Total Expenses</div>
+                            <div class="report-stat-value report-amount-negative">${this.formatCurrency(totalExpenses)}</div>
+                        </div>
+                        <div class="report-stat-item">
+                            <div class="report-stat-label">Total Transactions</div>
+                            <div class="report-stat-value">${data.expenses.length}</div>
+                        </div>
+                        <div class="report-stat-item">
+                            <div class="report-stat-label">Categories</div>
+                            <div class="report-stat-value">${Object.keys(expensesByCategory).length}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="report-preview-section">
+                    <h3>Expenses by Category</h3>
+                    <table class="report-table">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Number of Expenses</th>
+                                <th>Total Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${Object.entries(expensesByCategory).map(([category, amount]) => `
+                                <tr>
+                                    <td>${category}</td>
+                                    <td>${data.expenses.filter(e => (e.category || 'Other') === category).length}</td>
+                                    <td class="report-amount-negative">${this.formatCurrency(amount)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                        <tfoot>
+                            <tr class="report-total-row">
+                                <td colspan="2"><strong>Total</strong></td>
+                                <td><strong>${this.formatCurrency(totalExpenses)}</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div class="report-preview-section">
+                    <h3>Expense Details</h3>
+                    <table class="report-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Category</th>
+                                <th>Description</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.expenses.slice(0, 50).map(expense => `
+                                <tr>
+                                    <td>${this.formatDate(this.parseDate(expense))}</td>
+                                    <td>${expense.category || 'Other'}</td>
+                                    <td>${expense.description || 'N/A'}</td>
+                                    <td class="report-amount-negative">${this.formatCurrency(parseFloat(expense.amount) || 0)}</td>
+                                </tr>
+                            `).join('')}
+                            ${data.expenses.length > 50 ? `<tr><td colspan="4" style="text-align: center; font-style: italic;">Showing first 50 of ${data.expenses.length} expenses</td></tr>` : ''}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="margin-top: 24px; text-align: center;">
+                    <button class="btn btn-primary" onclick="reportsManager.printCustomReport()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                            <rect x="6" y="14" width="12" height="8"></rect>
+                        </svg>
+                        Print Report
+                    </button>
+                </div>
+            </div>
+        `;
+    },
+
+    generateInventoryStatusReport(data, branchName, periodLabel) {
+        const totalProducts = data.inventory.length;
+        const lowStockItems = data.inventory.filter(item => (parseFloat(item.quantity) || 0) < 10);
+        const totalValue = data.inventory.reduce((sum, item) => sum + ((parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0)), 0);
+
+        return `
+            <div class="report-preview-content">
+                <div class="report-preview-header">
+                    <h2>Inventory Status Report</h2>
+                    <div class="report-meta">
+                        <span><strong>Branch:</strong> ${branchName}</span>
+                        <span><strong>Generated:</strong> ${new Date().toLocaleDateString()}</span>
+                    </div>
+                </div>
+
+                <div class="report-preview-section">
+                    <h3>Summary Statistics</h3>
+                    <div class="report-stats-grid">
+                        <div class="report-stat-item">
+                            <div class="report-stat-label">Total Products</div>
+                            <div class="report-stat-value">${totalProducts}</div>
+                        </div>
+                        <div class="report-stat-item">
+                            <div class="report-stat-label">Low Stock Items</div>
+                            <div class="report-stat-value report-amount-negative">${lowStockItems.length}</div>
+                        </div>
+                        <div class="report-stat-item">
+                            <div class="report-stat-label">Total Inventory Value</div>
+                            <div class="report-stat-value">${this.formatCurrency(totalValue)}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="report-preview-section">
+                    <h3>Inventory List</h3>
+                    <table class="report-table">
+                        <thead>
+                            <tr>
+                                <th>Product Name</th>
+                                <th>Category</th>
+                                <th>Quantity</th>
+                                <th>Price</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.inventory.map(item => {
+                                const qty = parseFloat(item.quantity) || 0;
+                                const price = parseFloat(item.price) || 0;
+                                const value = qty * price;
+                                const isLowStock = qty < 10;
+                                return `
+                                    <tr ${isLowStock ? 'style="background-color: rgba(239, 68, 68, 0.1);"' : ''}>
+                                        <td>${item.name || 'N/A'}</td>
+                                        <td>${item.category || 'N/A'}</td>
+                                        <td ${isLowStock ? 'class="report-amount-negative"' : ''}>${qty}</td>
+                                        <td>${this.formatCurrency(price)}</td>
+                                        <td>${this.formatCurrency(value)}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                        <tfoot>
+                            <tr class="report-total-row">
+                                <td colspan="4"><strong>Total Value</strong></td>
+                                <td><strong>${this.formatCurrency(totalValue)}</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                ${lowStockItems.length > 0 ? `
+                    <div class="report-preview-section">
+                        <h3>Low Stock Alert (Less than 10 units)</h3>
+                        <table class="report-table">
+                            <thead>
+                                <tr>
+                                    <th>Product Name</th>
+                                    <th>Current Stock</th>
+                                    <th>Price</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${lowStockItems.map(item => `
+                                    <tr>
+                                        <td>${item.name || 'N/A'}</td>
+                                        <td class="report-amount-negative">${parseFloat(item.quantity) || 0}</td>
+                                        <td>${this.formatCurrency(parseFloat(item.price) || 0)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                ` : ''}
+
+                <div style="margin-top: 24px; text-align: center;">
+                    <button class="btn btn-primary" onclick="reportsManager.printCustomReport()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                            <rect x="6" y="14" width="12" height="8"></rect>
+                        </svg>
+                        Print Report
+                    </button>
+                </div>
+            </div>
+        `;
+    },
+
+    generateProfitLossReport(data, branchName, periodLabel) {
+        const posRevenue = data.sales.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0);
+        const b2bRevenue = data.b2bSales.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0);
+        const totalRevenue = posRevenue + b2bRevenue;
+        const totalExpenses = data.expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+        const netProfit = totalRevenue - totalExpenses;
+        const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+
+        return `
+            <div class="report-preview-content">
+                <div class="report-preview-header">
+                    <h2>Profit & Loss Statement</h2>
+                    <div class="report-meta">
+                        <span><strong>Branch:</strong> ${branchName}</span>
+                        <span><strong>Period:</strong> ${periodLabel}</span>
+                        <span><strong>Generated:</strong> ${new Date().toLocaleDateString()}</span>
+                    </div>
+                </div>
+
+                <div class="report-preview-section">
+                    <h3>Financial Summary</h3>
+                    <div class="report-stats-grid">
+                        <div class="report-stat-item">
+                            <div class="report-stat-label">Total Revenue</div>
+                            <div class="report-stat-value report-amount-positive">${this.formatCurrency(totalRevenue)}</div>
+                        </div>
+                        <div class="report-stat-item">
+                            <div class="report-stat-label">Total Expenses</div>
+                            <div class="report-stat-value report-amount-negative">${this.formatCurrency(totalExpenses)}</div>
+                        </div>
+                        <div class="report-stat-item">
+                            <div class="report-stat-label">Net Profit</div>
+                            <div class="report-stat-value ${netProfit >= 0 ? 'report-amount-positive' : 'report-amount-negative'}">${this.formatCurrency(netProfit)}</div>
+                        </div>
+                        <div class="report-stat-item">
+                            <div class="report-stat-label">Profit Margin</div>
+                            <div class="report-stat-value ${profitMargin >= 0 ? 'report-amount-positive' : 'report-amount-negative'}">${profitMargin.toFixed(2)}%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="report-preview-section">
+                    <h3>Revenue Breakdown</h3>
+                    <table class="report-table">
+                        <thead>
+                            <tr>
+                                <th>Source</th>
+                                <th>Transactions</th>
+                                <th>Amount</th>
+                                <th>Percentage</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>POS Sales</td>
+                                <td>${data.sales.length}</td>
+                                <td class="report-amount-positive">${this.formatCurrency(posRevenue)}</td>
+                                <td>${totalRevenue > 0 ? ((posRevenue / totalRevenue) * 100).toFixed(2) : 0}%</td>
+                            </tr>
+                            <tr>
+                                <td>B2B Sales</td>
+                                <td>${data.b2bSales.length}</td>
+                                <td class="report-amount-positive">${this.formatCurrency(b2bRevenue)}</td>
+                                <td>${totalRevenue > 0 ? ((b2bRevenue / totalRevenue) * 100).toFixed(2) : 0}%</td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr class="report-total-row">
+                                <td><strong>Total Revenue</strong></td>
+                                <td><strong>${data.sales.length + data.b2bSales.length}</strong></td>
+                                <td><strong>${this.formatCurrency(totalRevenue)}</strong></td>
+                                <td><strong>100%</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div class="report-preview-section">
+                    <h3>Profit & Loss Summary</h3>
+                    <table class="report-table">
+                        <tbody>
+                            <tr>
+                                <td><strong>Revenue</strong></td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td style="padding-left: 32px;">POS Sales</td>
+                                <td class="report-amount-positive">${this.formatCurrency(posRevenue)}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding-left: 32px;">B2B Sales</td>
+                                <td class="report-amount-positive">${this.formatCurrency(b2bRevenue)}</td>
+                            </tr>
+                            <tr class="report-total-row">
+                                <td><strong>Total Revenue</strong></td>
+                                <td><strong class="report-amount-positive">${this.formatCurrency(totalRevenue)}</strong></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Expenses</strong></td>
+                                <td class="report-amount-negative"><strong>${this.formatCurrency(totalExpenses)}</strong></td>
+                            </tr>
+                            <tr class="report-total-row" style="border-top: 3px double var(--border-color);">
+                                <td><strong>Net Profit/Loss</strong></td>
+                                <td><strong class="${netProfit >= 0 ? 'report-amount-positive' : 'report-amount-negative'}">${this.formatCurrency(netProfit)}</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="margin-top: 24px; text-align: center;">
+                    <button class="btn btn-primary" onclick="reportsManager.printCustomReport()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                            <rect x="6" y="14" width="12" height="8"></rect>
+                        </svg>
+                        Print Report
+                    </button>
+                </div>
+            </div>
+        `;
+    },
+
+    generateTopProductsReport(data, branchName, periodLabel) {
+        const productSales = {};
+        [...data.sales, ...data.b2bSales].forEach(sale => {
+            if (sale.items && Array.isArray(sale.items)) {
+                sale.items.forEach(item => {
+                    const key = item.name || item.product;
+                    if (!productSales[key]) {
+                        productSales[key] = { quantity: 0, revenue: 0, transactions: 0 };
+                    }
+                    productSales[key].quantity += parseFloat(item.quantity) || 0;
+                    productSales[key].revenue += parseFloat(item.total || (item.price * item.quantity)) || 0;
+                    productSales[key].transactions += 1;
+                });
+            }
+        });
+
+        const topProducts = Object.entries(productSales)
+            .map(([name, data]) => ({ name, ...data }))
+            .sort((a, b) => b.revenue - a.revenue);
+
+        return `
+            <div class="report-preview-content">
+                <div class="report-preview-header">
+                    <h2>Top Products Report</h2>
+                    <div class="report-meta">
+                        <span><strong>Branch:</strong> ${branchName}</span>
+                        <span><strong>Period:</strong> ${periodLabel}</span>
+                        <span><strong>Generated:</strong> ${new Date().toLocaleDateString()}</span>
+                    </div>
+                </div>
+
+                <div class="report-preview-section">
+                    <h3>Top 20 Products by Revenue</h3>
+                    <table class="report-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Product Name</th>
+                                <th>Units Sold</th>
+                                <th>Transactions</th>
+                                <th>Total Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${topProducts.slice(0, 20).map((product, index) => `
+                                <tr>
+                                    <td><strong>#${index + 1}</strong></td>
+                                    <td>${product.name}</td>
+                                    <td>${product.quantity}</td>
+                                    <td>${product.transactions}</td>
+                                    <td class="report-amount-positive">${this.formatCurrency(product.revenue)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                        <tfoot>
+                            <tr class="report-total-row">
+                                <td colspan="2"><strong>Total (Top 20)</strong></td>
+                                <td><strong>${topProducts.slice(0, 20).reduce((sum, p) => sum + p.quantity, 0)}</strong></td>
+                                <td><strong>${topProducts.slice(0, 20).reduce((sum, p) => sum + p.transactions, 0)}</strong></td>
+                                <td><strong>${this.formatCurrency(topProducts.slice(0, 20).reduce((sum, p) => sum + p.revenue, 0))}</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div style="margin-top: 24px; text-align: center;">
+                    <button class="btn btn-primary" onclick="reportsManager.printCustomReport()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                            <rect x="6" y="14" width="12" height="8"></rect>
+                        </svg>
+                        Print Report
+                    </button>
+                </div>
+            </div>
+        `;
+    },
+
+    generateCustomerOrdersReport(data, branchName, periodLabel) {
+        const pendingOrders = data.orders.filter(o => o.status === 'pending');
+        const completedOrders = data.orders.filter(o => o.status === 'completed');
+        const cancelledOrders = data.orders.filter(o => o.status === 'cancelled');
+
+        return `
+            <div class="report-preview-content">
+                <div class="report-preview-header">
+                    <h2>Customer Orders Report</h2>
+                    <div class="report-meta">
+                        <span><strong>Branch:</strong> ${branchName}</span>
+                        <span><strong>Period:</strong> ${periodLabel}</span>
+                        <span><strong>Generated:</strong> ${new Date().toLocaleDateString()}</span>
+                    </div>
+                </div>
+
+                <div class="report-preview-section">
+                    <h3>Order Summary</h3>
+                    <div class="report-stats-grid">
+                        <div class="report-stat-item">
+                            <div class="report-stat-label">Total Orders</div>
+                            <div class="report-stat-value">${data.orders.length}</div>
+                        </div>
+                        <div class="report-stat-item">
+                            <div class="report-stat-label">Pending Orders</div>
+                            <div class="report-stat-value" style="color: #f59e0b;">${pendingOrders.length}</div>
+                        </div>
+                        <div class="report-stat-item">
+                            <div class="report-stat-label">Completed Orders</div>
+                            <div class="report-stat-value report-amount-positive">${completedOrders.length}</div>
+                        </div>
+                        <div class="report-stat-item">
+                            <div class="report-stat-label">Cancelled Orders</div>
+                            <div class="report-stat-value report-amount-negative">${cancelledOrders.length}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="report-preview-section">
+                    <h3>All Orders</h3>
+                    <table class="report-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Customer</th>
+                                <th>Items</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.orders.map(order => `
+                                <tr>
+                                    <td>${this.formatDate(this.parseDate(order))}</td>
+                                    <td>${order.customerName || 'N/A'}</td>
+                                    <td>${order.items?.length || 0} items</td>
+                                    <td>${this.formatCurrency(parseFloat(order.total) || 0)}</td>
+                                    <td>
+                                        <span style="
+                                            padding: 4px 8px;
+                                            border-radius: 4px;
+                                            font-size: 12px;
+                                            font-weight: 500;
+                                            background: ${order.status === 'completed' ? 'rgba(34, 197, 94, 0.1)' : order.status === 'pending' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)'};
+                                            color: ${order.status === 'completed' ? '#22c55e' : order.status === 'pending' ? '#f59e0b' : '#ef4444'};
+                                        ">
+                                            ${order.status || 'N/A'}
+                                        </span>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="margin-top: 24px; text-align: center;">
+                    <button class="btn btn-primary" onclick="reportsManager.printCustomReport()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                            <rect x="6" y="14" width="12" height="8"></rect>
+                        </svg>
+                        Print Report
+                    </button>
+                </div>
+            </div>
+        `;
+    },
+
+    generateCompleteOverviewReport(data, branchName, periodLabel) {
+        const posRevenue = data.sales.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0);
+        const b2bRevenue = data.b2bSales.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0);
+        const totalRevenue = posRevenue + b2bRevenue;
+        const totalExpenses = data.expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+        const netProfit = totalRevenue - totalExpenses;
+
+        return `
+            <div class="report-preview-content">
+                <div class="report-preview-header">
+                    <h2>Complete Business Overview</h2>
+                    <div class="report-meta">
+                        <span><strong>Branch:</strong> ${branchName}</span>
+                        <span><strong>Period:</strong> ${periodLabel}</span>
+                        <span><strong>Generated:</strong> ${new Date().toLocaleDateString()}</span>
+                    </div>
+                </div>
+
+                <div class="report-preview-section">
+                    <h3>Financial Overview</h3>
+                    <div class="report-stats-grid">
+                        <div class="report-stat-item">
+                            <div class="report-stat-label">Total Revenue</div>
+                            <div class="report-stat-value report-amount-positive">${this.formatCurrency(totalRevenue)}</div>
+                        </div>
+                        <div class="report-stat-item">
+                            <div class="report-stat-label">Total Expenses</div>
+                            <div class="report-stat-value report-amount-negative">${this.formatCurrency(totalExpenses)}</div>
+                        </div>
+                        <div class="report-stat-item">
+                            <div class="report-stat-label">Net Profit</div>
+                            <div class="report-stat-value ${netProfit >= 0 ? 'report-amount-positive' : 'report-amount-negative'}">${this.formatCurrency(netProfit)}</div>
+                        </div>
+                        <div class="report-stat-item">
+                            <div class="report-stat-label">Total Transactions</div>
+                            <div class="report-stat-value">${data.sales.length + data.b2bSales.length}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="report-preview-section">
+                    <h3>Sales Breakdown</h3>
+                    <table class="report-table">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Count</th>
+                                <th>Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>POS Sales</td>
+                                <td>${data.sales.length}</td>
+                                <td class="report-amount-positive">${this.formatCurrency(posRevenue)}</td>
+                            </tr>
+                            <tr>
+                                <td>B2B Sales</td>
+                                <td>${data.b2bSales.length}</td>
+                                <td class="report-amount-positive">${this.formatCurrency(b2bRevenue)}</td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr class="report-total-row">
+                                <td><strong>Total</strong></td>
+                                <td><strong>${data.sales.length + data.b2bSales.length}</strong></td>
+                                <td><strong>${this.formatCurrency(totalRevenue)}</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div class="report-preview-section">
+                    <h3>Inventory Status</h3>
+                    <div class="report-stats-grid">
+                        <div class="report-stat-item">
+                            <div class="report-stat-label">Total Products</div>
+                            <div class="report-stat-value">${data.inventory.length}</div>
+                        </div>
+                        <div class="report-stat-item">
+                            <div class="report-stat-label">Low Stock Items</div>
+                            <div class="report-stat-value report-amount-negative">${data.inventory.filter(i => (parseFloat(i.quantity) || 0) < 10).length}</div>
+                        </div>
+                        <div class="report-stat-item">
+                            <div class="report-stat-label">Total Inventory Value</div>
+                            <div class="report-stat-value">${this.formatCurrency(data.inventory.reduce((sum, i) => sum + ((parseFloat(i.quantity) || 0) * (parseFloat(i.price) || 0)), 0))}</div>
+                        </div>
+                        <div class="report-stat-item">
+                            <div class="report-stat-label">Pending Orders</div>
+                            <div class="report-stat-value">${data.orders.filter(o => o.status === 'pending').length}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="report-preview-section">
+                    <h3>Expense Summary</h3>
+                    <table class="report-table">
+                        <tbody>
+                            <tr>
+                                <td><strong>Total Expenses</strong></td>
+                                <td class="report-amount-negative"><strong>${this.formatCurrency(totalExpenses)}</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Number of Expense Transactions</td>
+                                <td>${data.expenses.length}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="margin-top: 24px; text-align: center;">
+                    <button class="btn btn-primary" onclick="reportsManager.printCustomReport()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                            <rect x="6" y="14" width="12" height="8"></rect>
+                        </svg>
+                        Print Report
+                    </button>
+                </div>
+            </div>
+        `;
+    },
+
+    printCustomReport() {
+        const previewContent = document.getElementById('customReportPreview');
+        if (!previewContent || !previewContent.querySelector('.report-preview-content')) {
+            this.showNotification('Please generate a report first', 'warning');
+            return;
+        }
+
+        // Create a new window for printing
+        const printWindow = window.open('', '_blank');
+        const reportContent = previewContent.innerHTML;
+
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Report - ${new Date().toLocaleDateString()}</title>
+                <style>
+                    * {
+                        margin: 0;
+                        padding: 0;
+                        box-sizing: border-box;
+                    }
+                    body {
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                        padding: 40px;
+                        color: #1e293b;
+                        background: white;
+                    }
+                    .report-preview-header {
+                        text-align: center;
+                        padding-bottom: 20px;
+                        border-bottom: 2px solid #e2e8f0;
+                        margin-bottom: 32px;
+                    }
+                    .report-preview-header h2 {
+                        font-size: 28px;
+                        color: #6366f1;
+                        margin-bottom: 12px;
+                    }
+                    .report-meta {
+                        display: flex;
+                        justify-content: center;
+                        gap: 32px;
+                        font-size: 14px;
+                        color: #64748b;
+                        margin-top: 16px;
+                    }
+                    .report-preview-section {
+                        margin-bottom: 40px;
+                        page-break-inside: avoid;
+                    }
+                    .report-preview-section h3 {
+                        font-size: 20px;
+                        color: #1e293b;
+                        margin-bottom: 16px;
+                        padding-bottom: 8px;
+                        border-bottom: 1px solid #e2e8f0;
+                    }
+                    .report-stats-grid {
+                        display: grid;
+                        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                        gap: 20px;
+                        margin-bottom: 24px;
+                    }
+                    .report-stat-item {
+                        background: #f8fafc;
+                        padding: 20px;
+                        border-radius: 8px;
+                        border: 1px solid #e2e8f0;
+                    }
+                    .report-stat-label {
+                        font-size: 13px;
+                        color: #64748b;
+                        margin-bottom: 8px;
+                    }
+                    .report-stat-value {
+                        font-size: 24px;
+                        font-weight: 600;
+                        color: #6366f1;
+                    }
+                    .report-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-top: 16px;
+                    }
+                    .report-table th,
+                    .report-table td {
+                        padding: 12px;
+                        text-align: left;
+                        border-bottom: 1px solid #e2e8f0;
+                    }
+                    .report-table th {
+                        background: #f8fafc;
+                        font-weight: 600;
+                        font-size: 13px;
+                        color: #64748b;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                    }
+                    .report-table td {
+                        font-size: 14px;
+                        color: #1e293b;
+                    }
+                    .report-total-row {
+                        font-weight: 600;
+                        background: #f8fafc;
+                        border-top: 2px solid #cbd5e1;
+                    }
+                    .report-amount-positive {
+                        color: #22c55e;
+                    }
+                    .report-amount-negative {
+                        color: #ef4444;
+                    }
+                    button {
+                        display: none;
+                    }
+                    @media print {
+                        body {
+                            padding: 20px;
+                        }
+                        .report-preview-section {
+                            page-break-inside: avoid;
+                        }
+                    }
+                </style>
+            </head>
+            <body>
+                ${reportContent}
+            </body>
+            </html>
+        `);
+
+        printWindow.document.close();
+        
+        // Wait for content to load, then print
+        setTimeout(() => {
+            printWindow.print();
+        }, 500);
     }
 };
 
