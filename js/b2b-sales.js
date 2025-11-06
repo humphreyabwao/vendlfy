@@ -124,6 +124,11 @@ class B2BSalesManager {
             await this.loadB2BSales();
             this.renderStats();
             this.renderSalesTable();
+            
+            // Also refresh dashboard stats
+            if (window.refreshDashboardStats) {
+                await window.refreshDashboardStats();
+            }
         }, 30000);
     }
 
@@ -524,6 +529,12 @@ class B2BSalesManager {
             await this.loadB2BSales();
             this.renderStats();
             this.renderSalesTable();
+            
+            // Refresh dashboard stats to update pending B2B count
+            if (window.refreshDashboardStats) {
+                await window.refreshDashboardStats();
+            }
+            
             this.showNotification('Order marked as completed', 'success');
         } catch (error) {
             console.error('Error updating sale:', error);

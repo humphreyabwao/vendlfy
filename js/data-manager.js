@@ -852,12 +852,12 @@ class DataManager {
     // STATISTICS
     async getDashboardStats() {
         try {
-            const [sales, expenses, customers, inventory, orders] = await Promise.all([
+            const [sales, expenses, customers, inventory, allSales] = await Promise.all([
                 this.getTodaysSales(),
                 this.getTodaysExpenses(),
                 this.getCustomers(),
                 this.getInventory(),
-                this.getOrders({ status: 'pending' })
+                this.getSales() // Get all sales to count pending B2B orders
             ]);
             
             const totalSales = sales.reduce((sum, sale) => sum + (sale.total || 0), 0);
@@ -868,13 +868,19 @@ class DataManager {
             // Get active branches count
             const activeBranches = branchManager.getActiveBranches().length;
             
+            // Count pending B2B orders from sales collection
+            const pendingB2B = allSales.filter(sale => 
+                (sale.type === 'b2b' || sale.saleType === 'wholesale') && 
+                sale.status === 'pending'
+            ).length;
+            
             return {
                 todaysSales: totalSales,
                 todaysExpenses: totalExpenses,
                 profitLoss: totalSales - totalExpenses,
                 totalCustomers: customers.length,
                 stockValue: stockValue,
-                pendingB2BOrders: orders.filter(o => o.type === 'b2b').length,
+                pendingB2BOrders: pendingB2B,
                 activeBranches: activeBranches,
                 outOfStock: outOfStock
             };

@@ -585,6 +585,11 @@ class NewB2BSaleManager {
                 }
             }
 
+            // Refresh dashboard stats to update pending B2B count
+            if (window.refreshDashboardStats) {
+                await window.refreshDashboardStats();
+            }
+
             // Show success message modal
             this.showSuccessMessage(saleData);
             

@@ -378,6 +378,7 @@ async function refreshDashboardStats() {
         const todaysExpensesEl = document.getElementById('dashboardTodaysExpenses');
         const profitLossEl = document.getElementById('dashboardProfitLoss');
         const totalCustomersEl = document.getElementById('dashboardTotalCustomers');
+        const pendingB2BEl = document.getElementById('dashboardPendingB2B');
         
         if (todaysSalesEl) {
             todaysSalesEl.textContent = formatCurrency(stats.todaysSales);
@@ -402,9 +403,12 @@ async function refreshDashboardStats() {
             totalCustomersEl.textContent = stats.totalCustomers;
         }
         
+        if (pendingB2BEl) {
+            pendingB2BEl.textContent = stats.pendingB2BOrders;
+        }
+        
         // Also update using the old method for other stats
         updateStatValue('stockValue', stats.stockValue);
-        updateStatValue('pendingB2BOrders', stats.pendingB2BOrders, null, false);
         updateStatValue('activeBranches', stats.activeBranches, null, false);
         updateStatValue('outOfStock', stats.outOfStock, 'warning', false);
         
