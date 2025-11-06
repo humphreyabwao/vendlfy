@@ -12,6 +12,13 @@ window.loadUsersList = loadUsersList;
 window.createNewUser = createNewUser;
 window.cancelNewUser = cancelNewUser;
 window.updateRoleDescription = updateRoleDescription;
+window.updateRolePermissions = updateRolePermissions;
+window.getSelectedPermissions = getSelectedPermissions;
+
+// Initialize permission checkboxes when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    initializePermissionCheckboxes();
+});
 
 // Open user modal for adding/editing
 function openUserModal(userId = null) {
@@ -351,6 +358,9 @@ async function createNewUser(event) {
     const form = event.target;
     const formData = new FormData(form);
     
+    // Get custom permissions from checkboxes
+    const permissions = getSelectedPermissions();
+    
     const userData = {
         email: formData.get('email'),
         password: formData.get('password'),
@@ -358,12 +368,13 @@ async function createNewUser(event) {
         role: formData.get('role'),
         branchId: formData.get('branchId'),
         phone: formData.get('phone'),
-        status: formData.get('status') || 'active'
+        status: formData.get('status') || 'active',
+        permissions: permissions // Add custom permissions array
     };
     
     try {
         await userManager.createUser(userData);
-        showNotification('User created successfully!', 'success');
+        showNotification('User created successfully with custom permissions!', 'success');
         
         // Clear form
         form.reset();
@@ -412,6 +423,54 @@ function updateRoleDescription() {
     }
 }
 
+// Update role permissions matrix
+function updateRolePermissions() {
+    const roleSelect = document.getElementById('newUserRole');
+    const permissionsMatrix = document.getElementById('permissionsMatrix');
+    
+    if (!roleSelect || !permissionsMatrix) return;
+    
+    const role = roleSelect.value;
+    
+    // Show permissions matrix only when a role is selected
+    if (!role) {
+        permissionsMatrix.style.display = 'none';
+        return;
+    }
+    
+    permissionsMatrix.style.display = 'block';
+    
+    // Get permissions for the selected role template
+    const permissions = getRolePermissions(role);
+    
+    // Update all checkboxes based on permissions template
+    const allCheckboxes = permissionsMatrix.querySelectorAll('input[type="checkbox"]');
+    
+    allCheckboxes.forEach(checkbox => {
+        const permission = checkbox.value;
+        const isAllowed = permissions.includes(permission);
+        
+        checkbox.checked = isAllowed;
+        
+        // Update parent label styling
+        const label = checkbox.closest('.permission-item');
+        if (label) {
+            if (isAllowed) {
+                label.classList.add('has-permission');
+                label.classList.remove('no-permission');
+            } else {
+                label.classList.remove('has-permission');
+                label.classList.add('no-permission');
+            }
+        }
+    });
+    
+    // Update role description as well
+    updateRoleDescription();
+    
+    console.log(`Applied ${permissions.length} permissions for ${role} role`);
+}
+
 // Populate branch select in new user form
 function populateNewUserBranchSelect() {
     const select = document.getElementById('newUserBranch');
@@ -433,6 +492,115 @@ function populateNewUserBranchSelect() {
         option.textContent = branch.name;
         select.appendChild(option);
     });
+}
+
+/**
+ * Get currently selected custom permissions from the matrix
+ * @returns {Array<string>} Array of selected permission values
+ */
+function getSelectedPermissions() {
+    const checkboxes = document.querySelectorAll('#permissionsMatrix input[type="checkbox"]:checked');
+    return Array.from(checkboxes).map(cb => cb.value);
+}
+
+/**
+ * Add event listeners to permission checkboxes for manual customization
+ */
+function initializePermissionCheckboxes() {
+    const checkboxes = document.querySelectorAll('#permissionsMatrix input[type="checkbox"]');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const label = this.closest('.permission-item');
+            if (label) {
+                if (this.checked) {
+                    label.classList.add('has-permission');
+                    label.classList.remove('no-permission');
+                } else {
+                    label.classList.remove('has-permission');
+                    label.classList.add('no-permission');
+                }
+            }
+            
+            // Update role selector to "Custom" if manually changed
+            const roleSelect = document.getElementById('newUserRole');
+            if (roleSelect && roleSelect.value !== 'custom') {
+                // Check if current selection matches the role template
+                const currentPermissions = getSelectedPermissions();
+                const rolePermissions = getRolePermissions(roleSelect.value);
+                
+                // If permissions don't match template, switch to custom
+                if (!arraysEqual(currentPermissions.sort(), rolePermissions.sort())) {
+                    roleSelect.value = 'custom';
+                }
+            }
+        });
+    });
+}
+
+/**
+ * Get permissions array for a specific role
+ * @param {string} role - The role name
+ * @returns {Array<string>} Array of permission values
+ */
+function getRolePermissions(role) {
+    const rolePermissions = {
+        admin: [
+            'dashboard.view', 'dashboard.stats',
+            'inventory.view', 'inventory.add', 'inventory.edit', 'inventory.delete',
+            'pos.view', 'pos.create', 'sales.view', 'sales.delete',
+            'b2b.view', 'b2b.create', 'b2b.edit',
+            'customers.view', 'customers.add', 'customers.edit', 'customers.delete',
+            'expenses.view', 'expenses.add', 'expenses.edit', 'expenses.delete',
+            'orders.view', 'orders.create', 'orders.edit',
+            'suppliers.view', 'suppliers.add', 'suppliers.edit', 'suppliers.delete',
+            'reports.view', 'reports.export', 'reports.financial',
+            'accounts.view', 'accounts.export',
+            'admin.branches', 'admin.users', 'admin.settings'
+        ],
+        manager: [
+            'dashboard.view', 'dashboard.stats',
+            'inventory.view', 'inventory.add', 'inventory.edit',
+            'pos.view', 'pos.create', 'sales.view',
+            'b2b.view', 'b2b.create', 'b2b.edit',
+            'customers.view', 'customers.add', 'customers.edit',
+            'expenses.view', 'expenses.add',
+            'orders.view', 'orders.create', 'orders.edit',
+            'suppliers.view', 'suppliers.add', 'suppliers.edit',
+            'reports.view', 'reports.export'
+        ],
+        cashier: [
+            'dashboard.view',
+            'inventory.view',
+            'pos.view', 'pos.create', 'sales.view',
+            'customers.view', 'customers.add',
+            'orders.view'
+        ],
+        viewer: [
+            'dashboard.view',
+            'inventory.view',
+            'sales.view',
+            'customers.view',
+            'reports.view'
+        ],
+        custom: []
+    };
+    
+    return rolePermissions[role] || [];
+}
+
+/**
+ * Compare two arrays for equality
+ * @param {Array} arr1 - First array
+ * @param {Array} arr2 - Second array
+ * @returns {boolean} True if arrays are equal
+ */
+function arraysEqual(arr1, arr2) {
+    if (arr1.length !== arr2.length) return false;
+    for (let i = 0; i < arr1.length; i++) {
+        if (arr1[i] !== arr2[i]) return false;
+    }
+    return true;
 }
 
 // Export for use in other modules

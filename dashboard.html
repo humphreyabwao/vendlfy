@@ -3126,16 +3126,646 @@
                                                 <path d="M21 12c-1 0-3-1-3-3s2-3 3-3 3 1 3 3-2 3-3 3"></path>
                                                 <path d="M3 12c1 0 3-1 3-3s-2-3-3-3-3 1-3 3 2 3 3 3"></path>
                                             </svg>
-                                            User Role *
+                                            User Role * (Suggested Template)
                                         </label>
-                                        <select id="newUserRole" name="role" required onchange="updateRoleDescription()" class="form-select-enhanced">
-                                            <option value="">Select a role for this user</option>
+                                        <select id="newUserRole" name="role" required onchange="updateRolePermissions()" class="form-select-enhanced">
+                                            <option value="">Select a role template to start</option>
                                             <option value="admin">🔑 Administrator - Full System Access</option>
                                             <option value="manager">👨‍💼 Manager - Branch Operations</option>
                                             <option value="cashier">💰 Cashier - Sales & POS</option>
                                             <option value="viewer">👀 Viewer - Read-Only Access</option>
+                                            <option value="custom">⚙️ Custom - Configure Permissions Manually</option>
                                         </select>
-                                        <div id="roleDescription" class="role-description"></div>
+                                        <small class="form-helper-enhanced">Select a template to pre-fill permissions, then customize as needed below</small>
+                                    </div>
+                                </div>
+
+                                <!-- Permissions Matrix -->
+                                <div class="permissions-matrix" id="permissionsMatrix">
+                                    <div class="permissions-header">
+                                        <h4>
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                            </svg>
+                                            Custom Access Permissions
+                                        </h4>
+                                        <p>Check or uncheck individual permissions to customize what this user can access in the system:</p>
+                                    </div>
+
+                                    <div class="permissions-grid">
+                                        <!-- Dashboard Module -->
+                                        <div class="permission-module">
+                                            <div class="module-header">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <rect x="3" y="3" width="7" height="7"></rect>
+                                                    <rect x="14" y="3" width="7" height="7"></rect>
+                                                    <rect x="14" y="14" width="7" height="7"></rect>
+                                                    <rect x="3" y="14" width="7" height="7"></rect>
+                                                </svg>
+                                                <span class="module-name">Dashboard</span>
+                                            </div>
+                                            <div class="permission-items">
+                                                <label class="permission-item editable" data-module="dashboard" data-action="view">
+                                                    <input type="checkbox" name="permissions[]" value="dashboard.view">
+                                                    <span>View Dashboard</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="dashboard" data-action="stats">
+                                                    <input type="checkbox" name="permissions[]" value="dashboard.stats">
+                                                    <span>View Statistics Cards</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Inventory Module -->
+                                        <div class="permission-module">
+                                            <div class="module-header">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                                </svg>
+                                                <span class="module-name">Inventory</span>
+                                            </div>
+                                            <div class="permission-items">
+                                                <label class="permission-item editable" data-module="inventory" data-action="view">
+                                                    <input type="checkbox" name="permissions[]" value="inventory.view">
+                                                    <span>View Inventory</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="inventory" data-action="add">
+                                                    <input type="checkbox" name="permissions[]" value="inventory.add">
+                                                    <span>Add Items</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="inventory" data-action="edit">
+                                                    <input type="checkbox" name="permissions[]" value="inventory.edit">
+                                                    <span>Edit Items</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="inventory" data-action="delete">
+                                                    <input type="checkbox" name="permissions[]" value="inventory.delete">
+                                                    <span>Delete Items</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- POS/Sales Module -->
+                                        <div class="permission-module">
+                                            <div class="module-header">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <circle cx="9" cy="21" r="1"></circle>
+                                                    <circle cx="20" cy="21" r="1"></circle>
+                                                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                                                </svg>
+                                                <span class="module-name">POS / Sales</span>
+                                            </div>
+                                            <div class="permission-items">
+                                                <label class="permission-item editable" data-module="pos" data-action="view">
+                                                    <input type="checkbox" name="permissions[]" value="pos.view">
+                                                    <span>Access POS</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="pos" data-action="create">
+                                                    <input type="checkbox" name="permissions[]" value="pos.create">
+                                                    <span>Process Sales</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="sales" data-action="view">
+                                                    <input type="checkbox" name="permissions[]" value="sales.view">
+                                                    <span>View Sales History</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="sales" data-action="delete">
+                                                    <input type="checkbox" name="permissions[]" value="sales.delete">
+                                                    <span>Delete Sales</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- B2B Sales Module -->
+                                        <div class="permission-module">
+                                            <div class="module-header">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                                    <circle cx="9" cy="7" r="4"></circle>
+                                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                                </svg>
+                                                <span class="module-name">B2B Sales</span>
+                                            </div>
+                                            <div class="permission-items">
+                                                <label class="permission-item editable" data-module="b2b" data-action="view">
+                                                    <input type="checkbox" name="permissions[]" value="b2b.view">
+                                                    <span>View B2B Sales</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="b2b" data-action="create">
+                                                    <input type="checkbox" name="permissions[]" value="b2b.create">
+                                                    <span>Create B2B Orders</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="b2b" data-action="edit">
+                                                    <input type="checkbox" name="permissions[]" value="b2b.edit">
+                                                    <span>Edit B2B Orders</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Customers Module -->
+                                        <div class="permission-module">
+                                            <div class="module-header">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                                    <circle cx="9" cy="7" r="4"></circle>
+                                                </svg>
+                                                <span class="module-name">Customers</span>
+                                            </div>
+                                            <div class="permission-items">
+                                                <label class="permission-item editable" data-module="customers" data-action="view">
+                                                    <input type="checkbox" name="permissions[]" value="customers.view">
+                                                    <span>View Customers</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="customers" data-action="add">
+                                                    <input type="checkbox" name="permissions[]" value="customers.add">
+                                                    <span>Add Customers</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="customers" data-action="edit">
+                                                    <input type="checkbox" name="permissions[]" value="customers.edit">
+                                                    <span>Edit Customers</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="customers" data-action="delete">
+                                                    <input type="checkbox" name="permissions[]" value="customers.delete">
+                                                    <span>Delete Customers</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Expenses Module -->
+                                        <div class="permission-module">
+                                            <div class="module-header">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                                </svg>
+                                                <span class="module-name">Expenses</span>
+                                            </div>
+                                            <div class="permission-items">
+                                                <label class="permission-item editable" data-module="expenses" data-action="view">
+                                                    <input type="checkbox" name="permissions[]" value="expenses.view">
+                                                    <span>View Expenses</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="expenses" data-action="add">
+                                                    <input type="checkbox" name="permissions[]" value="expenses.add">
+                                                    <span>Add Expenses</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="expenses" data-action="edit">
+                                                    <input type="checkbox" name="permissions[]" value="expenses.edit">
+                                                    <span>Edit Expenses</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="expenses" data-action="delete">
+                                                    <input type="checkbox" name="permissions[]" value="expenses.delete">
+                                                    <span>Delete Expenses</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Orders Module -->
+                                        <div class="permission-module">
+                                            <div class="module-header">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                                                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                                                </svg>
+                                                <span class="module-name">Orders</span>
+                                            </div>
+                                            <div class="permission-items">
+                                                <label class="permission-item editable" data-module="orders" data-action="view">
+                                                    <input type="checkbox" name="permissions[]" value="orders.view">
+                                                    <span>View Orders</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="orders" data-action="create">
+                                                    <input type="checkbox" name="permissions[]" value="orders.create">
+                                                    <span>Create Orders</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="orders" data-action="edit">
+                                                    <input type="checkbox" name="permissions[]" value="orders.edit">
+                                                    <span>Edit/Update Orders</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Suppliers Module -->
+                                        <div class="permission-module">
+                                            <div class="module-header">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="m7.5 4.27 9 5.15"></path>
+                                                    <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
+                                                </svg>
+                                                <span class="module-name">Suppliers</span>
+                                            </div>
+                                            <div class="permission-items">
+                                                <label class="permission-item editable" data-module="suppliers" data-action="view">
+                                                    <input type="checkbox" name="permissions[]" value="suppliers.view">
+                                                    <span>View Suppliers</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="suppliers" data-action="add">
+                                                    <input type="checkbox" name="permissions[]" value="suppliers.add">
+                                                    <span>Add Suppliers</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="suppliers" data-action="edit">
+                                                    <input type="checkbox" name="permissions[]" value="suppliers.edit">
+                                                    <span>Edit Suppliers</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="suppliers" data-action="delete">
+                                                    <input type="checkbox" name="permissions[]" value="suppliers.delete">
+                                                    <span>Delete Suppliers</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Reports Module -->
+                                        <div class="permission-module">
+                                            <div class="module-header">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                                                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                                                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                                                </svg>
+                                                <span class="module-name">Reports</span>
+                                            </div>
+                                            <div class="permission-items">
+                                                <label class="permission-item editable" data-module="reports" data-action="view">
+                                                    <input type="checkbox" name="permissions[]" value="reports.view">
+                                                    <span>View Reports</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="reports" data-action="export">
+                                                    <input type="checkbox" name="permissions[]" value="reports.export">
+                                                    <span>Export Reports</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="reports" data-action="financial">
+                                                    <input type="checkbox" name="permissions[]" value="reports.financial">
+                                                    <span>Financial Reports</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Accounts Module -->
+                                        <div class="permission-module">
+                                            <div class="module-header">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                                                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                                                </svg>
+                                                <span class="module-name">Accounts</span>
+                                            </div>
+                                            <div class="permission-items">
+                                                <label class="permission-item editable" data-module="accounts" data-action="view">
+                                                    <input type="checkbox" name="permissions[]" value="accounts.view">
+                                                    <span>View Accounts</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="accounts" data-action="export">
+                                                    <input type="checkbox" name="permissions[]" value="accounts.export">
+                                                    <span>Export Financial Data</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Admin Module -->
+                                        <div class="permission-module">
+                                            <div class="module-header">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <circle cx="12" cy="12" r="3"></circle>
+                                                    <path d="M12 1v6m0 6v6"></path>
+                                                    <path d="m4.93 4.93 4.24 4.24m5.66 5.66 4.24 4.24"></path>
+                                                    <path d="M1 12h6m6 0h6"></path>
+                                                    <path d="m4.93 19.07 4.24-4.24m5.66-5.66 4.24-4.24"></path>
+                                                </svg>
+                                                <span class="module-name">Admin Panel</span>
+                                            </div>
+                                            <div class="permission-items">
+                                                <label class="permission-item editable" data-module="admin" data-action="branches">
+                                                    <input type="checkbox" name="permissions[]" value="admin.branches">
+                                                    <span>Manage Branches</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="admin" data-action="users">
+                                                    <input type="checkbox" name="permissions[]" value="admin.users">
+                                                    <span>Manage Users</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="admin" data-action="settings">
+                                                    <input type="checkbox" name="permissions[]" value="admin.settings">
+                                                    <span>System Settings</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="permissions-footer">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                        </svg>
+                                        <span>You can select a role template to pre-fill permissions, then customize individual permissions by checking/unchecking the boxes above.</span>
+                                    </div>
+                                </div>
+                                        <!-- Dashboard Module -->
+                                        <div class="permission-module">
+                                            <div class="module-header">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <rect x="3" y="3" width="7" height="7"></rect>
+                                                    <rect x="14" y="3" width="7" height="7"></rect>
+                                                    <rect x="14" y="14" width="7" height="7"></rect>
+                                                    <rect x="3" y="14" width="7" height="7"></rect>
+                                                </svg>
+                                                <span class="module-name">Dashboard</span>
+                                            </div>
+                                            <div class="permission-items">
+                                                <label class="permission-item" data-module="dashboard" data-action="view">
+                                                    <input type="checkbox" disabled>
+                                                    <span>View Dashboard</span>
+                                                </label>
+                                                <label class="permission-item" data-module="dashboard" data-action="stats">
+                                                    <input type="checkbox" disabled>
+                                                    <span>View Statistics Cards</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Inventory Module -->
+                                        <div class="permission-module">
+                                            <div class="module-header">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                                </svg>
+                                                <span class="module-name">Inventory</span>
+                                            </div>
+                                            <div class="permission-items">
+                                                <label class="permission-item" data-module="inventory" data-action="view">
+                                                    <input type="checkbox" disabled>
+                                                    <span>View Inventory</span>
+                                                </label>
+                                                <label class="permission-item" data-module="inventory" data-action="add">
+                                                    <input type="checkbox" disabled>
+                                                    <span>Add Items</span>
+                                                </label>
+                                                <label class="permission-item" data-module="inventory" data-action="edit">
+                                                    <input type="checkbox" disabled>
+                                                    <span>Edit Items</span>
+                                                </label>
+                                                <label class="permission-item" data-module="inventory" data-action="delete">
+                                                    <input type="checkbox" disabled>
+                                                    <span>Delete Items</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- POS/Sales Module -->
+                                        <div class="permission-module">
+                                            <div class="module-header">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <circle cx="9" cy="21" r="1"></circle>
+                                                    <circle cx="20" cy="21" r="1"></circle>
+                                                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                                                </svg>
+                                                <span class="module-name">POS / Sales</span>
+                                            </div>
+                                            <div class="permission-items">
+                                                <label class="permission-item" data-module="pos" data-action="view">
+                                                    <input type="checkbox" disabled>
+                                                    <span>Access POS</span>
+                                                </label>
+                                                <label class="permission-item" data-module="pos" data-action="create">
+                                                    <input type="checkbox" disabled>
+                                                    <span>Process Sales</span>
+                                                </label>
+                                                <label class="permission-item" data-module="sales" data-action="view">
+                                                    <input type="checkbox" disabled>
+                                                    <span>View Sales History</span>
+                                                </label>
+                                                <label class="permission-item" data-module="sales" data-action="delete">
+                                                    <input type="checkbox" disabled>
+                                                    <span>Delete Sales</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- B2B Sales Module -->
+                                        <div class="permission-module">
+                                            <div class="module-header">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                                    <circle cx="9" cy="7" r="4"></circle>
+                                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                                </svg>
+                                                <span class="module-name">B2B Sales</span>
+                                            </div>
+                                            <div class="permission-items">
+                                                <label class="permission-item" data-module="b2b" data-action="view">
+                                                    <input type="checkbox" disabled>
+                                                    <span>View B2B Sales</span>
+                                                </label>
+                                                <label class="permission-item" data-module="b2b" data-action="create">
+                                                    <input type="checkbox" disabled>
+                                                    <span>Create B2B Orders</span>
+                                                </label>
+                                                <label class="permission-item" data-module="b2b" data-action="edit">
+                                                    <input type="checkbox" disabled>
+                                                    <span>Edit B2B Orders</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Customers Module -->
+                                        <div class="permission-module">
+                                            <div class="module-header">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                                    <circle cx="9" cy="7" r="4"></circle>
+                                                </svg>
+                                                <span class="module-name">Customers</span>
+                                            </div>
+                                            <div class="permission-items">
+                                                <label class="permission-item" data-module="customers" data-action="view">
+                                                    <input type="checkbox" disabled>
+                                                    <span>View Customers</span>
+                                                </label>
+                                                <label class="permission-item" data-module="customers" data-action="add">
+                                                    <input type="checkbox" disabled>
+                                                    <span>Add Customers</span>
+                                                </label>
+                                                <label class="permission-item" data-module="customers" data-action="edit">
+                                                    <input type="checkbox" disabled>
+                                                    <span>Edit Customers</span>
+                                                </label>
+                                                <label class="permission-item" data-module="customers" data-action="delete">
+                                                    <input type="checkbox" disabled>
+                                                    <span>Delete Customers</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Expenses Module -->
+                                        <div class="permission-module">
+                                            <div class="module-header">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                                </svg>
+                                                <span class="module-name">Expenses</span>
+                                            </div>
+                                            <div class="permission-items">
+                                                <label class="permission-item" data-module="expenses" data-action="view">
+                                                    <input type="checkbox" disabled>
+                                                    <span>View Expenses</span>
+                                                </label>
+                                                <label class="permission-item" data-module="expenses" data-action="add">
+                                                    <input type="checkbox" disabled>
+                                                    <span>Add Expenses</span>
+                                                </label>
+                                                <label class="permission-item" data-module="expenses" data-action="edit">
+                                                    <input type="checkbox" disabled>
+                                                    <span>Edit Expenses</span>
+                                                </label>
+                                                <label class="permission-item" data-module="expenses" data-action="delete">
+                                                    <input type="checkbox" disabled>
+                                                    <span>Delete Expenses</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Orders Module -->
+                                        <div class="permission-module">
+                                            <div class="module-header">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                                                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                                                </svg>
+                                                <span class="module-name">Orders</span>
+                                            </div>
+                                            <div class="permission-items">
+                                                <label class="permission-item" data-module="orders" data-action="view">
+                                                    <input type="checkbox" disabled>
+                                                    <span>View Orders</span>
+                                                </label>
+                                                <label class="permission-item" data-module="orders" data-action="create">
+                                                    <input type="checkbox" disabled>
+                                                    <span>Create Orders</span>
+                                                </label>
+                                                <label class="permission-item" data-module="orders" data-action="edit">
+                                                    <input type="checkbox" disabled>
+                                                    <span>Edit/Update Orders</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Suppliers Module -->
+                                        <div class="permission-module">
+                                            <div class="module-header">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="m7.5 4.27 9 5.15"></path>
+                                                    <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
+                                                </svg>
+                                                <span class="module-name">Suppliers</span>
+                                            </div>
+                                            <div class="permission-items">
+                                                <label class="permission-item" data-module="suppliers" data-action="view">
+                                                    <input type="checkbox" disabled>
+                                                    <span>View Suppliers</span>
+                                                </label>
+                                                <label class="permission-item" data-module="suppliers" data-action="add">
+                                                    <input type="checkbox" disabled>
+                                                    <span>Add Suppliers</span>
+                                                </label>
+                                                <label class="permission-item" data-module="suppliers" data-action="edit">
+                                                    <input type="checkbox" disabled>
+                                                    <span>Edit Suppliers</span>
+                                                </label>
+                                                <label class="permission-item" data-module="suppliers" data-action="delete">
+                                                    <input type="checkbox" disabled>
+                                                    <span>Delete Suppliers</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Reports Module -->
+                                        <div class="permission-module">
+                                            <div class="module-header">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                                                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                                                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                                                </svg>
+                                                <span class="module-name">Reports</span>
+                                            </div>
+                                            <div class="permission-items">
+                                                <label class="permission-item" data-module="reports" data-action="view">
+                                                    <input type="checkbox" disabled>
+                                                    <span>View Reports</span>
+                                                </label>
+                                                <label class="permission-item" data-module="reports" data-action="export">
+                                                    <input type="checkbox" disabled>
+                                                    <span>Export Reports</span>
+                                                </label>
+                                                <label class="permission-item" data-module="reports" data-action="financial">
+                                                    <input type="checkbox" disabled>
+                                                    <span>Financial Reports</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Accounts Module -->
+                                        <div class="permission-module">
+                                            <div class="module-header">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                                                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                                                </svg>
+                                                <span class="module-name">Accounts</span>
+                                            </div>
+                                            <div class="permission-items">
+                                                <label class="permission-item" data-module="accounts" data-action="view">
+                                                    <input type="checkbox" disabled>
+                                                    <span>View Accounts</span>
+                                                </label>
+                                                <label class="permission-item" data-module="accounts" data-action="export">
+                                                    <input type="checkbox" disabled>
+                                                    <span>Export Financial Data</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Admin Module -->
+                                        <div class="permission-module">
+                                            <div class="module-header">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <circle cx="12" cy="12" r="3"></circle>
+                                                    <path d="M12 1v6m0 6v6"></path>
+                                                    <path d="m4.93 4.93 4.24 4.24m5.66 5.66 4.24 4.24"></path>
+                                                    <path d="M1 12h6m6 0h6"></path>
+                                                    <path d="m4.93 19.07 4.24-4.24m5.66-5.66 4.24-4.24"></path>
+                                                </svg>
+                                                <span class="module-name">Admin Panel</span>
+                                            </div>
+                                            <div class="permission-items">
+                                                <label class="permission-item" data-module="admin" data-action="branches">
+                                                    <input type="checkbox" disabled>
+                                                    <span>Manage Branches</span>
+                                                </label>
+                                                <label class="permission-item" data-module="admin" data-action="users">
+                                                    <input type="checkbox" disabled>
+                                                    <span>Manage Users</span>
+                                                </label>
+                                                <label class="permission-item" data-module="admin" data-action="settings">
+                                                    <input type="checkbox" disabled>
+                                                    <span>System Settings</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="permissions-footer">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                        </svg>
+                                        <span>Permissions are automatically configured based on the selected role and cannot be modified individually.</span>
                                     </div>
                                 </div>
                                 
