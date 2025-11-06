@@ -13,6 +13,7 @@ import ordersManager from './orders.js';
 import supplierManager from './suppliers.js';
 import newOrderManager from './new-order.js';
 import accountsManager from './accounts.js';
+import reportsManager from './reports.js';
 
 // Make managers globally available
 window.branchManager = branchManager;
@@ -29,6 +30,7 @@ window.ordersManager = ordersManager;
 window.supplierManager = supplierManager;
 window.newOrderManager = newOrderManager;
 window.accountsManager = accountsManager;
+window.reportsManager = reportsManager;
 
 // App Initialization
 document.addEventListener('DOMContentLoaded', async function() {
@@ -339,6 +341,11 @@ function initNavigation() {
                 // Initialize Accounts page
                 if (pageId === 'accounts') {
                     accountsManager.init();
+                }
+
+                // Initialize Reports page
+                if (pageId === 'reports') {
+                    reportsManager.init();
                 }
             }
             

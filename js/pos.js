@@ -617,6 +617,17 @@ class POSSystem {
                     // Don't throw - sale is already saved
                 }
             }
+
+            // Refresh reports if initialized (non-critical)
+            if (window.reportsManager && window.reportsManager.initialized) {
+                try {
+                    console.log('📊 Refreshing reports...');
+                    await window.reportsManager.loadAllData();
+                    console.log('✅ Reports refreshed');
+                } catch (reportsError) {
+                    console.error('⚠️ Error refreshing reports:', reportsError);
+                }
+            }
             
             // Reload POS inventory (non-critical)
             try {

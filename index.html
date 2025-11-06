@@ -2791,10 +2791,143 @@
             <!-- Reports -->
             <div class="page" id="reports-page">
                 <div class="page-header">
-                    <h2>Reports</h2>
+                    <h2>Reports & Analytics</h2>
+                    <div class="header-actions">
+                        <button class="btn btn-secondary" id="refreshReportsBtn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="23 4 23 10 17 10"></polyline>
+                                <polyline points="1 20 1 14 7 14"></polyline>
+                                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                            </svg>
+                            Refresh
+                        </button>
+                        <button class="btn btn-secondary" id="exportReportPdf">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                            </svg>
+                            Export PDF
+                        </button>
+                        <button class="btn btn-primary" id="exportReportExcel">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                            </svg>
+                            Export Excel
+                        </button>
+                    </div>
                 </div>
+                
                 <div class="page-content">
-                    <!-- Reports content will go here -->
+                    <!-- Period Filter -->
+                    <div class="report-filters">
+                        <button class="report-period-btn" data-period="today">Today</button>
+                        <button class="report-period-btn" data-period="week">Week</button>
+                        <button class="report-period-btn active" data-period="month">Month</button>
+                        <button class="report-period-btn" data-period="year">Year</button>
+                    </div>
+
+                    <!-- Overview Cards -->
+                    <div class="reports-grid">
+                        <div class="report-card">
+                            <div class="report-card-header">
+                                <span class="report-card-title">Total Revenue</span>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                </svg>
+                            </div>
+                            <div class="stat-value" id="reportTotalRevenue">KSh 0.00</div>
+                        </div>
+
+                        <div class="report-card">
+                            <div class="report-card-header">
+                                <span class="report-card-title">Total Expenses</span>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="16 8 12 12 8 16"></polyline>
+                                </svg>
+                            </div>
+                            <div class="stat-value" id="reportTotalExpenses">KSh 0.00</div>
+                        </div>
+
+                        <div class="report-card">
+                            <div class="report-card-header">
+                                <span class="report-card-title">Net Profit</span>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                                </svg>
+                            </div>
+                            <div class="stat-value profit" id="reportNetProfit">KSh 0.00</div>
+                        </div>
+
+                        <div class="report-card">
+                            <div class="report-card-header">
+                                <span class="report-card-title">Total Transactions</span>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                                </svg>
+                            </div>
+                            <div class="stat-value" id="reportTotalTransactions">0</div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Row 1 -->
+                    <div class="charts-row">
+                        <div class="chart-container">
+                            <div class="chart-header">
+                                <h3>Sales Trend</h3>
+                                <div class="chart-legend">
+                                    <div class="legend-item">
+                                        <span class="legend-dot" style="background: #6366f1;"></span>
+                                        <span>Revenue</span>
+                                    </div>
+                                    <div class="legend-item">
+                                        <span class="legend-dot" style="background: #22c55e;"></span>
+                                        <span>Expenses</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <canvas id="salesTrendChart" width="600" height="300"></canvas>
+                        </div>
+
+                        <div class="chart-container">
+                            <div class="chart-header">
+                                <h3>Revenue Breakdown</h3>
+                            </div>
+                            <canvas id="revenueBreakdownChart" width="400" height="300"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Charts Row 2 -->
+                    <div class="charts-row">
+                        <div class="chart-container">
+                            <div class="chart-header">
+                                <h3>Expenses by Category</h3>
+                            </div>
+                            <canvas id="expensesCategoryChart" width="600" height="300"></canvas>
+                        </div>
+
+                        <div class="chart-container">
+                            <div class="chart-header">
+                                <h3>Top Products</h3>
+                            </div>
+                            <div class="top-products-container" id="topProductsList">
+                                <p class="no-data">Loading...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Transactions -->
+                    <div class="report-section">
+                        <div class="section-header">
+                            <h3>Recent Transactions</h3>
+                        </div>
+                        <div class="transactions-container" id="recentTransactionsList">
+                            <p class="no-data">Loading...</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 

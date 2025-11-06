@@ -590,6 +590,11 @@ class NewB2BSaleManager {
                 await window.refreshDashboardStats();
             }
 
+            // Refresh reports if initialized
+            if (window.reportsManager && window.reportsManager.initialized) {
+                await window.reportsManager.loadAllData();
+            }
+
             // Show success message modal
             this.showSuccessMessage(saleData);
             

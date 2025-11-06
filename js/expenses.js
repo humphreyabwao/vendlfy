@@ -234,6 +234,16 @@ class ExpenseManager {
             
             // Reload expenses
             await this.refresh();
+
+            // Refresh dashboard stats
+            if (window.refreshDashboardStats) {
+                await window.refreshDashboardStats();
+            }
+
+            // Refresh reports if initialized
+            if (window.reportsManager && window.reportsManager.initialized) {
+                await window.reportsManager.loadAllData();
+            }
         } catch (error) {
             console.error('Error adding expense:', error);
             window.showNotification('Failed to add expense', 'error');
