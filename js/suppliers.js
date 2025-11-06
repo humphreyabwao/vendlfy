@@ -6,16 +6,31 @@ const supplierManager = {
     filteredSuppliers: [],
     currentFilter: 'all',
     editingId: null,
+    initialized: false,
+    refreshInterval: null,
 
     init() {
+        if (this.initialized) {
+            console.log('Supplier Manager already initialized, refreshing data...');
+            this.loadSuppliers();
+            return;
+        }
+        
         console.log('Initializing Supplier Manager...');
+        this.initialized = true;
+        
         this.waitForFirebase().then(() => {
             this.loadSuppliers();
             this.setupEventListeners();
             this.renderSuppliersTable();
             
+            // Clear any existing interval
+            if (this.refreshInterval) {
+                clearInterval(this.refreshInterval);
+            }
+            
             // Auto-refresh every 30 seconds
-            setInterval(() => {
+            this.refreshInterval = setInterval(() => {
                 this.loadSuppliers();
             }, 30000);
         });
@@ -87,29 +102,43 @@ const supplierManager = {
             const suppliersRef = collection(db, 'suppliers');
             
             // Try loading ALL suppliers first to see if any exist
-            console.log('Attempting to load ALL suppliers from Firestore...');
+            console.log('🔍 Attempting to load ALL suppliers from Firestore...');
             const allSnapshot = await getDocs(suppliersRef);
-            console.log(`Found ${allSnapshot.size} total suppliers in database`);
+            console.log(`📊 Found ${allSnapshot.size} total suppliers in database (all branches)`);
             
             if (allSnapshot.size > 0) {
-                console.log('Sample supplier data:', allSnapshot.docs[0].data());
+                const firstDoc = allSnapshot.docs[0].data();
+                console.log('📄 Sample supplier data:', {
+                    name: firstDoc.name,
+                    company: firstDoc.company,
+                    branchId: firstDoc.branchId,
+                    status: firstDoc.status
+                });
             }
             
-            // Now filter by branch
-            const q = query(
+            // Now filter by branch using simple query first (no ordering)
+            console.log(`🔍 Loading suppliers for current branch: ${branchId}`);
+            const simpleQuery = query(
                 suppliersRef,
-                where('branchId', '==', branchId),
-                firestoreOrderBy('createdAt', 'desc')
+                where('branchId', '==', branchId)
             );
-
-            const snapshot = await getDocs(q);
+            
+            const simpleSnapshot = await getDocs(simpleQuery);
+            console.log(`📊 Found ${simpleSnapshot.size} suppliers for branch ${branchId} (without ordering)`);
+            
             this.suppliers = [];
-
-            snapshot.forEach(docSnap => {
+            simpleSnapshot.forEach(docSnap => {
                 this.suppliers.push({
                     id: docSnap.id,
                     ...docSnap.data()
                 });
+            });
+            
+            // Sort in memory instead of using Firestore orderBy
+            this.suppliers.sort((a, b) => {
+                const dateA = a.createdAt?.toDate?.() || new Date(0);
+                const dateB = b.createdAt?.toDate?.() || new Date(0);
+                return dateB - dateA; // Descending order
             });
 
             console.log(`✅ Loaded ${this.suppliers.length} suppliers for branch ${branchId}`);

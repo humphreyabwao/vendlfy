@@ -5,9 +5,18 @@ const newOrderManager = {
     suppliers: [],
     orderItems: [],
     itemCounter: 0,
+    initialized: false,
 
     init() {
+        if (this.initialized) {
+            console.log('New Order Manager already initialized, refreshing suppliers...');
+            this.loadSuppliers();
+            return;
+        }
+        
         console.log('Initializing New Order Manager...');
+        this.initialized = true;
+        
         this.waitForFirebase().then(() => {
             this.loadSuppliers();
             this.setupEventListeners();

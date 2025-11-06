@@ -6,9 +6,20 @@ const ordersManager = {
     suppliers: [],
     filteredOrders: [],
     currentFilter: 'all',
+    initialized: false,
+    refreshInterval: null,
 
     init() {
+        if (this.initialized) {
+            console.log('Orders Manager already initialized, refreshing data...');
+            this.loadOrders();
+            this.loadSuppliers();
+            return;
+        }
+        
         console.log('Initializing Orders Manager...');
+        this.initialized = true;
+        
         this.waitForFirebase().then(() => {
             this.loadOrders();
             this.loadSuppliers();
@@ -16,8 +27,13 @@ const ordersManager = {
             this.renderStats();
             this.renderOrdersTable();
             
+            // Clear any existing interval
+            if (this.refreshInterval) {
+                clearInterval(this.refreshInterval);
+            }
+            
             // Auto-refresh every 30 seconds
-            setInterval(() => {
+            this.refreshInterval = setInterval(() => {
                 this.loadOrders();
                 this.loadSuppliers();
             }, 30000);
@@ -90,29 +106,44 @@ const ordersManager = {
             const ordersRef = collection(db, 'orders');
             
             // Try loading ALL orders first to see if any exist
-            console.log('Attempting to load ALL orders from Firestore...');
+            console.log('🔍 Attempting to load ALL orders from Firestore...');
             const allSnapshot = await getDocs(ordersRef);
-            console.log(`Found ${allSnapshot.size} total orders in database`);
+            console.log(`📊 Found ${allSnapshot.size} total orders in database (all branches)`);
             
             if (allSnapshot.size > 0) {
-                console.log('Sample order data:', allSnapshot.docs[0].data());
+                const firstDoc = allSnapshot.docs[0].data();
+                console.log('📄 Sample order data:', {
+                    orderNumber: firstDoc.orderNumber || firstDoc.id,
+                    supplierName: firstDoc.supplierName,
+                    branchId: firstDoc.branchId,
+                    totalAmount: firstDoc.totalAmount,
+                    status: firstDoc.status
+                });
             }
             
-            // Now filter by branch
-            const q = query(
+            // Now filter by branch using simple query first (no ordering)
+            console.log(`🔍 Loading orders for current branch: ${branchId}`);
+            const simpleQuery = query(
                 ordersRef,
-                where('branchId', '==', branchId),
-                firestoreOrderBy('createdAt', 'desc')
+                where('branchId', '==', branchId)
             );
 
-            const snapshot = await getDocs(q);
+            const simpleSnapshot = await getDocs(simpleQuery);
+            console.log(`📊 Found ${simpleSnapshot.size} orders for branch ${branchId} (without ordering)`);
+            
             this.orders = [];
-
-            snapshot.forEach(docSnap => {
+            simpleSnapshot.forEach(docSnap => {
                 this.orders.push({
                     id: docSnap.id,
                     ...docSnap.data()
                 });
+            });
+            
+            // Sort in memory instead of using Firestore orderBy
+            this.orders.sort((a, b) => {
+                const dateA = a.createdAt?.toDate?.() || new Date(0);
+                const dateB = b.createdAt?.toDate?.() || new Date(0);
+                return dateB - dateA; // Descending order
             });
 
             console.log(`✅ Loaded ${this.orders.length} orders for branch ${branchId}`);
