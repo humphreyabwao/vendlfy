@@ -1915,18 +1915,22 @@ textarea.form-input {
     background-color: var(--bg-tertiary);
     color: var(--text-primary);
     border: 1px solid var(--border-color);
-    width: 44px;
-    height: 44px;
+    width: 36px;
+    height: 36px;
     padding: 0;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
 .btn-icon:hover {
     background-color: var(--bg-primary);
     color: var(--primary-blue);
     border-color: var(--primary-blue);
+    transform: translateY(-2px);
 }
 
 .btn-icon:active {
@@ -1935,6 +1939,34 @@ textarea.form-input {
 
 .btn-icon svg {
     transition: transform 0.3s ease;
+    width: 16px;
+    height: 16px;
+}
+
+/* Action button specific colors */
+.btn-icon[title*="View"]:hover {
+    color: #3b82f6;
+    border-color: #3b82f6;
+    background-color: rgba(59, 130, 246, 0.1);
+}
+
+.btn-icon[title*="Edit"]:hover {
+    color: #f59e0b;
+    border-color: #f59e0b;
+    background-color: rgba(245, 158, 11, 0.1);
+}
+
+.btn-icon[title*="Delete"]:hover {
+    color: #ef4444;
+    border-color: #ef4444;
+    background-color: rgba(239, 68, 68, 0.1);
+}
+
+.btn-icon[title*="Delivered"]:hover,
+.btn-icon[title*="Mark"]:hover {
+    color: #22c55e;
+    border-color: #22c55e;
+    background-color: rgba(34, 197, 94, 0.1);
 }
 
 .btn-icon.spinning svg {
@@ -5826,6 +5858,8 @@ textarea.form-input {
 .table-actions {
     display: flex;
     gap: 0.5rem;
+    align-items: center;
+    justify-content: center;
 }
 
 .table-wrapper {
@@ -5857,6 +5891,7 @@ textarea.form-input {
     font-size: 0.875rem;
     color: #374151;
     vertical-align: middle;
+    white-space: nowrap;
 }
 
 /* B2B Sales Table - Proper Column Alignment */
@@ -5898,6 +5933,28 @@ textarea.form-input {
 #b2bSalesTable td:nth-child(6) {
     text-align: right; /* Amount */
     font-weight: 600;
+}
+
+#b2bSalesTable th:nth-child(7),
+#b2bSalesTable td:nth-child(7) {
+    text-align: center; /* Status */
+}
+
+#b2bSalesTable th:nth-child(8),
+#b2bSalesTable td:nth-child(8) {
+    text-align: center; /* Payment Status */
+}
+
+#b2bSalesTable th:nth-child(9),
+#b2bSalesTable td:nth-child(9) {
+    text-align: center; /* Actions */
+}
+
+#b2bSalesTable .table-actions {
+    display: inline-flex;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: center;
 }
 
 #b2bSalesTable th:nth-child(7),
@@ -7001,6 +7058,12 @@ textarea.form-input {
 }
 
 /* Orders Table Enhancements */
+#ordersTable th,
+#ordersTable td {
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
 #ordersTable th:nth-child(1),
 #ordersTable td:nth-child(1) {
     text-align: left;
@@ -7043,6 +7106,13 @@ textarea.form-input {
 #ordersTable th:nth-child(9),
 #ordersTable td:nth-child(9) {
     text-align: center;
+}
+
+#ordersTable .table-actions {
+    display: inline-flex;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Status Badges for Orders */
@@ -7450,6 +7520,12 @@ select.form-control {
 }
 
 /* Suppliers Table Alignment */
+#suppliersTable th,
+#suppliersTable td {
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
 #suppliersTable th:nth-child(1),
 #suppliersTable td:nth-child(1) {
     text-align: left;
@@ -7482,6 +7558,13 @@ select.form-control {
 #suppliersTable th:nth-child(9),
 #suppliersTable td:nth-child(9) {
     text-align: center;
+}
+
+#suppliersTable .table-actions {
+    display: inline-flex;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Category Badge */
