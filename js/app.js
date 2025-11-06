@@ -9,6 +9,9 @@ import expenseManager from './expenses.js';
 import customerManager from './customers.js';
 import b2bSalesManager from './b2b-sales.js';
 import newB2BSaleManager from './new-b2b-sale.js';
+import ordersManager from './orders.js';
+import supplierManager from './suppliers.js';
+import newOrderManager from './new-order.js';
 
 // Make managers globally available
 window.branchManager = branchManager;
@@ -21,6 +24,9 @@ window.expenseManager = expenseManager;
 window.customerManager = customerManager;
 window.b2bSalesManager = b2bSalesManager;
 window.newB2BSaleManager = newB2BSaleManager;
+window.ordersManager = ordersManager;
+window.supplierManager = supplierManager;
+window.newOrderManager = newOrderManager;
 
 // App Initialization
 document.addEventListener('DOMContentLoaded', async function() {
@@ -311,6 +317,21 @@ function initNavigation() {
                 // Initialize New B2B Sale page
                 if (pageId === 'new-b2b-sale') {
                     newB2BSaleManager.init();
+                }
+
+                // Initialize Orders page
+                if (pageId === 'orders') {
+                    ordersManager.init();
+                }
+
+                // Initialize Add Supplier page
+                if (pageId === 'add-supplier') {
+                    supplierManager.init();
+                }
+
+                // Initialize New Order page
+                if (pageId === 'new-order') {
+                    newOrderManager.init();
                 }
             }
             

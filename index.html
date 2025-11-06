@@ -1621,30 +1621,446 @@
             <!-- My Orders -->
             <div class="page" id="orders-page">
                 <div class="page-header">
-                    <h2>My Orders</h2>
+                    <div class="page-header-left">
+                        <h2>My Orders</h2>
+                        <p class="page-subtitle">Track and manage company orders</p>
+                    </div>
+                    <div class="page-header-right">
+                        <button class="btn btn-secondary" id="exportOrdersBtn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Export
+                        </button>
+                        <button class="btn btn-secondary" id="addSupplierBtn" onclick="document.querySelector('[data-page=\'add-supplier\']').click()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                                <line x1="12" y1="5" x2="12" y2="9"></line>
+                                <line x1="10" y1="7" x2="14" y2="7"></line>
+                            </svg>
+                            Add Supplier
+                        </button>
+                        <button class="btn btn-primary" id="createOrderBtn" onclick="document.querySelector('[data-page=\'new-order\']').click()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            Create Order
+                        </button>
+                    </div>
                 </div>
                 <div class="page-content">
-                    <!-- Orders content will go here -->
+                    <!-- Stats Cards -->
+                    <div class="stats-grid">
+                        <div class="stat-card primary">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                                    <path d="M9 14l2 2 4-4"></path>
+                                </svg>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-label">Total Orders</div>
+                                <div class="stat-value" id="totalOrdersCount">0</div>
+                                <div class="stat-subtitle" id="totalOrdersAmount">KSh 0</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card warning">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-label">Pending Orders</div>
+                                <div class="stat-value" id="pendingOrdersCount">0</div>
+                                <div class="stat-subtitle" id="pendingOrdersAmount">KSh 0</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card success">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                </svg>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-label">Completed Orders</div>
+                                <div class="stat-value" id="completedOrdersCount">0</div>
+                                <div class="stat-subtitle" id="completedOrdersAmount">KSh 0</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card info">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                </svg>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-label">Total Suppliers</div>
+                                <div class="stat-value" id="totalSuppliersCount">0</div>
+                                <div class="stat-subtitle">Active suppliers</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Orders Table -->
+                    <div class="table-container" style="margin-top: 2rem;">
+                        <div class="table-header">
+                            <h3>Recent Orders</h3>
+                            <div class="table-actions">
+                                <div class="search-filter-section">
+                                    <input type="text" class="search-input" id="ordersSearchInput" placeholder="Search orders...">
+                                    <div class="filter-group">
+                                        <button class="b2b-filter-btn active" data-status="all">All</button>
+                                        <button class="b2b-filter-btn" data-status="pending">Pending</button>
+                                        <button class="b2b-filter-btn" data-status="completed">Completed</button>
+                                        <button class="b2b-filter-btn" data-status="cancelled">Cancelled</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="data-table" id="ordersTable">
+                                <thead>
+                                    <tr>
+                                        <th>Order #</th>
+                                        <th>Date</th>
+                                        <th>Supplier</th>
+                                        <th>Items</th>
+                                        <th>Total Amount</th>
+                                        <th>Payment Status</th>
+                                        <th>Delivery Status</th>
+                                        <th>Expected Delivery</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ordersTableBody">
+                                    <tr>
+                                        <td colspan="9" style="text-align: center; padding: 3rem;">
+                                            <div class="empty-state-inline">
+                                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                                                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                                                </svg>
+                                                <p>No orders found. Create your first order!</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- New Order -->
             <div class="page" id="new-order-page">
                 <div class="page-header">
-                    <h2>New Order</h2>
+                    <div class="page-header-left">
+                        <h2>Create New Order</h2>
+                        <p class="page-subtitle">Create purchase orders from suppliers</p>
+                    </div>
+                    <div class="page-header-right">
+                        <button class="btn btn-secondary" onclick="showPage('orders')">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="19" y1="12" x2="5" y2="12"></line>
+                                <polyline points="12 19 5 12 12 5"></polyline>
+                            </svg>
+                            Back to Orders
+                        </button>
+                    </div>
                 </div>
                 <div class="page-content">
-                    <!-- New order content will go here -->
+                    <!-- Order Form -->
+                    <div class="order-form-container">
+                        <form id="newOrderForm">
+                            <!-- Supplier Selection Card -->
+                            <div class="form-card">
+                                <div class="form-card-header">
+                                    <h3>
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                            <circle cx="9" cy="7" r="4"></circle>
+                                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                        </svg>
+                                        Supplier Information
+                                    </h3>
+                                </div>
+                                <div class="form-card-body">
+                                    <div class="form-grid-2">
+                                        <div class="form-group">
+                                            <label for="orderSupplier">Select Supplier *</label>
+                                            <select id="orderSupplier" class="form-control" required>
+                                                <option value="">-- Select Supplier --</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="orderExpectedDate">Expected Delivery Date *</label>
+                                            <input type="date" id="orderExpectedDate" class="form-control" required>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="orderNotes">Order Notes</label>
+                                        <textarea id="orderNotes" class="form-control" rows="2" placeholder="Special instructions or notes for this order..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Order Items Card -->
+                            <div class="form-card">
+                                <div class="form-card-header">
+                                    <h3>
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                                            <path d="M16 10a4 4 0 0 1-8 0"></path>
+                                        </svg>
+                                        Order Items
+                                    </h3>
+                                    <button type="button" class="btn btn-sm btn-primary" onclick="newOrderManager.addOrderItem()">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                                        </svg>
+                                        Add Item
+                                    </button>
+                                </div>
+                                <div class="form-card-body">
+                                    <div id="orderItemsContainer">
+                                        <!-- Order items will be added here dynamically -->
+                                        <div class="empty-state-inline">
+                                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                                                <line x1="3" y1="6" x2="21" y2="6"></line>
+                                                <path d="M16 10a4 4 0 0 1-8 0"></path>
+                                            </svg>
+                                            <p>No items added yet. Click "Add Item" to start.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Order Summary Card -->
+                            <div class="form-card">
+                                <div class="form-card-header">
+                                    <h3>
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                            <polyline points="14 2 14 8 20 8"></polyline>
+                                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                                            <polyline points="10 9 9 9 8 9"></polyline>
+                                        </svg>
+                                        Order Summary
+                                    </h3>
+                                </div>
+                                <div class="form-card-body">
+                                    <div class="order-summary">
+                                        <div class="summary-row">
+                                            <span>Total Items:</span>
+                                            <strong id="summaryTotalItems">0</strong>
+                                        </div>
+                                        <div class="summary-row">
+                                            <span>Total Quantity:</span>
+                                            <strong id="summaryTotalQty">0</strong>
+                                        </div>
+                                        <div class="summary-row summary-total">
+                                            <span>Total Amount:</span>
+                                            <strong id="summaryTotalAmount">KSh 0.00</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Form Actions -->
+                            <div class="form-actions-sticky">
+                                <button type="button" class="btn btn-secondary" onclick="newOrderManager.clearForm()">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                    Clear Form
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                        <polyline points="7 3 7 8 15 8"></polyline>
+                                    </svg>
+                                    Create Order
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
 
             <!-- Add Supplier -->
             <div class="page" id="add-supplier-page">
                 <div class="page-header">
-                    <h2>Add Supplier</h2>
+                    <div class="page-header-left">
+                        <h2>Add Supplier</h2>
+                        <p class="page-subtitle">Manage your suppliers and vendors</p>
+                    </div>
+                    <div class="page-header-right">
+                        <button class="btn btn-secondary" onclick="document.querySelector('[data-page=\'orders\']').click()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="19" y1="12" x2="5" y2="12"></line>
+                                <polyline points="12 19 5 12 12 5"></polyline>
+                            </svg>
+                            Back to Orders
+                        </button>
+                    </div>
                 </div>
                 <div class="page-content">
-                    <!-- Add supplier content will go here -->
+                    <!-- Add Supplier Form -->
+                    <div class="form-card-compact">
+                        <h3 class="form-title">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <line x1="19" y1="8" x2="19" y2="14"></line>
+                                <line x1="22" y1="11" x2="16" y2="11"></line>
+                            </svg>
+                            New Supplier Information
+                        </h3>
+                        <form id="addSupplierForm">
+                            <div class="form-grid-3">
+                                <div class="form-group">
+                                    <label for="supplierName">Supplier Name *</label>
+                                    <input type="text" id="supplierName" class="form-control" placeholder="Enter supplier name" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="supplierEmail">Email Address *</label>
+                                    <input type="email" id="supplierEmail" class="form-control" placeholder="supplier@example.com" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="supplierPhone">Phone Number *</label>
+                                    <input type="tel" id="supplierPhone" class="form-control" placeholder="+254 700 000 000" required>
+                                </div>
+                            </div>
+                            <div class="form-grid-3">
+                                <div class="form-group">
+                                    <label for="supplierCompany">Company Name</label>
+                                    <input type="text" id="supplierCompany" class="form-control" placeholder="Company name">
+                                </div>
+                                <div class="form-group">
+                                    <label for="supplierCategory">Category</label>
+                                    <select id="supplierCategory" class="form-control">
+                                        <option value="">Select category</option>
+                                        <option value="beverages">Beverages</option>
+                                        <option value="food">Food & Groceries</option>
+                                        <option value="electronics">Electronics</option>
+                                        <option value="clothing">Clothing & Apparel</option>
+                                        <option value="stationery">Stationery</option>
+                                        <option value="hardware">Hardware</option>
+                                        <option value="cosmetics">Cosmetics & Beauty</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="supplierStatus">Status</label>
+                                    <select id="supplierStatus" class="form-control">
+                                        <option value="active">Active</option>
+                                        <option value="inactive">Inactive</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-grid-2">
+                                <div class="form-group">
+                                    <label for="supplierAddress">Address</label>
+                                    <input type="text" id="supplierAddress" class="form-control" placeholder="Street address">
+                                </div>
+                                <div class="form-group">
+                                    <label for="supplierCity">City</label>
+                                    <input type="text" id="supplierCity" class="form-control" placeholder="City">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="supplierNotes">Notes</label>
+                                <textarea id="supplierNotes" class="form-control" rows="2" placeholder="Additional notes about the supplier..."></textarea>
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-secondary" onclick="supplierManager.clearForm()">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                    Clear Form
+                                </button>
+                                <button type="submit" class="btn btn-primary" id="saveSupplierBtn">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                        <polyline points="7 3 7 8 15 8"></polyline>
+                                    </svg>
+                                    Save Supplier
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Suppliers Table -->
+                    <div class="table-container" style="margin-top: 2rem;">
+                        <div class="table-header">
+                            <h3>All Suppliers</h3>
+                            <div class="table-actions">
+                                <div class="search-filter-section">
+                                    <input type="text" class="search-input" id="suppliersSearchInput" placeholder="Search suppliers...">
+                                    <div class="filter-group">
+                                        <button class="b2b-filter-btn active" data-status="all">All</button>
+                                        <button class="b2b-filter-btn" data-status="active">Active</button>
+                                        <button class="b2b-filter-btn" data-status="inactive">Inactive</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="data-table" id="suppliersTable">
+                                <thead>
+                                    <tr>
+                                        <th>Supplier Name</th>
+                                        <th>Company</th>
+                                        <th>Email</th>
+                                        <th>Phone</th>
+                                        <th>Category</th>
+                                        <th>Location</th>
+                                        <th>Status</th>
+                                        <th>Added On</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="suppliersTableBody">
+                                    <tr>
+                                        <td colspan="9" style="text-align: center; padding: 3rem;">
+                                            <div class="empty-state-inline">
+                                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                                    <circle cx="9" cy="7" r="4"></circle>
+                                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                                </svg>
+                                                <p>No suppliers found. Add your first supplier!</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
 

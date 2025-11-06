@@ -892,8 +892,68 @@ class DataManager {
             };
         }
     }
+
+    // Orders Management
+    async updateOrder(orderId, updates) {
+        try {
+            if (this.useLocalStorage) {
+                const orderIndex = this.cache.orders.findIndex(o => o.id === orderId);
+                if (orderIndex !== -1) {
+                    this.cache.orders[orderIndex] = {
+                        ...this.cache.orders[orderIndex],
+                        ...updates,
+                        updatedAt: new Date()
+                    };
+                    this.saveToLocalStorage();
+                    return this.cache.orders[orderIndex];
+                }
+                throw new Error('Order not found');
+            }
+
+            const orderRef = doc(db, 'orders', orderId);
+            await updateDoc(orderRef, {
+                ...updates,
+                updatedAt: new Date()
+            });
+            
+            return { id: orderId, ...updates };
+        } catch (error) {
+            console.error('Error updating order:', error);
+            throw error;
+        }
+    }
+
+    async updateInventory(itemId, updates) {
+        try {
+            if (this.useLocalStorage) {
+                const itemIndex = this.cache.inventory.findIndex(i => i.id === itemId);
+                if (itemIndex !== -1) {
+                    this.cache.inventory[itemIndex] = {
+                        ...this.cache.inventory[itemIndex],
+                        ...updates,
+                        updatedAt: new Date()
+                    };
+                    this.saveToLocalStorage();
+                    return this.cache.inventory[itemIndex];
+                }
+                throw new Error('Inventory item not found');
+            }
+
+            const itemRef = doc(db, 'inventory', itemId);
+            await updateDoc(itemRef, {
+                ...updates,
+                updatedAt: new Date()
+            });
+            
+            return { id: itemId, ...updates };
+        } catch (error) {
+            console.error('Error updating inventory:', error);
+            throw error;
+        }
+    }
 }
 
 // Create and export singleton instance
 const dataManager = new DataManager();
 export default dataManager;
+
