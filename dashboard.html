@@ -2097,7 +2097,12 @@
                     <!-- Suppliers Table -->
                     <div class="table-container" style="margin-top: 2rem;">
                         <div class="table-header">
-                            <h3>All Suppliers</h3>
+                            <div class="table-header-left">
+                                <h3>All Suppliers</h3>
+                                <div class="table-info">
+                                    <span id="suppliersTableInfo">Showing 0 of 0 entries</span>
+                                </div>
+                            </div>
                             <div class="table-actions">
                                 <div class="search-filter-section">
                                     <input type="text" class="search-input" id="suppliersSearchInput" placeholder="Search suppliers...">
@@ -2107,39 +2112,84 @@
                                         <button class="b2b-filter-btn" data-status="inactive">Inactive</button>
                                     </div>
                                 </div>
+                                <div class="entries-select">
+                                    <label>Show</label>
+                                    <select id="suppliersEntriesPerPage" class="form-input-clean">
+                                        <option value="10">10</option>
+                                        <option value="25">25</option>
+                                        <option value="50">50</option>
+                                        <option value="100">100</option>
+                                    </select>
+                                    <label>entries</label>
+                                </div>
                             </div>
                         </div>
-                        <div class="table-wrapper">
-                            <table class="data-table" id="suppliersTable">
-                                <thead>
-                                    <tr>
-                                        <th>Supplier Name</th>
-                                        <th>Company</th>
-                                        <th>Email</th>
-                                        <th>Phone</th>
-                                        <th>Category</th>
-                                        <th>Location</th>
-                                        <th>Status</th>
-                                        <th>Added On</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="suppliersTableBody">
-                                    <tr>
-                                        <td colspan="9" style="text-align: center; padding: 3rem;">
-                                            <div class="empty-state-inline">
-                                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                                    <circle cx="9" cy="7" r="4"></circle>
-                                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                                                </svg>
-                                                <p>No suppliers found. Add your first supplier!</p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                        <div class="table-scroll-wrapper">
+                            <div class="table-wrapper-horizontal">
+                                <table class="data-table" id="suppliersTable">
+                                    <thead>
+                                        <tr>
+                                            <th style="min-width: 180px;">Supplier Name</th>
+                                            <th style="min-width: 180px;">Company</th>
+                                            <th style="min-width: 200px;">Email</th>
+                                            <th style="min-width: 130px;">Phone</th>
+                                            <th style="min-width: 120px;">Category</th>
+                                            <th style="min-width: 150px;">Location</th>
+                                            <th style="min-width: 100px;">Status</th>
+                                            <th style="min-width: 130px;">Added On</th>
+                                            <th class="sticky-action-cell">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="suppliersTableBody">
+                                        <tr>
+                                            <td colspan="9" style="text-align: center; padding: 3rem;">
+                                                <div class="empty-state-inline">
+                                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                                        <circle cx="9" cy="7" r="4"></circle>
+                                                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                                    </svg>
+                                                    <p>No suppliers found. Add your first supplier!</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <!-- Pagination Controls -->
+                        <div class="table-footer">
+                            <div class="pagination-info">
+                                <span id="suppliersPaginationInfo">Showing 0 to 0 of 0 entries</span>
+                            </div>
+                            <div class="pagination-controls" id="suppliersPaginationControls">
+                                <button class="pagination-btn" id="suppliersFirstPage" title="First Page">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="11 17 6 12 11 7"></polyline>
+                                        <polyline points="18 17 13 12 18 7"></polyline>
+                                    </svg>
+                                </button>
+                                <button class="pagination-btn" id="suppliersPrevPage" title="Previous Page">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="15 18 9 12 15 6"></polyline>
+                                    </svg>
+                                </button>
+                                <div class="pagination-numbers" id="suppliersPaginationNumbers">
+                                    <!-- Page numbers will be inserted here -->
+                                </div>
+                                <button class="pagination-btn" id="suppliersNextPage" title="Next Page">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="9 18 15 12 9 6"></polyline>
+                                    </svg>
+                                </button>
+                                <button class="pagination-btn" id="suppliersLastPage" title="Last Page">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="13 17 18 12 13 7"></polyline>
+                                        <polyline points="6 17 11 12 6 7"></polyline>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -8,6 +8,11 @@ const supplierManager = {
     editingId: null,
     initialized: false,
     refreshInterval: null,
+    pagination: {
+        currentPage: 1,
+        itemsPerPage: 10,
+        totalPages: 1
+    },
 
     init() {
         if (this.initialized) {
@@ -61,6 +66,7 @@ const supplierManager = {
         const searchInput = document.getElementById('suppliersSearchInput');
         if (searchInput) {
             searchInput.addEventListener('input', (e) => {
+                this.pagination.currentPage = 1;
                 this.searchSuppliers(e.target.value);
             });
         }
@@ -75,9 +81,58 @@ const supplierManager = {
                 e.target.classList.add('active');
                 // Filter suppliers
                 this.currentFilter = e.target.dataset.status;
+                this.pagination.currentPage = 1;
                 this.filterSuppliers(this.currentFilter);
             });
         });
+
+        // Entries per page selector
+        const entriesSelect = document.getElementById('suppliersEntriesPerPage');
+        if (entriesSelect) {
+            entriesSelect.addEventListener('change', (e) => {
+                this.pagination.itemsPerPage = parseInt(e.target.value);
+                this.pagination.currentPage = 1;
+                this.renderSuppliersTable();
+            });
+        }
+
+        // Pagination controls
+        const firstPage = document.getElementById('suppliersFirstPage');
+        const prevPage = document.getElementById('suppliersPrevPage');
+        const nextPage = document.getElementById('suppliersNextPage');
+        const lastPage = document.getElementById('suppliersLastPage');
+
+        if (firstPage) {
+            firstPage.addEventListener('click', () => {
+                this.pagination.currentPage = 1;
+                this.renderSuppliersTable();
+            });
+        }
+
+        if (prevPage) {
+            prevPage.addEventListener('click', () => {
+                if (this.pagination.currentPage > 1) {
+                    this.pagination.currentPage--;
+                    this.renderSuppliersTable();
+                }
+            });
+        }
+
+        if (nextPage) {
+            nextPage.addEventListener('click', () => {
+                if (this.pagination.currentPage < this.pagination.totalPages) {
+                    this.pagination.currentPage++;
+                    this.renderSuppliersTable();
+                }
+            });
+        }
+
+        if (lastPage) {
+            lastPage.addEventListener('click', () => {
+                this.pagination.currentPage = this.pagination.totalPages;
+                this.renderSuppliersTable();
+            });
+        }
     },
 
     async loadSuppliers() {
@@ -296,10 +351,28 @@ const supplierManager = {
             return;
         }
 
-        console.log(`📊 Rendering ${this.filteredSuppliers.length} suppliers to table...`);
-        console.log('Current suppliers data:', this.filteredSuppliers);
+        // Calculate pagination
+        const totalItems = this.filteredSuppliers.length;
+        this.pagination.totalPages = Math.ceil(totalItems / this.pagination.itemsPerPage);
+        
+        // Ensure current page is valid
+        if (this.pagination.currentPage > this.pagination.totalPages) {
+            this.pagination.currentPage = Math.max(1, this.pagination.totalPages);
+        }
 
-        if (this.filteredSuppliers.length === 0) {
+        // Calculate start and end indices
+        const startIndex = (this.pagination.currentPage - 1) * this.pagination.itemsPerPage;
+        const endIndex = Math.min(startIndex + this.pagination.itemsPerPage, totalItems);
+        
+        // Get items for current page
+        const pageItems = this.filteredSuppliers.slice(startIndex, endIndex);
+
+        // Update table info
+        this.updateTableInfo(totalItems, startIndex, endIndex);
+
+        console.log(`📊 Rendering ${pageItems.length} suppliers (page ${this.pagination.currentPage} of ${this.pagination.totalPages})...`);
+
+        if (totalItems === 0) {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="9" style="text-align: center; padding: 3rem;">
@@ -315,44 +388,44 @@ const supplierManager = {
                     </td>
                 </tr>
             `;
+            this.updatePaginationControls();
             console.log('✅ Rendered empty state for suppliers table');
             return;
         }
 
         try {
-            const rows = this.filteredSuppliers.map(supplier => {
-                console.log('Rendering supplier:', supplier.name);
+            const rows = pageItems.map(supplier => {
                 return `
                 <tr>
-                    <td><strong>${this.escapeHtml(supplier.name)}</strong></td>
-                    <td>${this.escapeHtml(supplier.company || 'N/A')}</td>
-                    <td>${this.escapeHtml(supplier.email)}</td>
-                    <td>${this.escapeHtml(supplier.phone)}</td>
-                    <td style="text-align: center;">
+                    <td style="min-width: 180px;"><strong>${this.escapeHtml(supplier.name)}</strong></td>
+                    <td style="min-width: 180px;">${this.escapeHtml(supplier.company || 'N/A')}</td>
+                    <td style="min-width: 200px;">${this.escapeHtml(supplier.email)}</td>
+                    <td style="min-width: 130px; white-space: nowrap;">${this.escapeHtml(supplier.phone)}</td>
+                    <td style="min-width: 120px; text-align: center; white-space: nowrap;">
                         ${supplier.category ? `<span class="category-badge">${this.capitalizeFirst(supplier.category)}</span>` : 'N/A'}
                     </td>
-                    <td>${this.escapeHtml(supplier.city || supplier.address || 'N/A')}</td>
-                    <td style="text-align: center;">
+                    <td style="min-width: 150px;">${this.escapeHtml(supplier.city || supplier.address || 'N/A')}</td>
+                    <td style="min-width: 100px; text-align: center; white-space: nowrap;">
                         <span class="status-badge ${supplier.status === 'active' ? 'completed' : 'cancelled'}">
                             ${this.capitalizeFirst(supplier.status || 'active')}
                         </span>
                     </td>
-                    <td>${this.formatDate(supplier.createdAt)}</td>
-                    <td style="text-align: center;">
-                        <div class="table-actions">
+                    <td style="min-width: 130px; white-space: nowrap;">${this.formatDate(supplier.createdAt)}</td>
+                    <td class="sticky-action-cell">
+                        <div class="action-buttons">
                             <button class="btn-icon" onclick="supplierManager.viewSupplier('${supplier.id}')" title="View Details">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                                     <circle cx="12" cy="12" r="3"></circle>
                                 </svg>
                             </button>
-                            <button class="btn-icon" onclick="supplierManager.editSupplier('${supplier.id}')" title="Edit Supplier">
+                            <button class="btn-icon primary" onclick="supplierManager.editSupplier('${supplier.id}')" title="Edit Supplier">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                                 </svg>
                             </button>
-                            <button class="btn-icon" onclick="supplierManager.deleteSupplier('${supplier.id}')" title="Delete Supplier">
+                            <button class="btn-icon danger" onclick="supplierManager.deleteSupplier('${supplier.id}')" title="Delete Supplier">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <polyline points="3 6 5 6 21 6"></polyline>
                                     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -365,10 +438,96 @@ const supplierManager = {
             }).join('');
             
             tbody.innerHTML = rows;
-            console.log(`✅ Successfully rendered ${this.filteredSuppliers.length} suppliers to table`);
+            this.updatePaginationControls();
+            console.log(`✅ Successfully rendered ${pageItems.length} suppliers to table`);
         } catch (error) {
             console.error('❌ Error rendering suppliers table:', error);
         }
+    },
+
+    // Update table info
+    updateTableInfo(totalItems, startIndex, endIndex) {
+        const tableInfo = document.getElementById('suppliersTableInfo');
+        const paginationInfo = document.getElementById('suppliersPaginationInfo');
+        
+        if (tableInfo) {
+            tableInfo.textContent = `Showing ${totalItems} of ${this.suppliers.length} entries`;
+        }
+        
+        if (paginationInfo) {
+            if (totalItems === 0) {
+                paginationInfo.textContent = 'Showing 0 to 0 of 0 entries';
+            } else {
+                paginationInfo.textContent = `Showing ${startIndex + 1} to ${endIndex} of ${totalItems} entries`;
+            }
+        }
+    },
+
+    // Update pagination controls
+    updatePaginationControls() {
+        const firstBtn = document.getElementById('suppliersFirstPage');
+        const prevBtn = document.getElementById('suppliersPrevPage');
+        const nextBtn = document.getElementById('suppliersNextPage');
+        const lastBtn = document.getElementById('suppliersLastPage');
+        const numbersContainer = document.getElementById('suppliersPaginationNumbers');
+
+        if (!numbersContainer) return;
+
+        // Disable/enable navigation buttons
+        if (firstBtn) firstBtn.disabled = this.pagination.currentPage === 1;
+        if (prevBtn) prevBtn.disabled = this.pagination.currentPage === 1;
+        if (nextBtn) nextBtn.disabled = this.pagination.currentPage === this.pagination.totalPages;
+        if (lastBtn) lastBtn.disabled = this.pagination.currentPage === this.pagination.totalPages;
+
+        // Generate page numbers
+        const pageNumbers = this.generatePageNumbers();
+        numbersContainer.innerHTML = pageNumbers.map(page => {
+            if (page === '...') {
+                return '<span class="pagination-ellipsis">...</span>';
+            }
+            return `
+                <button class="pagination-btn ${page === this.pagination.currentPage ? 'active' : ''}" 
+                        onclick="supplierManager.goToPage(${page})">
+                    ${page}
+                </button>
+            `;
+        }).join('');
+    },
+
+    // Generate page numbers for pagination
+    generatePageNumbers() {
+        const current = this.pagination.currentPage;
+        const total = this.pagination.totalPages;
+        const pages = [];
+
+        if (total <= 7) {
+            // Show all pages if 7 or fewer
+            for (let i = 1; i <= total; i++) {
+                pages.push(i);
+            }
+        } else {
+            // Always show first page
+            pages.push(1);
+
+            if (current <= 3) {
+                // Near the start
+                pages.push(2, 3, 4, '...', total);
+            } else if (current >= total - 2) {
+                // Near the end
+                pages.push('...', total - 3, total - 2, total - 1, total);
+            } else {
+                // In the middle
+                pages.push('...', current - 1, current, current + 1, '...', total);
+            }
+        }
+
+        return pages;
+    },
+
+    // Go to specific page
+    goToPage(page) {
+        this.pagination.currentPage = page;
+        this.renderSuppliersTable();
     },
 
     filterSuppliers(status) {

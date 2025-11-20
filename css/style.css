@@ -11333,6 +11333,17 @@ canvas {
     color: white;
 }
 
+/* Danger button variant */
+.sticky-action-cell .btn-icon.danger {
+    color: var(--primary-red);
+    border-color: var(--primary-red);
+}
+
+.sticky-action-cell .btn-icon.danger:hover {
+    background: var(--primary-red);
+    color: white;
+}
+
 /* Dark theme action buttons */
 [data-theme="dark"] .sticky-action-cell .btn-icon {
     background: var(--card-bg);
@@ -11360,5 +11371,11 @@ canvas {
     background: var(--primary-orange);
     color: white;
     border-color: var(--primary-orange);
+}
+
+[data-theme="dark"] .sticky-action-cell .btn-icon.danger:hover {
+    background: var(--primary-red);
+    color: white;
+    border-color: var(--primary-red);
 }
 
