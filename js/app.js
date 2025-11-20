@@ -278,7 +278,7 @@ function initSidebar() {
 
 // Navigation Management
 function initNavigation() {
-    const navLinks = document.querySelectorAll('.nav-link[data-page], .submenu a[data-page]');
+    const navLinks = document.querySelectorAll('[data-page]');
     const pages = document.querySelectorAll('.page');
     const sidebar = document.getElementById('sidebar');
     
@@ -398,6 +398,38 @@ function initNavigation() {
                 // Initialize Activities page
                 if (pageId === 'activities') {
                     activityUI.init();
+                }
+                
+                // Initialize New User page
+                if (pageId === 'new-user') {
+                    // Populate branch select dropdown
+                    setTimeout(() => {
+                        if (window.populateNewUserBranchSelect) {
+                            window.populateNewUserBranchSelect();
+                        }
+                    }, 100);
+                    // Clear form
+                    const form = document.getElementById('newUserForm');
+                    if (form) {
+                        form.reset();
+                    }
+                    // Focus on email input
+                    setTimeout(() => {
+                        document.getElementById('newUserEmail')?.focus();
+                    }, 150);
+                }
+                
+                // Initialize Admin page
+                if (pageId === 'admin') {
+                    // Load branches and users lists
+                    setTimeout(() => {
+                        if (window.loadBranchesList) {
+                            window.loadBranchesList();
+                        }
+                        if (window.loadUsersList) {
+                            window.loadUsersList();
+                        }
+                    }, 100);
                 }
             }
             

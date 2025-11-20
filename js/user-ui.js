@@ -14,6 +14,7 @@ window.cancelNewUser = cancelNewUser;
 window.updateRoleDescription = updateRoleDescription;
 window.updateRolePermissions = updateRolePermissions;
 window.getSelectedPermissions = getSelectedPermissions;
+window.populateNewUserBranchSelect = populateNewUserBranchSelect;
 
 // Initialize permission checkboxes when page loads
 document.addEventListener('DOMContentLoaded', () => {
