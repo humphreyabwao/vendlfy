@@ -1158,6 +1158,39 @@ body::-webkit-scrollbar-thumb:hover {
     border-color: #2563eb;
 }
 
+/* Checkbox Cell with Inline Delete */
+.checkbox-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.inline-delete-btn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 4px;
+    background-color: #fee2e2;
+    color: #dc2626;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    padding: 0;
+}
+
+.inline-delete-btn:hover {
+    background-color: #dc2626;
+    color: white;
+    transform: scale(1.1);
+}
+
+.inline-delete-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
 /* Empty State */
 .empty-state {
     display: none;

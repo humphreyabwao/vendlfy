@@ -1,5 +1,5 @@
 // Data Management System with Branch Support
-import { db, isFirebaseConfigured, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy, limit } from './firebase-config.js';
+import { db, isFirebaseConfigured, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc, getDoc, query, where, orderBy, limit } from './firebase-config.js';
 import branchManager from './branch-manager.js';
 
 class DataManager {
@@ -418,12 +418,16 @@ class DataManager {
             }
             
             const q = this.createBranchQuery('inventory', conditions);
+            console.log('📡 Fetching fresh data from Firestore...');
             const snapshot = await getDocs(q);
             
-            return snapshot.docs.map(doc => ({
+            const items = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
             }));
+            
+            console.log(`✅ Retrieved ${items.length} items from Firestore`);
+            return items;
         } catch (error) {
             console.error('Error getting inventory:', error);
             return [];
@@ -449,10 +453,28 @@ class DataManager {
             
             // Use Firebase
             const itemRef = doc(db, 'inventory', itemId);
-            await updateDoc(itemRef, {
-                ...updates,
-                updatedAt: new Date().toISOString()
-            });
+            
+            try {
+                // Try to update the document
+                await updateDoc(itemRef, {
+                    ...updates,
+                    updatedAt: new Date().toISOString()
+                });
+            } catch (updateError) {
+                // If document doesn't exist, create it with setDoc
+                if (updateError.code === 'not-found') {
+                    console.log('⚠️ Document not found, creating new document...');
+                    await setDoc(itemRef, this.addBranchData({
+                        ...updates,
+                        id: itemId,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    }));
+                    console.log('✅ Document created successfully');
+                } else {
+                    throw updateError;
+                }
+            }
             
             await this.syncToCentral('inventory', itemId, updates);
         } catch (error) {
@@ -471,10 +493,23 @@ class DataManager {
                 return;
             }
             
-            // Use Firebase
+            // Use Firebase - Force delete from Firestore
             const itemRef = doc(db, 'inventory', itemId);
-            await deleteDoc(itemRef);
-            console.log('✅ Item deleted from Firebase');
+            
+            console.log('🗑️ Attempting to delete item from Firestore:', itemId);
+            
+            try {
+                await deleteDoc(itemRef);
+                console.log('✅ Item successfully deleted from Firestore:', itemId);
+            } catch (deleteError) {
+                // If document doesn't exist, log but don't fail
+                if (deleteError.code === 'not-found' || deleteError.message.includes('No document')) {
+                    console.log('⚠️ Item not found in Firestore (may have been deleted already):', itemId);
+                } else {
+                    console.error('❌ Error deleting from Firestore:', deleteError);
+                    throw deleteError;
+                }
+            }
         } catch (error) {
             console.error('Error deleting inventory:', error);
             throw error;

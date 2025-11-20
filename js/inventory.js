@@ -43,7 +43,9 @@ class InventoryManager {
     // Load inventory items
     async loadInventory() {
         try {
+            console.log('📥 Loading inventory from database...');
             const items = await dataManager.getInventory();
+            console.log(`✅ Loaded ${items.length} items from database`);
             this.items = items;
             this.calculateStats();
         } catch (error) {
@@ -180,7 +182,6 @@ class InventoryManager {
         this.filteredItems = filtered;
         this.pagination.currentPage = 1;
         this.calculatePagination();
-        this.renderTable();
         this.updateResultsCount();
     }
 
@@ -209,6 +210,13 @@ class InventoryManager {
 
         // Clear existing rows
         tbody.innerHTML = '';
+        
+        // Clean up selected items that no longer exist
+        this.selectedItems.forEach(id => {
+            if (!this.items.find(item => item.id === id)) {
+                this.selectedItems.delete(id);
+            }
+        });
 
         // Check if we have items
         if (this.filteredItems.length === 0) {
@@ -265,7 +273,17 @@ class InventoryManager {
 
         row.innerHTML = `
             <td>
-                <input type="checkbox" class="checkbox item-checkbox" data-id="${itemId}" ${this.selectedItems.has(itemId) ? 'checked' : ''}>
+                <div class="checkbox-cell">
+                    <input type="checkbox" class="checkbox item-checkbox" data-id="${itemId}" ${this.selectedItems.has(itemId) ? 'checked' : ''}>
+                    ${this.selectedItems.has(itemId) ? `
+                        <button class="inline-delete-btn" onclick="window.inventoryManager.deleteItem('${itemId}')" title="Delete Item">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                        </button>
+                    ` : ''}
+                </div>
             </td>
             <td>
                 <div class="product-name">${this.escapeHtml(item.name || 'Unnamed Product')}</div>
@@ -584,6 +602,7 @@ class InventoryManager {
             searchInput.addEventListener('input', (e) => {
                 this.filters.search = e.target.value;
                 this.applyFilters();
+                this.renderTable();
             });
         }
 
@@ -593,6 +612,7 @@ class InventoryManager {
             categoryFilter.addEventListener('change', (e) => {
                 this.filters.category = e.target.value;
                 this.applyFilters();
+                this.renderTable();
             });
         }
 
@@ -602,6 +622,7 @@ class InventoryManager {
             statusFilter.addEventListener('change', (e) => {
                 this.filters.status = e.target.value;
                 this.applyFilters();
+                this.renderTable();
             });
         }
 
@@ -611,6 +632,7 @@ class InventoryManager {
             sortBy.addEventListener('change', (e) => {
                 this.filters.sortBy = e.target.value;
                 this.applyFilters();
+                this.renderTable();
             });
         }
 
@@ -701,6 +723,7 @@ class InventoryManager {
         if (sortBy) sortBy.value = 'name-asc';
 
         this.applyFilters();
+        this.renderTable();
         window.showNotification('Filters cleared', 'success');
     }
 
@@ -893,13 +916,6 @@ class InventoryManager {
         }
         
         return null;
-    }
-
-    // Refresh inventory data
-    async refresh() {
-        await this.loadInventory();
-        this.applyFilters();
-        this.updateStatsUI();
     }
 
     // Toggle select all
@@ -1193,10 +1209,16 @@ class InventoryManager {
             // Update in database
             await dataManager.updateInventoryItem(itemId, updates);
             
-            // Update local item
+            // Update local item immediately
             const item = this.items.find(i => i.id === itemId);
             if (item) {
                 Object.assign(item, updates);
+            }
+            
+            // Update in filtered items as well
+            const filteredItem = this.filteredItems.find(i => i.id === itemId);
+            if (filteredItem) {
+                Object.assign(filteredItem, updates);
             }
             
             // Log activity
@@ -1208,15 +1230,23 @@ class InventoryManager {
                 });
             }
             
+            // Recalculate stats with new values
+            this.calculateStats();
+            
             // Close modal
             document.querySelector('.pos-modal').remove();
             
-            // Refresh display
-            await this.refresh();
+            // Update UI immediately
+            this.updateStatsUI();
+            this.renderTable();
+            
             window.showNotification('Item updated successfully', 'success');
         } catch (error) {
             console.error('Error updating item:', error);
-            window.showNotification('Failed to update item', 'error');
+            console.error('Error details:', error.message);
+            window.showNotification('Failed to update item: ' + error.message, 'error');
+            // Reload on error to ensure consistency
+            await this.refresh();
         }
     }
 
@@ -1232,9 +1262,13 @@ class InventoryManager {
         const confirmed = confirm(`Are you sure you want to delete "${item.name}"?\n\nThis action cannot be undone.`);
         if (!confirmed) return;
 
+        console.log('🗑️ Starting delete process for item:', itemId, item.name);
+
         try {
-            // Delete from database
+            // Delete from database FIRST - this ensures Firestore deletion
+            console.log('📤 Deleting from Firestore...');
             await dataManager.deleteInventoryItem(itemId);
+            console.log('✅ Firestore deletion complete');
             
             // Log activity
             if (window.activityTracker) {
@@ -1245,26 +1279,49 @@ class InventoryManager {
                 });
             }
             
-            // Remove from local array
+            // Remove from local arrays for instant UI update
+            console.log('🔄 Removing from local arrays...');
             this.items = this.items.filter(i => i.id !== itemId);
             this.selectedItems.delete(itemId);
             
-            await this.refresh();
+            // Update filtered items
+            this.filteredItems = this.filteredItems.filter(i => i.id !== itemId);
+            
+            // Recalculate stats and pagination
+            this.calculateStats();
+            this.calculatePagination();
+            
+            // Re-render table immediately
+            this.updateStatsUI();
+            this.renderTable();
+            
             window.showNotification('Item deleted successfully', 'success');
         } catch (error) {
             console.error('Error deleting item:', error);
             window.showNotification('Failed to delete item', 'error');
+            // Reload on error to ensure consistency
+            await this.refresh();
         }
     }
     
     // Refresh inventory data
     async refresh() {
+        console.log('🔄 Starting refresh process...');
         this.showLoading(true);
+        
+        // Clear selected items
+        this.selectedItems.clear();
+        
+        // Reload fresh data from Firestore
         await this.loadInventory();
+        
+        // Reapply filters and update display
         this.applyFilters();
         this.updateStatsUI();
         this.renderTable();
+        
         this.showLoading(false);
+        console.log('✅ Refresh complete');
     }
     
     // Handle refresh button click
