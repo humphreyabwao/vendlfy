@@ -10969,3 +10969,396 @@ canvas {
     }
 }
 
+/* ===== B2B Sales Table - Enhanced Pagination & Horizontal Scroll ===== */
+
+/* Table Header with Info and Actions */
+.table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 2px solid var(--border-color);
+    background: var(--bg-primary);
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.table-header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.table-header-left h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--text-primary);
+}
+
+.table-info {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.table-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.entries-select {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.entries-select label {
+    margin: 0;
+    font-weight: 500;
+}
+
+.entries-select select {
+    padding: 0.4rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Montserrat', sans-serif;
+}
+
+.entries-select select:hover {
+    border-color: var(--primary-blue);
+}
+
+.entries-select select:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Horizontal Scroll Wrapper */
+.table-scroll-wrapper {
+    overflow-x: auto;
+    overflow-y: visible;
+    position: relative;
+}
+
+.table-wrapper-horizontal {
+    min-width: 100%;
+    overflow-x: auto;
+    overflow-y: visible;
+}
+
+.table-wrapper-horizontal::-webkit-scrollbar {
+    height: 8px;
+}
+
+.table-wrapper-horizontal::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+    border-radius: 4px;
+}
+
+.table-wrapper-horizontal::-webkit-scrollbar-thumb {
+    background: #9ca3af;
+    border-radius: 4px;
+}
+
+.table-wrapper-horizontal::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+}
+
+[data-theme="dark"] .table-wrapper-horizontal::-webkit-scrollbar-track {
+    background: #374151;
+}
+
+[data-theme="dark"] .table-wrapper-horizontal::-webkit-scrollbar-thumb {
+    background: #6b7280;
+}
+
+[data-theme="dark"] .table-wrapper-horizontal::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+}
+
+/* Table with sticky action column */
+.table-wrapper-horizontal .data-table {
+    table-layout: auto;
+    min-width: 1400px; /* Ensure minimum width for proper scrolling */
+}
+
+/* Sticky action column - properly styled */
+.sticky-action-cell {
+    position: sticky !important;
+    right: 0 !important;
+    background: var(--bg-primary) !important;
+    z-index: 5 !important;
+    box-shadow: -4px 0 8px rgba(0, 0, 0, 0.08) !important;
+    min-width: 180px !important;
+    border-left: 1px solid var(--border-color) !important;
+}
+
+.table-wrapper-horizontal .data-table thead th:last-child {
+    position: sticky;
+    right: 0;
+    background: var(--bg-secondary);
+    z-index: 15;
+    box-shadow: -4px 0 8px rgba(0, 0, 0, 0.08);
+    min-width: 180px;
+    border-left: 1px solid var(--border-color);
+}
+
+/* Dark theme sticky columns */
+[data-theme="dark"] .sticky-action-cell {
+    background: var(--card-bg) !important;
+    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.4) !important;
+    border-left: 1px solid #374151 !important;
+}
+
+[data-theme="dark"] .table-wrapper-horizontal .data-table thead th:last-child {
+    background: var(--card-bg);
+    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.4);
+    border-left: 1px solid #374151;
+}
+
+/* Table Footer with Pagination */
+.table-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-top: 2px solid var(--border-color);
+    background: var(--bg-primary);
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.pagination-info {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pagination-btn {
+    min-width: 36px;
+    height: 36px;
+    padding: 0 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'Montserrat', sans-serif;
+}
+
+.pagination-btn:hover:not(:disabled) {
+    background: var(--bg-tertiary);
+    border-color: var(--primary-blue);
+    color: var(--primary-blue);
+    transform: translateY(-2px);
+}
+
+.pagination-btn.active {
+    background: var(--primary-blue);
+    color: white;
+    border-color: var(--primary-blue);
+}
+
+.pagination-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.pagination-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.pagination-numbers {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.pagination-ellipsis {
+    padding: 0 0.5rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* Dark theme pagination */
+[data-theme="dark"] .pagination-btn {
+    background: var(--card-bg);
+    border-color: #374151;
+}
+
+[data-theme="dark"] .pagination-btn:hover:not(:disabled) {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: var(--primary-blue);
+}
+
+[data-theme="dark"] .pagination-btn.active {
+    background: var(--primary-blue);
+    color: white;
+    border-color: var(--primary-blue);
+}
+
+/* Payment and Status Badges */
+.payment-badge,
+.credit-badge {
+    display: inline-block;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .table-header,
+    .table-footer {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .table-actions,
+    .pagination-controls {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .pagination-controls {
+        overflow-x: auto;
+        padding-bottom: 0.5rem;
+    }
+
+    .entries-select {
+        width: 100%;
+        justify-content: space-between;
+    }
+}
+
+/* Empty State */
+.empty-state-inline {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    color: var(--text-secondary);
+}
+
+.empty-state-inline svg {
+    opacity: 0.3;
+}
+
+.empty-state-inline p {
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+/* Action Buttons in Sticky Column */
+.sticky-action-cell .action-buttons {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    justify-content: center;
+    flex-wrap: nowrap;
+}
+
+.sticky-action-cell .btn-icon {
+    flex-shrink: 0;
+    padding: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sticky-action-cell .btn-icon:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.sticky-action-cell .btn-icon.primary {
+    color: var(--primary-blue);
+    border-color: var(--primary-blue);
+}
+
+.sticky-action-cell .btn-icon.primary:hover {
+    background: var(--primary-blue);
+    color: white;
+}
+
+.sticky-action-cell .btn-icon.success {
+    color: var(--primary-green);
+    border-color: var(--primary-green);
+}
+
+.sticky-action-cell .btn-icon.success:hover {
+    background: var(--primary-green);
+    color: white;
+}
+
+.sticky-action-cell .btn-icon.warning {
+    color: var(--primary-orange);
+    border-color: var(--primary-orange);
+}
+
+.sticky-action-cell .btn-icon.warning:hover {
+    background: var(--primary-orange);
+    color: white;
+}
+
+/* Dark theme action buttons */
+[data-theme="dark"] .sticky-action-cell .btn-icon {
+    background: var(--card-bg);
+    border-color: #374151;
+}
+
+[data-theme="dark"] .sticky-action-cell .btn-icon:hover {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: var(--primary-blue);
+}
+
+[data-theme="dark"] .sticky-action-cell .btn-icon.primary:hover {
+    background: var(--primary-blue);
+    color: white;
+    border-color: var(--primary-blue);
+}
+
+[data-theme="dark"] .sticky-action-cell .btn-icon.success:hover {
+    background: var(--primary-green);
+    color: white;
+    border-color: var(--primary-green);
+}
+
+[data-theme="dark"] .sticky-action-cell .btn-icon.warning:hover {
+    background: var(--primary-orange);
+    color: white;
+    border-color: var(--primary-orange);
+}
+

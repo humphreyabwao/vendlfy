@@ -14,6 +14,11 @@ class B2BSalesManager {
             dateRange: 'all', // all, today, week, month
             customerType: 'all' // all, wholesale, retail
         };
+        this.pagination = {
+            currentPage: 1,
+            itemsPerPage: 10,
+            totalPages: 1
+        };
     }
 
     async init() {
@@ -70,6 +75,7 @@ class B2BSalesManager {
         if (searchInput) {
             searchInput.addEventListener('input', (e) => {
                 this.filters.search = e.target.value.toLowerCase();
+                this.pagination.currentPage = 1; // Reset to first page
                 this.applyFilters();
             });
         }
@@ -89,9 +95,58 @@ class B2BSalesManager {
                 
                 // Apply filter
                 this.filters[filterType] = filterValue;
+                this.pagination.currentPage = 1; // Reset to first page
                 this.applyFilters();
             });
         });
+
+        // Entries per page selector
+        const entriesSelect = document.getElementById('b2bEntriesPerPage');
+        if (entriesSelect) {
+            entriesSelect.addEventListener('change', (e) => {
+                this.pagination.itemsPerPage = parseInt(e.target.value);
+                this.pagination.currentPage = 1; // Reset to first page
+                this.renderSalesTable();
+            });
+        }
+
+        // Pagination controls
+        const firstPage = document.getElementById('b2bFirstPage');
+        const prevPage = document.getElementById('b2bPrevPage');
+        const nextPage = document.getElementById('b2bNextPage');
+        const lastPage = document.getElementById('b2bLastPage');
+
+        if (firstPage) {
+            firstPage.addEventListener('click', () => {
+                this.pagination.currentPage = 1;
+                this.renderSalesTable();
+            });
+        }
+
+        if (prevPage) {
+            prevPage.addEventListener('click', () => {
+                if (this.pagination.currentPage > 1) {
+                    this.pagination.currentPage--;
+                    this.renderSalesTable();
+                }
+            });
+        }
+
+        if (nextPage) {
+            nextPage.addEventListener('click', () => {
+                if (this.pagination.currentPage < this.pagination.totalPages) {
+                    this.pagination.currentPage++;
+                    this.renderSalesTable();
+                }
+            });
+        }
+
+        if (lastPage) {
+            lastPage.addEventListener('click', () => {
+                this.pagination.currentPage = this.pagination.totalPages;
+                this.renderSalesTable();
+            });
+        }
 
         // Sell as Retailer button
         const retailBtn = document.getElementById('sellAsRetailerBtn');
@@ -111,6 +166,14 @@ class B2BSalesManager {
 
         // Listen for branch changes
         window.addEventListener('branchChanged', async () => {
+            await this.loadB2BSales();
+            this.renderStats();
+            this.renderSalesTable();
+        });
+
+        // Listen for new B2B sale created event
+        window.addEventListener('b2bSaleCreated', async () => {
+            console.log('🔔 B2B Sale Created event received, refreshing table...');
             await this.loadB2BSales();
             this.renderStats();
             this.renderSalesTable();
@@ -228,7 +291,26 @@ class B2BSalesManager {
         const tbody = document.getElementById('b2bSalesTableBody');
         if (!tbody) return;
 
-        if (this.filteredSales.length === 0) {
+        // Calculate pagination
+        const totalItems = this.filteredSales.length;
+        this.pagination.totalPages = Math.ceil(totalItems / this.pagination.itemsPerPage);
+        
+        // Ensure current page is valid
+        if (this.pagination.currentPage > this.pagination.totalPages) {
+            this.pagination.currentPage = Math.max(1, this.pagination.totalPages);
+        }
+
+        // Calculate start and end indices
+        const startIndex = (this.pagination.currentPage - 1) * this.pagination.itemsPerPage;
+        const endIndex = Math.min(startIndex + this.pagination.itemsPerPage, totalItems);
+        
+        // Get items for current page
+        const pageItems = this.filteredSales.slice(startIndex, endIndex);
+
+        // Update table info
+        this.updateTableInfo(totalItems, startIndex, endIndex);
+
+        if (totalItems === 0) {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="10" style="text-align: center; padding: 3rem;">
@@ -242,37 +324,125 @@ class B2BSalesManager {
                     </td>
                 </tr>
             `;
+            this.updatePaginationControls();
             return;
         }
 
-        tbody.innerHTML = this.filteredSales.map(sale => this.renderSaleRow(sale)).join('');
+        tbody.innerHTML = pageItems.map(sale => this.renderSaleRow(sale)).join('');
+        this.updatePaginationControls();
+    }
+
+    // Update table info
+    updateTableInfo(totalItems, startIndex, endIndex) {
+        const tableInfo = document.getElementById('b2bTableInfo');
+        const paginationInfo = document.getElementById('b2bPaginationInfo');
+        
+        if (tableInfo) {
+            tableInfo.textContent = `Showing ${totalItems} of ${this.sales.length} entries`;
+        }
+        
+        if (paginationInfo) {
+            if (totalItems === 0) {
+                paginationInfo.textContent = 'Showing 0 to 0 of 0 entries';
+            } else {
+                paginationInfo.textContent = `Showing ${startIndex + 1} to ${endIndex} of ${totalItems} entries`;
+            }
+        }
+    }
+
+    // Update pagination controls
+    updatePaginationControls() {
+        const firstBtn = document.getElementById('b2bFirstPage');
+        const prevBtn = document.getElementById('b2bPrevPage');
+        const nextBtn = document.getElementById('b2bNextPage');
+        const lastBtn = document.getElementById('b2bLastPage');
+        const numbersContainer = document.getElementById('b2bPaginationNumbers');
+
+        if (!numbersContainer) return;
+
+        // Disable/enable navigation buttons
+        if (firstBtn) firstBtn.disabled = this.pagination.currentPage === 1;
+        if (prevBtn) prevBtn.disabled = this.pagination.currentPage === 1;
+        if (nextBtn) nextBtn.disabled = this.pagination.currentPage === this.pagination.totalPages;
+        if (lastBtn) lastBtn.disabled = this.pagination.currentPage === this.pagination.totalPages;
+
+        // Generate page numbers
+        const pageNumbers = this.generatePageNumbers();
+        numbersContainer.innerHTML = pageNumbers.map(page => {
+            if (page === '...') {
+                return '<span class="pagination-ellipsis">...</span>';
+            }
+            return `
+                <button class="pagination-btn ${page === this.pagination.currentPage ? 'active' : ''}" 
+                        onclick="window.b2bSalesManager.goToPage(${page})">
+                    ${page}
+                </button>
+            `;
+        }).join('');
+    }
+
+    // Generate page numbers for pagination
+    generatePageNumbers() {
+        const current = this.pagination.currentPage;
+        const total = this.pagination.totalPages;
+        const pages = [];
+
+        if (total <= 7) {
+            // Show all pages if 7 or fewer
+            for (let i = 1; i <= total; i++) {
+                pages.push(i);
+            }
+        } else {
+            // Always show first page
+            pages.push(1);
+
+            if (current <= 3) {
+                // Near the start
+                pages.push(2, 3, 4, '...', total);
+            } else if (current >= total - 2) {
+                // Near the end
+                pages.push('...', total - 3, total - 2, total - 1, total);
+            } else {
+                // In the middle
+                pages.push('...', current - 1, current, current + 1, '...', total);
+            }
+        }
+
+        return pages;
+    }
+
+    // Go to specific page
+    goToPage(page) {
+        this.pagination.currentPage = page;
+        this.renderSalesTable();
     }
 
     // Render individual sale row
     renderSaleRow(sale) {
         const date = new Date(sale.createdAt);
-        const statusClass = sale.status === 'completed' ? 'success' : 
-                           sale.status === 'pending' ? 'warning' : 'danger';
-        const statusText = sale.status ? sale.status.charAt(0).toUpperCase() + sale.status.slice(1) : 'N/A';
+        const status = (sale.status || 'pending').toLowerCase();
+        const statusClass = status === 'completed' ? 'success' : 
+                           status === 'pending' ? 'warning' : 'danger';
+        const statusText = status ? status.charAt(0).toUpperCase() + status.slice(1) : 'N/A';
 
         return `
             <tr>
-                <td><strong>${sale.saleNumber || 'N/A'}</strong></td>
-                <td>${date.toLocaleDateString()} ${date.toLocaleTimeString()}</td>
-                <td>${sale.customer || 'Walk-in'}</td>
-                <td>${sale.customerPhone || 'N/A'}</td>
-                <td>${sale.items?.length || 0} items</td>
-                <td><strong>${this.formatCurrency(sale.total)}</strong></td>
-                <td>
+                <td style="min-width: 140px;"><strong>${sale.saleNumber || 'N/A'}</strong></td>
+                <td style="min-width: 160px; white-space: nowrap;">${date.toLocaleDateString()} ${date.toLocaleTimeString()}</td>
+                <td style="min-width: 180px;">${sale.customer || 'Walk-in'}</td>
+                <td style="min-width: 130px;">${sale.customerPhone || 'N/A'}</td>
+                <td style="min-width: 80px; text-align: center;">${sale.items?.length || 0} items</td>
+                <td style="min-width: 120px;"><strong>${this.formatCurrency(sale.total)}</strong></td>
+                <td style="min-width: 150px;">
                     <span class="payment-badge">${this.formatPaymentMethod(sale.paymentMethod)}</span>
                 </td>
-                <td>
+                <td style="min-width: 130px;">
                     <span class="credit-badge">${this.formatCreditTerm(sale.creditTerm)}</span>
                 </td>
-                <td>
+                <td style="min-width: 110px;">
                     <span class="status-badge ${statusClass}">${statusText}</span>
                 </td>
-                <td>
+                <td class="sticky-action-cell">
                     <div class="action-buttons">
                         <button class="btn-icon" onclick="window.b2bSalesManager.viewSaleDetails('${sale.id}')" title="View Details">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -280,6 +450,20 @@ class B2BSalesManager {
                                 <circle cx="12" cy="12" r="3"></circle>
                             </svg>
                         </button>
+                        ${status === 'pending' || status === 'cancelled' ? `
+                            <button class="btn-icon primary" onclick="window.b2bSalesManager.editSale('${sale.id}')" title="Edit Order">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+                                </svg>
+                            </button>
+                        ` : ''}
+                        ${status === 'pending' ? `
+                            <button class="btn-icon success" onclick="window.b2bSalesManager.markAsCompleted('${sale.id}')" title="Mark as Completed">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </button>
+                        ` : ''}
                         <button class="btn-icon" onclick="window.b2bSalesManager.printInvoice('${sale.id}')" title="Print Invoice">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="6 9 6 2 18 2 18 9"></polyline>
@@ -287,13 +471,6 @@ class B2BSalesManager {
                                 <rect x="6" y="14" width="12" height="8"></rect>
                             </svg>
                         </button>
-                        ${sale.status === 'pending' ? `
-                            <button class="btn-icon success" onclick="window.b2bSalesManager.markAsCompleted('${sale.id}')" title="Mark as Completed">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="20 6 9 17 4 12"></polyline>
-                                </svg>
-                            </button>
-                        ` : ''}
                     </div>
                 </td>
             </tr>
@@ -518,6 +695,232 @@ class B2BSalesManager {
             </html>
         `);
         printWindow.document.close();
+    }
+
+    // Edit sale
+    async editSale(saleId) {
+        const sale = this.sales.find(s => s.id === saleId);
+        if (!sale) return;
+
+        // Load customers for the dropdown
+        await this.loadCustomers();
+
+        const modal = document.createElement('div');
+        modal.className = 'pos-modal';
+        modal.innerHTML = `
+            <div class="pos-modal-overlay" onclick="this.parentElement.remove()"></div>
+            <div class="pos-modal-content large-modal">
+                <div class="pos-modal-header">
+                    <h3>Edit B2B Order</h3>
+                    <button class="modal-close" onclick="this.closest('.pos-modal').remove()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div class="pos-modal-body">
+                    <div class="form-group">
+                        <label>Order #: <strong>${sale.saleNumber}</strong></label>
+                    </div>
+                    
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="editCustomer">Customer *</label>
+                            <select id="editCustomer" class="form-input-clean" required>
+                                <option value="">Select customer...</option>
+                                ${this.customers.map(c => `
+                                    <option value="${c.id}" ${sale.customerId === c.id ? 'selected' : ''}>
+                                        ${c.name} - ${c.phone || 'N/A'}
+                                    </option>
+                                `).join('')}
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="editPaymentMethod">Payment Method *</label>
+                            <select id="editPaymentMethod" class="form-input-clean" required>
+                                <option value="cash" ${sale.paymentMethod === 'cash' ? 'selected' : ''}>Cash</option>
+                                <option value="mpesa" ${sale.paymentMethod === 'mpesa' ? 'selected' : ''}>M-Pesa</option>
+                                <option value="bank_transfer" ${sale.paymentMethod === 'bank_transfer' ? 'selected' : ''}>Bank Transfer</option>
+                                <option value="cheque" ${sale.paymentMethod === 'cheque' ? 'selected' : ''}>Cheque</option>
+                                <option value="credit" ${sale.paymentMethod === 'credit' ? 'selected' : ''}>Credit</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="editCreditTerm">Credit Terms</label>
+                            <select id="editCreditTerm" class="form-input-clean">
+                                <option value="immediate" ${sale.creditTerm === 'immediate' ? 'selected' : ''}>Immediate</option>
+                                <option value="net30" ${sale.creditTerm === 'net30' ? 'selected' : ''}>Net 30</option>
+                                <option value="net60" ${sale.creditTerm === 'net60' ? 'selected' : ''}>Net 60</option>
+                                <option value="net90" ${sale.creditTerm === 'net90' ? 'selected' : ''}>Net 90</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="editStatus">Status *</label>
+                            <select id="editStatus" class="form-input-clean" required>
+                                <option value="pending" ${sale.status === 'pending' ? 'selected' : ''}>Pending</option>
+                                <option value="completed" ${sale.status === 'completed' ? 'selected' : ''}>Completed</option>
+                                <option value="cancelled" ${sale.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Order Items</label>
+                        <div style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem;">
+                            ${sale.items?.map((item, idx) => `
+                                <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--border-color);">
+                                    <span><strong>${item.name}</strong> (${item.sku || 'N/A'})</span>
+                                    <span>Qty: ${item.quantity} × ${this.formatCurrency(item.price)} = <strong>${this.formatCurrency(item.total)}</strong></span>
+                                </div>
+                            `).join('') || '<p>No items</p>'}
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div style="display: flex; justify-content: space-between; padding: 1rem; background: var(--bg-secondary); border-radius: 8px;">
+                            <strong>Grand Total:</strong>
+                            <strong style="font-size: 1.25rem; color: var(--primary-blue);">${this.formatCurrency(sale.total)}</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="pos-modal-footer">
+                    <button onclick="this.closest('.pos-modal').remove()" class="btn btn-secondary">Cancel</button>
+                    <button onclick="window.b2bSalesManager.saveSaleEdit('${sale.id}')" class="btn btn-primary">Save Changes</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        setTimeout(() => modal.classList.add('show'), 10);
+    }
+
+    // Save sale edits
+    async saveSaleEdit(saleId) {
+        const customerSelect = document.getElementById('editCustomer');
+        const paymentMethodSelect = document.getElementById('editPaymentMethod');
+        const creditTermSelect = document.getElementById('editCreditTerm');
+        const statusSelect = document.getElementById('editStatus');
+
+        if (!customerSelect || !paymentMethodSelect || !statusSelect) return;
+
+        const customerId = customerSelect.value;
+        const customer = this.customers.find(c => c.id === customerId);
+
+        if (!customer) {
+            this.showNotification('Please select a customer', 'error');
+            return;
+        }
+
+        const updates = {
+            customerId: customer.id,
+            customer: customer.name,
+            customerPhone: customer.phone || '',
+            paymentMethod: paymentMethodSelect.value,
+            creditTerm: creditTermSelect.value,
+            status: statusSelect.value,
+            updatedAt: new Date().toISOString()
+        };
+
+        try {
+            await dataManager.updateSale(saleId, updates);
+            await this.loadB2BSales();
+            this.renderStats();
+            this.renderSalesTable();
+            
+            // Refresh dashboard stats
+            if (window.refreshDashboardStats) {
+                await window.refreshDashboardStats();
+            }
+            
+            // Close modal
+            document.querySelector('.pos-modal')?.remove();
+            
+            this.showNotification('Order updated successfully', 'success');
+        } catch (error) {
+            console.error('Error updating sale:', error);
+            this.showNotification('Error updating order', 'error');
+        }
+    }
+
+    // Update sale
+    updateSale(saleId) {
+        const sale = this.sales.find(s => s.id === saleId);
+        if (!sale) return;
+
+        const modal = document.createElement('div');
+        modal.className = 'pos-modal';
+        modal.innerHTML = `
+            <div class="pos-modal-overlay" onclick="this.parentElement.remove()"></div>
+            <div class="pos-modal-content">
+                <div class="pos-modal-header">
+                    <h3>Update Order Status</h3>
+                    <button class="modal-close" onclick="this.closest('.pos-modal').remove()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div class="pos-modal-body">
+                    <div class="form-group">
+                        <label>Order #: <strong>${sale.saleNumber}</strong></label>
+                    </div>
+                    <div class="form-group">
+                        <label>Customer: <strong>${sale.customer}</strong></label>
+                    </div>
+                    <div class="form-group">
+                        <label>Current Status: <span class="status-badge ${sale.status === 'completed' ? 'success' : sale.status === 'pending' ? 'warning' : 'danger'}">${sale.status}</span></label>
+                    </div>
+                    <div class="form-group">
+                        <label for="updateStatus">Update Status *</label>
+                        <select id="updateStatus" class="form-input-clean" required>
+                            <option value="pending" ${sale.status === 'pending' ? 'selected' : ''}>Pending</option>
+                            <option value="completed" ${sale.status === 'completed' ? 'selected' : ''}>Completed</option>
+                            <option value="cancelled" ${sale.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="pos-modal-footer">
+                    <button onclick="this.closest('.pos-modal').remove()" class="btn btn-secondary">Cancel</button>
+                    <button onclick="window.b2bSalesManager.saveStatusUpdate('${sale.id}')" class="btn btn-primary">Update Status</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        setTimeout(() => modal.classList.add('show'), 10);
+    }
+
+    // Save status update
+    async saveStatusUpdate(saleId) {
+        const statusSelect = document.getElementById('updateStatus');
+        if (!statusSelect) return;
+
+        const newStatus = statusSelect.value;
+
+        try {
+            await dataManager.updateSale(saleId, { status: newStatus });
+            await this.loadB2BSales();
+            this.renderStats();
+            this.renderSalesTable();
+            
+            // Refresh dashboard stats
+            if (window.refreshDashboardStats) {
+                await window.refreshDashboardStats();
+            }
+            
+            // Close modal
+            document.querySelector('.pos-modal')?.remove();
+            
+            this.showNotification(`Order status updated to ${newStatus}`, 'success');
+        } catch (error) {
+            console.error('Error updating sale status:', error);
+            this.showNotification('Error updating order status', 'error');
+        }
     }
 
     // Mark sale as completed

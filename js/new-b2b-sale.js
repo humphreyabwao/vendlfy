@@ -627,9 +627,12 @@ class NewB2BSaleManager {
             saleNumber: this.generateSaleNumber()
         };
 
+        console.log('💼 Creating B2B Sale:', saleData);
+
         try {
             // Save to database
-            await dataManager.createSale(saleData);
+            const savedSale = await dataManager.createSale(saleData);
+            console.log('✅ B2B Sale created successfully:', savedSale);
             
             // Log activity
             if (window.activityTracker) {
@@ -656,6 +659,17 @@ class NewB2BSaleManager {
             // Refresh dashboard stats to update pending B2B count
             if (window.refreshDashboardStats) {
                 await window.refreshDashboardStats();
+            }
+
+            // Trigger B2B sale created event
+            window.dispatchEvent(new CustomEvent('b2bSaleCreated', { detail: savedSale }));
+            
+            // Refresh B2B sales table if user is on that page
+            if (window.b2bSalesManager) {
+                await window.b2bSalesManager.loadB2BSales();
+                window.b2bSalesManager.renderStats();
+                window.b2bSalesManager.renderSalesTable();
+                console.log('✅ B2B sales table refreshed');
             }
 
             // Refresh reports if initialized
