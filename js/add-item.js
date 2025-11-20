@@ -441,6 +441,17 @@ class AddItemManager {
                 });
             }
 
+            // Add notification for new item
+            if (window.notificationManager) {
+                window.notificationManager.notify(
+                    'item_added',
+                    'New Item Added',
+                    `${itemData.name} has been added to inventory`,
+                    'info',
+                    itemData
+                );
+            }
+
             window.showNotification('Item added successfully!', 'success');
 
             if (addNew) {
