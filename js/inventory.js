@@ -32,6 +32,10 @@ class InventoryManager {
     // Initialize inventory when page loads
     async init() {
         this.showLoading(true);
+        
+        // Clean up any local items from localStorage
+        this.cleanupLocalStorage();
+        
         await this.loadInventory();
         this.applyFilters();
         this.updateStatsUI();
@@ -40,13 +44,62 @@ class InventoryManager {
         this.showLoading(false);
     }
 
+    // Clean up local items from localStorage
+    cleanupLocalStorage() {
+        try {
+            const data = localStorage.getItem('vendlfy_data');
+            if (data) {
+                const parsed = JSON.parse(data);
+                if (parsed.inventory && Array.isArray(parsed.inventory)) {
+                    const originalCount = parsed.inventory.length;
+                    
+                    // Remove items with local IDs
+                    parsed.inventory = parsed.inventory.filter(item => 
+                        !item.id || (!item.id.startsWith('item_') && !item.id.startsWith('local_'))
+                    );
+                    
+                    const removedCount = originalCount - parsed.inventory.length;
+                    
+                    if (removedCount > 0) {
+                        localStorage.setItem('vendlfy_data', JSON.stringify(parsed));
+                        console.log(`🧹 Cleaned up ${removedCount} local items from localStorage`);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error cleaning localStorage:', error);
+        }
+    }
+
     // Load inventory items
     async loadInventory() {
         try {
             console.log('📥 Loading inventory from database...');
             const items = await dataManager.getInventory();
             console.log(`✅ Loaded ${items.length} items from database`);
-            this.items = items;
+            
+            // Filter out any local items (items with local IDs)
+            const localItems = items.filter(item => 
+                item.id && (item.id.startsWith('item_') || item.id.startsWith('local_'))
+            );
+            
+            if (localItems.length > 0) {
+                console.warn(`⚠️ Found ${localItems.length} local items that cannot sync with Firebase`);
+                console.log('🗑️ Filtering out local items:', localItems.map(i => i.name));
+                
+                // Show notification about filtered items
+                window.showNotification(
+                    `Removed ${localItems.length} local item(s) that cannot sync with Firebase. All items are now from Firebase.`,
+                    'info'
+                );
+            }
+            
+            // Only keep Firebase items (items without local IDs)
+            this.items = items.filter(item => 
+                !item.id || (!item.id.startsWith('item_') && !item.id.startsWith('local_'))
+            );
+            
+            console.log(`✅ Using ${this.items.length} Firebase-synced items`);
             this.calculateStats();
         } catch (error) {
             console.error('Error loading inventory:', error);
@@ -551,14 +604,6 @@ class InventoryManager {
 
     // Attach event listeners
     attachEventListeners() {
-        // Refresh button
-        const refreshBtn = document.getElementById('refreshInventoryBtn');
-        if (refreshBtn) {
-            refreshBtn.addEventListener('click', async () => {
-                await this.handleRefresh(refreshBtn);
-            });
-        }
-
         // Add New Item button
         const addItemBtn = document.getElementById('addInventoryItemBtn');
         if (addItemBtn) {
@@ -1168,11 +1213,11 @@ class InventoryManager {
                 </div>
                 <div class="pos-modal-footer">
                     <button class="btn-secondary" onclick="this.closest('.pos-modal').remove()">Cancel</button>
-                    <button class="btn-primary" onclick="window.inventoryManager.saveItemChanges('${itemId}')">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button class="btn-primary" id="saveItemBtn" onclick="window.inventoryManager.saveItemChanges('${itemId}')">
+                        <svg id="saveItemIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="20 6 9 17 4 12"></polyline>
                         </svg>
-                        Save Changes
+                        <span id="saveItemText">Save Changes</span>
                     </button>
                 </div>
             </div>
@@ -1187,6 +1232,26 @@ class InventoryManager {
         if (!form.checkValidity()) {
             form.reportValidity();
             return;
+        }
+
+        // Get button elements
+        const saveBtn = document.getElementById('saveItemBtn');
+        const saveIcon = document.getElementById('saveItemIcon');
+        const saveText = document.getElementById('saveItemText');
+        
+        // Disable button and show spinning animation
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.style.opacity = '0.7';
+            saveBtn.style.cursor = 'not-allowed';
+        }
+        if (saveIcon) {
+            // Change to spinner icon
+            saveIcon.innerHTML = '<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" stroke-dasharray="60" stroke-dashoffset="15" />';
+            saveIcon.classList.add('spinning');
+        }
+        if (saveText) {
+            saveText.textContent = 'Saving...';
         }
 
         const updates = {
@@ -1206,19 +1271,28 @@ class InventoryManager {
         };
 
         try {
-            // Update in database
-            await dataManager.updateInventoryItem(itemId, updates);
+            console.log('💾 Saving item updates to database in real-time...');
+            console.log('📝 Category being saved:', updates.category);
             
-            // Update local item immediately
-            const item = this.items.find(i => i.id === itemId);
-            if (item) {
-                Object.assign(item, updates);
+            // Get the full item data to pass along in case we need to create it in Firebase
+            const fullItem = this.items.find(i => i.id === itemId);
+            
+            // Update in Firebase database FIRST to ensure real-time data consistency
+            // Pass full item data so it can be created if it doesn't exist in Firebase
+            await dataManager.updateInventoryItem(itemId, updates, fullItem);
+            console.log('✅ Database update successful');
+            
+            // Update local item after successful database update
+            if (fullItem) {
+                Object.assign(fullItem, updates);
+                console.log('✅ Local item updated:', fullItem.name, '| Category:', fullItem.category);
             }
             
             // Update in filtered items as well
             const filteredItem = this.filteredItems.find(i => i.id === itemId);
             if (filteredItem) {
                 Object.assign(filteredItem, updates);
+                console.log('✅ Filtered item updated with category:', filteredItem.category);
             }
             
             // Log activity
@@ -1233,20 +1307,61 @@ class InventoryManager {
             // Recalculate stats with new values
             this.calculateStats();
             
-            // Close modal
-            document.querySelector('.pos-modal').remove();
+            // Close modal after successful save
+            const modal = document.querySelector('.pos-modal');
+            if (modal) modal.remove();
             
-            // Update UI immediately
+            // Update UI immediately to reflect changes in real-time
             this.updateStatsUI();
             this.renderTable();
             
             window.showNotification('Item updated successfully', 'success');
         } catch (error) {
-            console.error('Error updating item:', error);
+            console.error('❌ Error updating item:', error);
             console.error('Error details:', error.message);
-            window.showNotification('Failed to update item: ' + error.message, 'error');
-            // Reload on error to ensure consistency
-            await this.refresh();
+            
+            // Check if this is a local item error
+            if (error.message.includes('exists only locally') || error.message.includes('local ID')) {
+                // Close modal first
+                const modal = document.querySelector('.pos-modal');
+                if (modal) modal.remove();
+                
+                const confirmed = confirm(
+                    'This item was created locally and cannot be synced to Firebase.\n\n' +
+                    'Click OK to delete this local item and reload the inventory from Firebase.\n\n' +
+                    'All items should now be created directly in Firebase to avoid this issue.'
+                );
+                
+                if (confirmed) {
+                    // Remove local item
+                    this.items = this.items.filter(i => i.id !== itemId);
+                    this.filteredItems = this.filteredItems.filter(i => i.id !== itemId);
+                    this.selectedItems.delete(itemId);
+                    
+                    // Reload from Firebase
+                    window.showNotification('Removing local item and reloading...', 'info');
+                    await this.refresh();
+                    window.showNotification('Inventory reloaded from Firebase', 'success');
+                    return;
+                }
+            } else {
+                window.showNotification('Failed to update item: ' + error.message, 'error');
+            }
+            
+            // Reset button state on error
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.style.opacity = '1';
+                saveBtn.style.cursor = 'pointer';
+            }
+            if (saveIcon) {
+                saveIcon.classList.remove('spinning');
+                // Restore checkmark icon
+                saveIcon.innerHTML = '<polyline points="20 6 9 17 4 12"></polyline>';
+            }
+            if (saveText) {
+                saveText.textContent = 'Save Changes';
+            }
         }
     }
 
@@ -1265,12 +1380,12 @@ class InventoryManager {
         console.log('🗑️ Starting delete process for item:', itemId, item.name);
 
         try {
-            // Delete from database FIRST - this ensures Firestore deletion
-            console.log('📤 Deleting from Firestore...');
+            // Delete from Firebase database FIRST - this ensures real-time sync
+            console.log('📤 Deleting from Firebase...');
             await dataManager.deleteInventoryItem(itemId);
-            console.log('✅ Firestore deletion complete');
+            console.log('✅ Firebase deletion complete');
             
-            // Log activity
+            // Log activity after successful deletion
             if (window.activityTracker) {
                 window.activityTracker.logActivity('inventory', 'deleted', {
                     itemName: item.name,
@@ -1325,27 +1440,6 @@ class InventoryManager {
     }
     
     // Handle refresh button click
-    async handleRefresh(button) {
-        // Add spinning animation
-        button.classList.add('spinning');
-        button.disabled = true;
-        
-        try {
-            console.log('🔄 Refreshing inventory from Firestore...');
-            await this.refresh();
-            window.showNotification('Inventory refreshed successfully', 'success');
-            console.log('✅ Inventory refreshed');
-        } catch (error) {
-            console.error('Error refreshing inventory:', error);
-            window.showNotification('Failed to refresh inventory', 'error');
-        } finally {
-            // Remove spinning animation
-            setTimeout(() => {
-                button.classList.remove('spinning');
-                button.disabled = false;
-            }, 500);
-        }
-    }
 }
 
 // Create and export singleton instance

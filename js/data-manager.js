@@ -335,11 +335,56 @@ class DataManager {
     // INVENTORY OPERATIONS
     async createInventoryItem(itemData) {
         try {
+            // Validate item data before saving
+            if (!itemData || typeof itemData !== 'object') {
+                throw new Error('Invalid item data');
+            }
+
+            // Validate required fields
+            if (!itemData.name || !itemData.name.trim()) {
+                throw new Error('Item name is required');
+            }
+
+            if (!itemData.sku || !itemData.sku.trim()) {
+                throw new Error('Item SKU is required');
+            }
+
+            if (!itemData.category || !itemData.category.trim()) {
+                throw new Error('Item category is required');
+            }
+
+            // Validate numeric fields
+            if (itemData.price === undefined || itemData.price === null || isNaN(itemData.price) || itemData.price < 0) {
+                throw new Error('Valid item price is required');
+            }
+
+            if (itemData.quantity === undefined || itemData.quantity === null || isNaN(itemData.quantity) || itemData.quantity < 0) {
+                throw new Error('Valid item quantity is required');
+            }
+
+            // Sanitize data to prevent invalid values
+            const sanitizedData = {
+                ...itemData,
+                name: itemData.name.trim(),
+                sku: itemData.sku.trim(),
+                category: itemData.category.trim(),
+                price: parseFloat(itemData.price),
+                cost: parseFloat(itemData.cost) || 0,
+                quantity: parseInt(itemData.quantity) || 0,
+                reorderLevel: parseInt(itemData.reorderLevel) || 5,
+                description: itemData.description ? itemData.description.trim() : '',
+                supplier: itemData.supplier ? itemData.supplier.trim() : '',
+                location: itemData.location ? itemData.location.trim() : '',
+                unit: itemData.unit || 'piece'
+            };
+
+            console.log('✅ Item data validated:', sanitizedData);
+
             // Use localStorage if Firebase not configured
             if (this.useLocalStorage) {
                 console.log('📦 Saving to localStorage (Firebase not configured)');
                 const newItem = this.addBranchData({
-                    ...itemData,
+                    ...sanitizedData,
                     id: this.generateLocalId(),
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString()
@@ -355,7 +400,7 @@ class DataManager {
             console.log('🔥 Saving to Firestore...');
             const inventoryRef = collection(db, 'inventory');
             const newItem = this.addBranchData({
-                ...itemData,
+                ...sanitizedData,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
                 syncedToCentral: false
@@ -434,8 +479,15 @@ class DataManager {
         }
     }
 
-    async updateInventoryItem(itemId, updates) {
+    async updateInventoryItem(itemId, updates, fullItemData = null) {
         try {
+            if (!itemId) {
+                throw new Error('Item ID is required for update');
+            }
+
+            console.log('🔄 Updating inventory item:', itemId);
+            console.log('📝 Updates:', updates);
+
             // Use localStorage if Firebase not configured
             if (this.useLocalStorage) {
                 const index = this.cache.inventory.findIndex(item => item.id === itemId);
@@ -447,71 +499,88 @@ class DataManager {
                     };
                     this.saveToLocalStorage();
                     console.log('✅ Item updated in localStorage');
+                } else {
+                    throw new Error('Item not found in localStorage');
                 }
                 return;
             }
             
-            // Use Firebase
+            // Use Firebase - All items should now have Firebase IDs
             const itemRef = doc(db, 'inventory', itemId);
             
-            try {
-                // Try to update the document
-                await updateDoc(itemRef, {
-                    ...updates,
-                    updatedAt: new Date().toISOString()
-                });
-            } catch (updateError) {
-                // If document doesn't exist, create it with setDoc
-                if (updateError.code === 'not-found') {
-                    console.log('⚠️ Document not found, creating new document...');
-                    await setDoc(itemRef, this.addBranchData({
-                        ...updates,
-                        id: itemId,
-                        createdAt: new Date().toISOString(),
-                        updatedAt: new Date().toISOString()
-                    }));
-                    console.log('✅ Document created successfully');
-                } else {
-                    throw updateError;
-                }
+            // Verify this is not a local ID
+            if (itemId.startsWith('item_') || itemId.startsWith('local_')) {
+                console.error('❌ Cannot update item with local ID:', itemId);
+                throw new Error(`This item exists only locally and cannot be synced. Please delete it and reload the inventory from Firebase.`);
             }
+            
+            // Verify the document exists
+            const docSnap = await getDoc(itemRef);
+            
+            if (!docSnap.exists()) {
+                console.error('❌ Document does not exist in Firestore:', itemId);
+                throw new Error(`Item not found in Firebase. The item may have been deleted. Please refresh the inventory.`);
+            }
+            
+            // Document exists, proceed with update
+            console.log('📤 Updating document in Firestore...');
+            await updateDoc(itemRef, {
+                ...updates,
+                updatedAt: new Date().toISOString()
+            });
+            console.log('✅ Item updated successfully in Firestore');
+            
+            await this.syncToCentral('inventory', itemId, updates);
             
             await this.syncToCentral('inventory', itemId, updates);
         } catch (error) {
-            console.error('Error updating inventory:', error);
+            console.error('❌ Error updating inventory:', error);
+            console.error('Error details:', error.message);
             throw error;
         }
     }
     
     async deleteInventoryItem(itemId) {
         try {
+            if (!itemId) {
+                throw new Error('Item ID is required for deletion');
+            }
+
+            console.log('🗑️ Deleting inventory item:', itemId);
+
             // Use localStorage if Firebase not configured
             if (this.useLocalStorage) {
+                const initialLength = this.cache.inventory.length;
                 this.cache.inventory = this.cache.inventory.filter(item => item.id !== itemId);
+                
+                if (this.cache.inventory.length === initialLength) {
+                    throw new Error('Item not found in localStorage');
+                }
+                
                 this.saveToLocalStorage();
                 console.log('✅ Item deleted from localStorage');
                 return;
             }
             
-            // Use Firebase - Force delete from Firestore
+            // Use Firebase - Delete from Firestore
             const itemRef = doc(db, 'inventory', itemId);
             
-            console.log('🗑️ Attempting to delete item from Firestore:', itemId);
+            // Verify document exists before deleting
+            const docSnap = await getDoc(itemRef);
             
-            try {
-                await deleteDoc(itemRef);
-                console.log('✅ Item successfully deleted from Firestore:', itemId);
-            } catch (deleteError) {
-                // If document doesn't exist, log but don't fail
-                if (deleteError.code === 'not-found' || deleteError.message.includes('No document')) {
-                    console.log('⚠️ Item not found in Firestore (may have been deleted already):', itemId);
-                } else {
-                    console.error('❌ Error deleting from Firestore:', deleteError);
-                    throw deleteError;
-                }
+            if (!docSnap.exists()) {
+                console.log('⚠️ Item not found in Firestore (may have been deleted already):', itemId);
+                // Don't throw error, item is already gone which is the desired state
+                return;
             }
+            
+            console.log('📤 Deleting document from Firestore...');
+            await deleteDoc(itemRef);
+            console.log('✅ Item successfully deleted from Firestore:', itemId);
+            
         } catch (error) {
-            console.error('Error deleting inventory:', error);
+            console.error('❌ Error deleting inventory:', error);
+            console.error('Error details:', error.message);
             throw error;
         }
     }

@@ -303,9 +303,16 @@ function initNavigation() {
                     inventoryManager.init();
                 }
                 
-                // Initialize add-item page
+                // Initialize add-item page (init checks if already initialized)
                 if (pageId === 'add-item') {
                     addItemManager.init();
+                    // Reset form when navigating to add-item page
+                    const form = document.getElementById('addItemForm');
+                    if (form && addItemManager.initialized) {
+                        form.reset();
+                        // Focus on first input
+                        document.getElementById('itemName')?.focus();
+                    }
                 }
                 
                 // Initialize POS page

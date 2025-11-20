@@ -6,11 +6,20 @@ class AddItemManager {
     constructor() {
         this.currentBarcode = null;
         this.barcodeStream = null;
+        this.initialized = false;
+        this.isSaving = false; // Prevent multiple simultaneous submissions
     }
 
     // Initialize add item functionality
     init() {
+        // Prevent multiple initializations
+        if (this.initialized) {
+            console.log('⚠️ AddItemManager already initialized, skipping...');
+            return;
+        }
         this.attachEventListeners();
+        this.initialized = true;
+        console.log('✅ AddItemManager initialized');
     }
 
     // Attach event listeners
@@ -407,37 +416,62 @@ class AddItemManager {
 
     // Save item
     async saveItem(addNew = false) {
+        // Prevent multiple simultaneous submissions
+        if (this.isSaving) {
+            console.log('⚠️ Save already in progress, ignoring duplicate request');
+            return;
+        }
+
         const formData = this.getFormData();
 
         if (!this.validateForm(formData)) {
             return;
         }
 
+        this.isSaving = true;
         const saveBtn = document.getElementById('saveItemBtn');
         const saveAndNewBtn = document.getElementById('saveAndNewBtn');
+        const saveIcon = document.getElementById('saveItemIcon');
+        const saveText = document.getElementById('saveItemText');
         
-        if (saveBtn) saveBtn.disabled = true;
-        if (saveAndNewBtn) saveAndNewBtn.disabled = true;
+        // Disable buttons and show spinning animation
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.style.opacity = '0.7';
+            saveBtn.style.cursor = 'not-allowed';
+        }
+        if (saveAndNewBtn) {
+            saveAndNewBtn.disabled = true;
+        }
+        
+        // Change to spinner icon and update text
+        if (saveIcon) {
+            saveIcon.innerHTML = '<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" stroke-dasharray="60" stroke-dashoffset="15" />';
+            saveIcon.classList.add('spinning');
+        }
+        if (saveText) {
+            saveText.textContent = 'Saving...';
+        }
 
         try {
-            // Add timestamp and generate ID
+            // Add timestamp - let Firebase generate the ID
             const itemData = {
                 ...formData,
-                id: this.generateId(),
                 dateAdded: new Date().toISOString(),
                 salesLastMonth: 0
             };
 
-            // Save to database
-            await dataManager.createInventoryItem(itemData);
+            // Save to database - Firebase will generate the ID
+            const savedItem = await dataManager.createInventoryItem(itemData);
 
             // Log activity
             if (window.activityTracker) {
                 window.activityTracker.logActivity('inventory', 'added', {
-                    itemName: itemData.name,
-                    sku: itemData.sku,
-                    quantity: itemData.quantity,
-                    price: itemData.price
+                    itemName: savedItem.name,
+                    sku: savedItem.sku,
+                    quantity: savedItem.quantity,
+                    price: savedItem.price,
+                    itemId: savedItem.id
                 });
             }
 
@@ -446,9 +480,9 @@ class AddItemManager {
                 window.notificationManager.notify(
                     'item_added',
                     'New Item Added',
-                    `${itemData.name} has been added to inventory`,
+                    `${savedItem.name} has been added to inventory`,
                     'info',
-                    itemData
+                    savedItem
                 );
             }
 
@@ -469,8 +503,26 @@ class AddItemManager {
             console.error('Error saving item:', error);
             window.showNotification('Failed to save item', 'error');
         } finally {
-            if (saveBtn) saveBtn.disabled = false;
-            if (saveAndNewBtn) saveAndNewBtn.disabled = false;
+            this.isSaving = false;
+            
+            // Restore button state
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.style.opacity = '1';
+                saveBtn.style.cursor = 'pointer';
+            }
+            if (saveAndNewBtn) {
+                saveAndNewBtn.disabled = false;
+            }
+            
+            // Restore original icon and text
+            if (saveIcon) {
+                saveIcon.classList.remove('spinning');
+                saveIcon.innerHTML = '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline>';
+            }
+            if (saveText) {
+                saveText.textContent = 'Save Item';
+            }
         }
     }
 
@@ -494,33 +546,50 @@ class AddItemManager {
 
     // Validate form
     validateForm(data) {
-        if (!data.name.trim()) {
+        // Check for required fields
+        if (!data.name || !data.name.trim()) {
             window.showNotification('Please enter product name', 'error');
             document.getElementById('itemName')?.focus();
             return false;
         }
 
-        if (!data.category) {
+        // Validate name is not just whitespace or placeholder text
+        if (data.name.trim().toLowerCase() === 'unnamed' || 
+            data.name.trim().toLowerCase() === 'unidentified' ||
+            data.name.trim().toLowerCase() === 'undefined') {
+            window.showNotification('Please enter a valid product name', 'error');
+            document.getElementById('itemName')?.focus();
+            return false;
+        }
+
+        if (!data.category || data.category.trim() === '') {
             window.showNotification('Please select a category', 'error');
             document.getElementById('itemCategory')?.focus();
             return false;
         }
 
-        if (!data.sku.trim()) {
+        if (!data.sku || !data.sku.trim()) {
             window.showNotification('Please enter or generate SKU', 'error');
             document.getElementById('itemSKU')?.focus();
             return false;
         }
 
-        if (data.price <= 0) {
-            window.showNotification('Please enter a valid price', 'error');
+        if (isNaN(data.price) || data.price <= 0) {
+            window.showNotification('Please enter a valid price greater than 0', 'error');
             document.getElementById('itemPrice')?.focus();
             return false;
         }
 
-        if (data.quantity < 0) {
+        if (isNaN(data.quantity) || data.quantity < 0) {
             window.showNotification('Quantity cannot be negative', 'error');
             document.getElementById('itemQuantity')?.focus();
+            return false;
+        }
+
+        // Validate reorder level
+        if (isNaN(data.reorderLevel) || data.reorderLevel < 0) {
+            window.showNotification('Reorder level must be a valid positive number', 'error');
+            document.getElementById('itemReorderLevel')?.focus();
             return false;
         }
 
