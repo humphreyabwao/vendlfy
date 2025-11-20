@@ -221,6 +221,14 @@
                         <span>Reports</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="#activities" class="nav-link" data-page="activities">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                        </svg>
+                        <span>Activity Log</span>
+                    </a>
+                </li>
                 <li class="nav-item has-submenu">
                     <a href="#admin" class="nav-link" data-page="admin">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -446,10 +454,11 @@
                 <!-- Recent Activity -->
                 <div class="section-header">
                     <h3>Recent Activity</h3>
-                    <button class="view-all-btn">View All</button>
+                    <button class="view-all-btn" id="viewAllActivitiesBtn" data-page="activities">View All</button>
                 </div>
-                <div class="recent-activity">
-                    <div class="empty-state">
+                <div class="recent-activity" id="recentActivityContainer">
+                    <!-- Activity items will be dynamically inserted here -->
+                    <div class="empty-state" id="activityEmptyState">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                             <circle cx="12" cy="12" r="10"></circle>
                             <line x1="12" y1="8" x2="12" y2="12"></line>
@@ -2991,6 +3000,147 @@
                 </div>
             </div>
 
+            <!-- Activity Log Page -->
+            <div class="page" id="activities-page">
+                <div class="page-header">
+                    <div class="page-header-left">
+                        <h2>Activity Log</h2>
+                        <p class="page-subtitle">Track all system activities in real-time</p>
+                    </div>
+                    <div class="page-header-right">
+                        <button class="btn btn-icon" id="refreshActivitiesBtn" title="Refresh activities">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="23 4 23 10 17 10"></polyline>
+                                <polyline points="1 20 1 14 7 14"></polyline>
+                                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                            </svg>
+                        </button>
+                        <button class="btn btn-secondary" id="exportActivitiesBtn">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Export
+                        </button>
+                    </div>
+                </div>
+
+                <div class="page-content">
+                    <!-- Filters Section -->
+                    <div class="activities-filters">
+                        <div class="filter-group">
+                            <label class="filter-label">Date Range:</label>
+                            <div class="filter-buttons">
+                                <button class="activity-filter-btn active" data-filter="date" data-value="today">Today</button>
+                                <button class="activity-filter-btn" data-filter="date" data-value="yesterday">Yesterday</button>
+                                <button class="activity-filter-btn" data-filter="date" data-value="week">Last 7 Days</button>
+                                <button class="activity-filter-btn" data-filter="date" data-value="month">Last 30 Days</button>
+                                <button class="activity-filter-btn" data-filter="date" data-value="all">All Time</button>
+                            </div>
+                        </div>
+
+                        <div class="filter-group">
+                            <label class="filter-label">Activity Type:</label>
+                            <div class="filter-buttons">
+                                <button class="activity-filter-btn active" data-filter="type" data-value="all">All Types</button>
+                                <button class="activity-filter-btn" data-filter="type" data-value="inventory">Inventory</button>
+                                <button class="activity-filter-btn" data-filter="type" data-value="sale">Sales</button>
+                                <button class="activity-filter-btn" data-filter="type" data-value="b2b">B2B</button>
+                                <button class="activity-filter-btn" data-filter="type" data-value="order">Orders</button>
+                                <button class="activity-filter-btn" data-filter="type" data-value="customer">Customers</button>
+                                <button class="activity-filter-btn" data-filter="type" data-value="expense">Expenses</button>
+                                <button class="activity-filter-btn" data-filter="type" data-value="user">Users</button>
+                            </div>
+                        </div>
+
+                        <div class="search-filter-wrapper">
+                            <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.35-4.35"></path>
+                            </svg>
+                            <input type="text" id="activitySearchInput" class="search-input" placeholder="Search activities...">
+                        </div>
+                    </div>
+
+                    <!-- Activity Stats -->
+                    <div class="stats-grid" style="margin-bottom: 2rem;">
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span class="stat-label">Total Activities</span>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                                </svg>
+                            </div>
+                            <div class="stat-value" id="totalActivitiesCount">0</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span class="stat-label">Today's Activities</span>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                            </div>
+                            <div class="stat-value" id="todayActivitiesCount">0</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span class="stat-label">Most Active Module</span>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                                    <polyline points="17 6 23 6 23 12"></polyline>
+                                </svg>
+                            </div>
+                            <div class="stat-value" id="mostActiveModule" style="font-size: 1.5rem;">-</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span class="stat-label">Active Users</span>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                </svg>
+                            </div>
+                            <div class="stat-value" id="activeUsersCount">1</div>
+                        </div>
+                    </div>
+
+                    <!-- Activities Timeline -->
+                    <div class="activities-timeline-container">
+                        <div class="timeline-header">
+                            <h3>Activity Timeline</h3>
+                            <span class="activity-count" id="filteredActivityCount">0 activities</span>
+                        </div>
+                        <div class="activities-timeline" id="activitiesTimeline">
+                            <!-- Activity items will be dynamically inserted here -->
+                        </div>
+
+                        <!-- Pagination -->
+                        <div class="activities-pagination" id="activitiesPagination">
+                            <button class="btn-pagination" id="prevActivitiesPage" disabled>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="15 18 9 12 15 6"></polyline>
+                                </svg>
+                                Previous
+                            </button>
+                            <span class="pagination-info" id="activitiesPageInfo">Page 1 of 1</span>
+                            <button class="btn-pagination" id="nextActivitiesPage">
+                                Next
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="9 18 15 12 9 6"></polyline>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Admin Panel -->
             <div class="page" id="admin-page">
                 <div class="page-header">
@@ -3964,10 +4114,36 @@
                 // User is signed in
                 console.log('✅ User authenticated:', user.email);
                 
+                // Extract user name
+                const userName = user.displayName || user.email.split('@')[0] || 'User';
+                
+                // Store user info in localStorage for quick access
+                const userInfo = {
+                    id: user.uid,
+                    email: user.email,
+                    name: userName,
+                    displayName: user.displayName || userName
+                };
+                localStorage.setItem('currentUser', JSON.stringify(userInfo));
+                
                 // Update UI with user info
                 const profileName = document.querySelector('.profile-btn span');
                 if (profileName) {
-                    profileName.textContent = user.email.split('@')[0] || 'User';
+                    profileName.textContent = userName;
+                }
+                
+                // Update greeting with user name
+                const greetingElement = document.getElementById('greetingText');
+                if (greetingElement) {
+                    const hour = new Date().getHours();
+                    let greeting = 'Good Evening';
+                    if (hour < 12) {
+                        greeting = 'Good Morning';
+                    } else if (hour < 18) {
+                        greeting = 'Good Afternoon';
+                    }
+                    const capitalizedName = userName.charAt(0).toUpperCase() + userName.slice(1);
+                    greetingElement.textContent = `${greeting}, ${capitalizedName}`;
                 }
                 
                 // Add logout functionality
@@ -3993,6 +4169,8 @@
     <script type="module" src="js/data-manager.js"></script>
     <script type="module" src="js/branch-ui.js"></script>
     <script type="module" src="js/user-ui.js"></script>
+    <script type="module" src="js/activity-tracker.js"></script>
+    <script type="module" src="js/activity-ui.js"></script>
     <script type="module" src="js/pos.js"></script>
     <script type="module" src="js/app.js"></script>
     

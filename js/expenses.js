@@ -226,6 +226,16 @@ class ExpenseManager {
 
         try {
             await dataManager.createExpense(expense);
+            
+            // Log activity
+            if (window.activityTracker) {
+                window.activityTracker.logActivity('expense', 'recorded', {
+                    category: expense.category,
+                    amount: expense.amount,
+                    description: expense.description
+                });
+            }
+            
             window.showNotification('Expense added successfully', 'success');
             form.reset();
             

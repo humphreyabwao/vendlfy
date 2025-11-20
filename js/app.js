@@ -15,6 +15,8 @@ import newOrderManager from './new-order.js';
 import accountsManager from './accounts.js';
 import reportsManager from './reports.js';
 import userManager from './user-manager.js';
+import activityTracker from './activity-tracker.js';
+import activityUI from './activity-ui.js';
 
 // Make managers globally available
 window.branchManager = branchManager;
@@ -33,6 +35,8 @@ window.newOrderManager = newOrderManager;
 window.accountsManager = accountsManager;
 window.reportsManager = reportsManager;
 window.userManager = userManager;
+window.activityTracker = activityTracker;
+window.activityUI = activityUI;
 
 // App Initialization
 document.addEventListener('DOMContentLoaded', async function() {
@@ -133,12 +137,14 @@ async function initializeDashboard() {
     updateDate();
     initQuickActions();
     await refreshDashboardStats();
+    await initDashboardActivities();
     
     // Set up periodic refresh for dashboard stats (every 30 seconds)
     setInterval(async () => {
         const dashboardPage = document.getElementById('dashboard-page');
         if (dashboardPage && dashboardPage.classList.contains('active')) {
             await refreshDashboardStats();
+            await activityUI.updateDashboardActivity();
         }
     }, 30000);
 }
@@ -161,7 +167,24 @@ function updateGreeting() {
         greeting = 'Good Afternoon';
     }
     
-    greetingElement.textContent = `${greeting}, User`;
+    // Get user name from localStorage or Firebase
+    let userName = 'User';
+    
+    // Try to get from localStorage first (faster)
+    const storedUser = localStorage.getItem('currentUser');
+    if (storedUser) {
+        try {
+            const user = JSON.parse(storedUser);
+            userName = user.displayName || user.name || user.email?.split('@')[0] || 'User';
+        } catch (e) {
+            userName = storedUser;
+        }
+    }
+    
+    // Capitalize first letter
+    userName = userName.charAt(0).toUpperCase() + userName.slice(1);
+    
+    greetingElement.textContent = `${greeting}, ${userName}`;
 }
 
 function updateDate() {
@@ -352,6 +375,11 @@ function initNavigation() {
                 if (pageId === 'reports') {
                     reportsManager.init();
                 }
+
+                // Initialize Activities page
+                if (pageId === 'activities') {
+                    activityUI.init();
+                }
             }
             
             // Close sidebar on mobile after selection
@@ -360,6 +388,27 @@ function initNavigation() {
             }
         });
     });
+}
+
+// Initialize Activities on Dashboard
+async function initDashboardActivities() {
+    try {
+        // Load recent activities on dashboard
+        await activityUI.updateDashboardActivity();
+        
+        // Set up View All button
+        const viewAllBtn = document.getElementById('viewAllActivitiesBtn');
+        if (viewAllBtn) {
+            viewAllBtn.addEventListener('click', function() {
+                const activitiesLink = document.querySelector('[data-page="activities"]');
+                if (activitiesLink) {
+                    activitiesLink.click();
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Error initializing dashboard activities:', error);
+    }
 }
 
 // Profile Dropdown Management

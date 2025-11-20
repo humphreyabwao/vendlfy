@@ -431,6 +431,16 @@ class AddItemManager {
             // Save to database
             await dataManager.createInventoryItem(itemData);
 
+            // Log activity
+            if (window.activityTracker) {
+                window.activityTracker.logActivity('inventory', 'added', {
+                    itemName: itemData.name,
+                    sku: itemData.sku,
+                    quantity: itemData.quantity,
+                    price: itemData.price
+                });
+            }
+
             window.showNotification('Item added successfully!', 'success');
 
             if (addNew) {

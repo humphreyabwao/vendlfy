@@ -232,6 +232,16 @@ class CustomerManager {
 
         try {
             await dataManager.createCustomer(customer);
+            
+            // Log activity
+            if (window.activityTracker) {
+                window.activityTracker.logActivity('customer', 'added', {
+                    customerName: customer.name,
+                    email: customer.email,
+                    phone: customer.phone
+                });
+            }
+            
             window.showNotification('Customer added successfully', 'success');
             form.reset();
             

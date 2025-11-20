@@ -113,6 +113,14 @@ class DataManager {
                 console.warn('⚠️ Could not sync to central branch:', syncError.message);
             }
             
+            // Log activity
+            if (window.activityTracker) {
+                window.activityTracker.logActivity('sale', 'completed', {
+                    amount: saleData.total || saleData.grandTotal || 0,
+                    items: saleData.items?.length || 0
+                });
+            }
+            
             return { id: docRef.id, ...newSale };
         } catch (error) {
             console.error('❌ Error creating sale:', error);
