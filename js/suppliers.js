@@ -241,6 +241,16 @@ const supplierManager = {
                 const suppliersRef = collection(db, 'suppliers');
                 const docRef = await addDoc(suppliersRef, supplierData);
                 console.log('✅ Supplier added successfully with ID:', docRef.id);
+                
+                // Log activity
+                if (window.activityTracker) {
+                    window.activityTracker.logActivity('supplier', 'added', {
+                        supplierName: supplierData.name,
+                        company: supplierData.company,
+                        category: supplierData.category
+                    });
+                }
+                
                 this.showNotification('Supplier added successfully!', 'success');
             }
 

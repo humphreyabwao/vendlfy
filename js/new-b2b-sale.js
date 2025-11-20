@@ -573,6 +573,17 @@ class NewB2BSaleManager {
         try {
             // Save to database
             await dataManager.createSale(saleData);
+            
+            // Log activity
+            if (window.activityTracker) {
+                window.activityTracker.logActivity('b2b', 'created', {
+                    customerName: this.selectedCustomer.name,
+                    amount: total,
+                    itemCount: this.cart.length,
+                    invoiceNumber: saleData.saleNumber,
+                    creditTerm: this.creditTerm
+                });
+            }
 
             // Update inventory only for non-manual items
             for (const item of this.cart) {

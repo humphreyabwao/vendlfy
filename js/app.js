@@ -395,11 +395,18 @@ function initNavigation() {
     });
 }
 
-// Initialize Activities on Dashboard
+// Initialize Dashboard Activities
 async function initDashboardActivities() {
     try {
         // Load recent activities on dashboard
         await activityUI.updateDashboardActivity();
+        
+        // Start real-time listener for dashboard activities
+        activityTracker.addListener((newActivity) => {
+            console.log('📢 New activity detected on dashboard:', newActivity);
+            // Update dashboard activity section in real-time
+            activityUI.updateDashboardActivity();
+        });
         
         // Set up View All button
         const viewAllBtn = document.getElementById('viewAllActivitiesBtn');
@@ -411,6 +418,8 @@ async function initDashboardActivities() {
                 }
             });
         }
+        
+        console.log('✅ Dashboard activities initialized with real-time updates');
     } catch (error) {
         console.error('Error initializing dashboard activities:', error);
     }

@@ -1199,6 +1199,15 @@ class InventoryManager {
                 Object.assign(item, updates);
             }
             
+            // Log activity
+            if (window.activityTracker) {
+                window.activityTracker.logActivity('inventory', 'updated', {
+                    itemName: updates.name,
+                    itemId: itemId,
+                    changes: Object.keys(updates).join(', ')
+                });
+            }
+            
             // Close modal
             document.querySelector('.pos-modal').remove();
             
@@ -1226,6 +1235,15 @@ class InventoryManager {
         try {
             // Delete from database
             await dataManager.deleteInventoryItem(itemId);
+            
+            // Log activity
+            if (window.activityTracker) {
+                window.activityTracker.logActivity('inventory', 'deleted', {
+                    itemName: item.name,
+                    itemId: itemId,
+                    sku: item.sku
+                });
+            }
             
             // Remove from local array
             this.items = this.items.filter(i => i.id !== itemId);

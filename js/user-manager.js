@@ -137,6 +137,15 @@ class UserManager {
                 
                 console.log('✅ User profile saved to Firestore with ID:', docRef.id);
                 
+                // Log activity
+                if (window.activityTracker) {
+                    window.activityTracker.logActivity('user', 'created', {
+                        userName: userData.fullName,
+                        email: userData.email,
+                        role: userData.role
+                    });
+                }
+                
                 await this.loadUsers();
                 return { id: docRef.id, ...userProfile };
             } else {

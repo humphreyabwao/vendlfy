@@ -335,21 +335,39 @@ class ActivityUI {
             emptyState.style.display = 'none';
         }
         
-        // Render recent activities
-        const html = todayActivities.slice(0, 5).map(activity => {
-            const formatted = activityTracker.formatActivity(activity);
-            return `
-                <div class="activity-item-compact">
-                    <div class="activity-icon-small activity-${formatted.color}">
-                        ${formatted.icon}
-                    </div>
-                    <div class="activity-content-compact">
-                        <div class="activity-description-compact">${formatted.description}</div>
-                        <div class="activity-time-compact">${formatted.timeAgo}</div>
-                    </div>
-                </div>
-            `;
-        }).join('');
+        // Render recent activities as table
+        const html = `
+            <table class="activity-table">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Activity</th>
+                        <th>User</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${todayActivities.slice(0, 10).map(activity => {
+                        const formatted = activityTracker.formatActivity(activity);
+                        return `
+                            <tr class="activity-row">
+                                <td>
+                                    <div class="activity-type-cell">
+                                        <div class="activity-icon-small activity-${formatted.color}">
+                                            ${formatted.icon}
+                                        </div>
+                                        <span class="activity-type-label">${activity.type}</span>
+                                    </div>
+                                </td>
+                                <td class="activity-description-cell">${formatted.description}</td>
+                                <td class="activity-user-cell">${activity.userName}</td>
+                                <td class="activity-time-cell">${formatted.timeAgo}</td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        `;
         
         container.innerHTML = html + (emptyState ? emptyState.outerHTML : '');
     }

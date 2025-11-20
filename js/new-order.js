@@ -310,6 +310,17 @@ const newOrderManager = {
             const docRef = await addDoc(ordersRef, orderData);
 
             console.log('✅ Order created successfully with ID:', docRef.id);
+            
+            // Log activity
+            if (window.activityTracker) {
+                window.activityTracker.logActivity('order', 'created', {
+                    supplierName: supplierName,
+                    totalAmount: totalAmount,
+                    itemCount: orderItems.length,
+                    expectedDate: expectedDate
+                });
+            }
+            
             this.showNotification('Order created successfully!', 'success');
 
             // Update orders manager if available
