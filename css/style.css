@@ -5442,17 +5442,18 @@ textarea.form-input {
 
 /* Summary Highlight */
 .summary-highlight {
-    background: #667eea;
-    color: white;
+    background: white;
+    color: #333;
+    border: 1px solid #e5e7eb;
 }
 
 .summary-highlight .section-title {
-    color: white;
-    border-bottom-color: rgba(255, 255, 255, 0.2);
+    color: #333;
+    border-bottom-color: #e5e7eb;
 }
 
 .summary-highlight .section-title svg {
-    color: white;
+    color: #667eea;
 }
 
 .summary-rows {
@@ -5467,24 +5468,28 @@ textarea.form-input {
     align-items: center;
     padding: 0.75rem 0;
     font-size: 1rem;
-    color: rgba(255, 255, 255, 0.9);
+    color: #6b7280;
 }
 
 .summary-row-clean strong {
     font-size: 1.125rem;
-    color: white;
+    color: #374151;
 }
 
 .summary-divider-clean {
     height: 1px;
-    background: rgba(255, 255, 255, 0.2);
+    background: #e5e7eb;
     margin: 0.5rem 0;
 }
 
 .summary-row-clean.grand-total-clean {
-    padding: 1.25rem 0;
-    border-top: 2px solid rgba(255, 255, 255, 0.3);
+    padding: 1.25rem 1.5rem;
+    border-top: 2px solid #667eea;
     margin-top: 0.5rem;
+    background: #667eea;
+    margin-left: -1.5rem;
+    margin-right: -1.5rem;
+    border-radius: 8px;
 }
 
 .summary-row-clean.grand-total-clean span {
@@ -5499,17 +5504,95 @@ textarea.form-input {
     color: white;
 }
 
+.grand-total-label {
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.grand-total-value {
+    color: white !important;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
 .summary-info-clean {
     margin-top: 1rem;
     padding-top: 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    border-top: 1px solid #e5e7eb;
 }
 
 .summary-info-clean p {
     font-size: 0.875rem;
-    color: rgba(255, 255, 255, 0.8);
+    color: #6b7280;
     margin: 0;
     text-align: center;
+}
+
+/* Complete Sale Button in Summary */
+.summary-highlight #completeB2BSaleBottom {
+    margin-top: 1.5rem;
+    width: 100%;
+    padding: 1rem 1.5rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+    background: #667eea;
+    border: none;
+    border-radius: 10px;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.summary-highlight #completeB2BSaleBottom:hover {
+    background: #5568d3;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+.summary-highlight #completeB2BSaleBottom:active {
+    transform: translateY(0);
+}
+
+.summary-highlight #completeB2BSaleBottom svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Loading spinner animation */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.spinner {
+    animation: spin 1s linear infinite;
+}
+
+.btn.loading,
+#completeB2BSale.loading,
+#completeB2BSaleBottom.loading {
+    opacity: 0.8;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.btn.loading:hover,
+#completeB2BSale.loading:hover,
+#completeB2BSaleBottom.loading:hover {
+    transform: none !important;
+}
+
+#completeB2BSale.loading,
+#completeB2BSaleBottom.loading {
+    background: #667eea !important;
 }
 
 /* Responsive Adjustments */
@@ -6559,7 +6642,33 @@ textarea.form-input {
 }
 
 [data-theme="dark"] .summary-highlight {
-    background: #3b82f6;
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .summary-highlight .section-title {
+    color: var(--text-primary);
+    border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] .summary-row-clean {
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .summary-row-clean strong {
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .summary-divider-clean {
+    background: var(--border-color);
+}
+
+[data-theme="dark"] .summary-info-clean {
+    border-top-color: var(--border-color);
+}
+
+[data-theme="dark"] .summary-info-clean p {
+    color: var(--text-secondary);
 }
 
 [data-theme="dark"] .success-details {
@@ -6792,9 +6901,7 @@ textarea.form-input {
     color: #3b82f6;
 }
 
-.summary-highlight {
-    background: #3b82f6;
-}
+/* Removed duplicate summary-highlight style - defined above */
 
 .result-item-price {
     color: #22c55e;

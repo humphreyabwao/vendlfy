@@ -74,10 +74,16 @@ class NewB2BSaleManager {
             customerSelect.addEventListener('change', (e) => this.selectCustomer(e.target.value));
         }
 
-        // Complete sale button
+        // Complete sale button (top)
         const completeBtn = document.getElementById('completeB2BSale');
         if (completeBtn) {
             completeBtn.addEventListener('click', () => this.completeSale());
+        }
+
+        // Complete sale button (bottom in summary)
+        const completeBtnBottom = document.getElementById('completeB2BSaleBottom');
+        if (completeBtnBottom) {
+            completeBtnBottom.addEventListener('click', () => this.completeSale());
         }
 
         // Clear cart button
@@ -422,7 +428,17 @@ class NewB2BSaleManager {
                 <td><span class="cart-item-number">${index + 1}</span></td>
                 <td><span class="cart-product-name">${item.name}</span></td>
                 <td>${item.sku || 'N/A'}</td>
-                <td><strong>${this.formatCurrency(item.price)}</strong></td>
+                <td>
+                    <input 
+                        type="number" 
+                        value="${item.price}" 
+                        min="0" 
+                        step="0.01"
+                        class="cart-qty-input"
+                        onchange="window.newB2BSaleManager.updateCartPrice(${index}, this.value)"
+                        title="Edit unit price"
+                    >
+                </td>
                 <td>
                     <input 
                         type="number" 
@@ -443,6 +459,21 @@ class NewB2BSaleManager {
                 </td>
             </tr>
         `).join('');
+    }
+
+    // Update cart price
+    updateCartPrice(index, newPrice) {
+        const price = parseFloat(newPrice) || 0;
+        if (price < 0) {
+            this.showNotification('Price must be greater than or equal to 0', 'error');
+            return;
+        }
+
+        this.cart[index].price = price;
+        this.cart[index].total = this.cart[index].quantity * price;
+        
+        this.renderCart();
+        this.updateTotals();
     }
 
     // Update cart quantity
@@ -541,6 +572,32 @@ class NewB2BSaleManager {
             return;
         }
 
+        // Show loading state on both buttons
+        const completeBtnTop = document.getElementById('completeB2BSale');
+        const completeBtnBottom = document.getElementById('completeB2BSaleBottom');
+        
+        if (completeBtnTop) {
+            completeBtnTop.disabled = true;
+            completeBtnTop.classList.add('loading');
+            completeBtnTop.innerHTML = `
+                <svg class="spinner" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                </svg>
+                Processing...
+            `;
+        }
+        
+        if (completeBtnBottom) {
+            completeBtnBottom.disabled = true;
+            completeBtnBottom.classList.add('loading');
+            completeBtnBottom.innerHTML = `
+                <svg class="spinner" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                </svg>
+                Processing...
+            `;
+        }
+
         const subtotal = this.cart.reduce((sum, item) => sum + item.total, 0);
         let discountAmount = 0;
         if (this.discountType === 'percent') {
@@ -623,6 +680,32 @@ class NewB2BSaleManager {
         } catch (error) {
             console.error('Error completing B2B sale:', error);
             this.showNotification('Error completing sale. Please try again.', 'error');
+        } finally {
+            // Reset buttons to normal state
+            const completeBtnTop = document.getElementById('completeB2BSale');
+            const completeBtnBottom = document.getElementById('completeB2BSaleBottom');
+            
+            if (completeBtnTop) {
+                completeBtnTop.disabled = false;
+                completeBtnTop.classList.remove('loading');
+                completeBtnTop.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    Complete Sale
+                `;
+            }
+            
+            if (completeBtnBottom) {
+                completeBtnBottom.disabled = false;
+                completeBtnBottom.classList.remove('loading');
+                completeBtnBottom.innerHTML = `
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    Complete Sale
+                `;
+            }
         }
     }
 
