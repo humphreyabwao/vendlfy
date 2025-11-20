@@ -330,6 +330,13 @@ function initNavigation() {
                     expenseManager.init();
                 }
                 
+                // Initialize Reports page
+                if (pageId === 'reports') {
+                    reportsManager.init();
+                    // Dispatch custom event to trigger data refresh
+                    window.dispatchEvent(new CustomEvent('reportsPageShown'));
+                }
+                
                 // Initialize Add Expense page
                 if (pageId === 'add-expense') {
                     // Set default date to today

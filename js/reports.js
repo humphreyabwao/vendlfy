@@ -1,5 +1,5 @@
 // Reports Module - Comprehensive Business Reports with Real-Time Charts
-import { db, collection, getDocs, query, where } from './firebase-config.js';
+import { db, collection, getDocs, query, where, onSnapshot } from './firebase-config.js';
 
 const reportsManager = {
     sales: [],
@@ -7,35 +7,59 @@ const reportsManager = {
     expenses: [],
     orders: [],
     inventory: [],
+    customers: [],
+    suppliers: [],
     initialized: false,
     refreshInterval: null,
     charts: {},
     currentPeriod: 'month', // today, week, month, year, custom
+    realtimeListeners: [], // Store unsubscribe functions for cleanup
+    lastUpdateTime: null,
+    updateCount: 0,
 
     async init() {
-        if (this.initialized) {
-            console.log('Reports Manager already initialized, refreshing data...');
-            this.loadAllData();
-            return;
-        }
-
         console.log('📊 Initializing Reports Manager...');
-        this.initialized = true;
+
+        // Show loading state on stat cards
+        this.showLoadingState();
 
         await this.waitForFirebase();
-        await this.loadAllData();
-        this.setupEventListeners();
+        
+        // Load data from managers FIRST (immediate data)
+        await this.loadDataFromManagers();
+        
+        // Render with manager data immediately
         this.renderAllReports();
-
-        // Auto-refresh every 60 seconds
-        if (this.refreshInterval) {
-            clearInterval(this.refreshInterval);
+        console.log('📊 Initial render complete with manager data');
+        
+        // Setup real-time Firestore listeners for automatic updates
+        if (!this.initialized) {
+            await this.setupRealtimeListeners();
+            this.setupEventListeners();
+            this.initialized = true;
         }
-        this.refreshInterval = setInterval(() => {
-            this.loadAllData();
-        }, 60000);
 
-        console.log('✅ Reports Manager ready');
+        console.log('✅ Reports Manager ready with real-time data sync');
+    },
+
+
+
+
+
+    // Force refresh all data
+    async forceRefresh() {
+        console.log('🔄 Refreshing reports data...');
+        await this.loadDataFromManagers();
+        this.renderAllReports();
+        console.log('✅ Refresh complete');
+    },
+
+    showLoadingState() {
+        // Show loading indicators on stat cards
+        this.updateElement('reportTotalRevenue', 'Loading...');
+        this.updateElement('reportTotalExpenses', 'Loading...');
+        this.updateElement('reportNetProfit', 'Loading...');
+        this.updateElement('reportTotalTransactions', 'Loading...');
     },
 
     async waitForFirebase() {
@@ -58,15 +82,35 @@ const reportsManager = {
                 e.target.classList.add('active');
                 this.currentPeriod = e.target.dataset.period;
                 this.renderAllReports();
+                this.showNotification(`Showing ${e.target.dataset.period} data`, 'info');
             });
         });
 
-        // Refresh button
+        // Refresh button with loading state
         const refreshBtn = document.getElementById('refreshReportsBtn');
         if (refreshBtn) {
             refreshBtn.addEventListener('click', async () => {
+                refreshBtn.disabled = true;
+                refreshBtn.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="rotating">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <polyline points="1 20 1 14 7 14"></polyline>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                    </svg>
+                    Refreshing...
+                `;
+                
                 await this.loadAllData();
-                this.showNotification('Reports refreshed', 'success');
+                
+                refreshBtn.disabled = false;
+                refreshBtn.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <polyline points="1 20 1 14 7 14"></polyline>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                    </svg>
+                    Refresh
+                `;
             });
         }
 
@@ -86,10 +130,287 @@ const reportsManager = {
         if (generateCustomReportBtn) {
             generateCustomReportBtn.addEventListener('click', () => this.generateCustomReport());
         }
+
+        // Listen for branch changes to re-setup listeners
+        window.addEventListener('branchChanged', () => {
+            console.log('📊 Branch changed, reinitializing reports...');
+            this.setupRealtimeListeners();
+        });
+
+        // Auto-compare feature
+        const autoCompareBtn = document.getElementById('autoCompareBtn');
+        if (autoCompareBtn) {
+            autoCompareBtn.addEventListener('click', () => this.showComparativeAnalysis());
+        }
+
+        // Listen for custom event when reports page is shown
+        window.addEventListener('reportsPageShown', async () => {
+            console.log('📊 Reports page opened - loading fresh data');
+            await this.loadDataFromManagers();
+            this.renderAllReports();
+        });
+    },
+
+    // Cleanup on destroy
+    destroy() {
+        console.log('🧹 Destroying Reports Manager...');
+        this.cleanupListeners();
+        this.initialized = false;
+    },
+
+    async setupRealtimeListeners() {
+        console.log('🔄 Setting up real-time Firestore listeners...');
+
+        try {
+            // Get current branch - handle both object and string ID
+            const currentBranch = window.branchManager?.currentBranch;
+            const branchId = currentBranch?.id || currentBranch;
+            
+            if (!branchId) {
+                console.warn('⚠️ Branch ID not available yet, retrying in 2 seconds...');
+                setTimeout(() => this.setupRealtimeListeners(), 2000);
+                return;
+            }
+
+            if (!window.db) {
+                console.warn('⚠️ Firestore DB not available, using data manager fallback...');
+                await this.loadDataFromManagers();
+                return;
+            }
+
+            console.log('📊 Setting up listeners for branch:', branchId);
+
+            // Unsubscribe from existing listeners
+            this.cleanupListeners();
+
+            // Sales Listener (POS Sales)
+            const salesRef = collection(db, 'sales');
+            const salesQuery = query(salesRef, where('branchId', '==', branchId));
+            const unsubSales = onSnapshot(salesQuery, (snapshot) => {
+                this.sales = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.type !== 'b2b' && data.saleType !== 'wholesale') {
+                        this.sales.push({ id: doc.id, ...data });
+                    }
+                });
+                console.log(`🔄 Real-time update: ${this.sales.length} POS sales`);
+                this.onDataUpdate('sales');
+            });
+            this.realtimeListeners.push(unsubSales);
+
+            // B2B Sales Listener
+            const b2bQuery = query(salesRef, where('branchId', '==', branchId));
+            const unsubB2B = onSnapshot(b2bQuery, (snapshot) => {
+                this.b2bSales = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.type === 'b2b' || data.saleType === 'wholesale') {
+                        this.b2bSales.push({ id: doc.id, ...data });
+                    }
+                });
+                console.log(`🔄 Real-time update: ${this.b2bSales.length} B2B sales`);
+                this.onDataUpdate('b2bSales');
+            });
+            this.realtimeListeners.push(unsubB2B);
+
+            // Expenses Listener
+            const expensesRef = collection(db, 'expenses');
+            const expensesQuery = query(expensesRef, where('branchId', '==', branchId));
+            const unsubExpenses = onSnapshot(expensesQuery, (snapshot) => {
+                this.expenses = [];
+                snapshot.forEach(doc => {
+                    this.expenses.push({ id: doc.id, ...doc.data() });
+                });
+                console.log(`🔄 Real-time update: ${this.expenses.length} expenses`);
+                this.onDataUpdate('expenses');
+            });
+            this.realtimeListeners.push(unsubExpenses);
+
+            // Orders Listener
+            const ordersRef = collection(db, 'orders');
+            const ordersQuery = query(ordersRef, where('branchId', '==', branchId));
+            const unsubOrders = onSnapshot(ordersQuery, (snapshot) => {
+                this.orders = [];
+                snapshot.forEach(doc => {
+                    this.orders.push({ id: doc.id, ...doc.data() });
+                });
+                console.log(`🔄 Real-time update: ${this.orders.length} orders`);
+                this.onDataUpdate('orders');
+            });
+            this.realtimeListeners.push(unsubOrders);
+
+            // Inventory Listener
+            const inventoryRef = collection(db, 'inventory');
+            const inventoryQuery = query(inventoryRef, where('branchId', '==', branchId));
+            const unsubInventory = onSnapshot(inventoryQuery, (snapshot) => {
+                this.inventory = [];
+                snapshot.forEach(doc => {
+                    this.inventory.push({ id: doc.id, ...doc.data() });
+                });
+                console.log(`🔄 Real-time update: ${this.inventory.length} inventory items`);
+                this.onDataUpdate('inventory');
+            });
+            this.realtimeListeners.push(unsubInventory);
+
+            // Customers Listener
+            const customersRef = collection(db, 'customers');
+            const customersQuery = query(customersRef, where('branchId', '==', branchId));
+            const unsubCustomers = onSnapshot(customersQuery, (snapshot) => {
+                this.customers = [];
+                snapshot.forEach(doc => {
+                    this.customers.push({ id: doc.id, ...doc.data() });
+                });
+                console.log(`🔄 Real-time update: ${this.customers.length} customers`);
+                this.onDataUpdate('customers');
+            });
+            this.realtimeListeners.push(unsubCustomers);
+
+            // Suppliers Listener
+            const suppliersRef = collection(db, 'suppliers');
+            const suppliersQuery = query(suppliersRef, where('branchId', '==', branchId));
+            const unsubSuppliers = onSnapshot(suppliersQuery, (snapshot) => {
+                this.suppliers = [];
+                snapshot.forEach(doc => {
+                    this.suppliers.push({ id: doc.id, ...doc.data() });
+                });
+                console.log(`🔄 Real-time update: ${this.suppliers.length} suppliers`);
+                this.onDataUpdate('suppliers');
+            });
+            this.realtimeListeners.push(unsubSuppliers);
+
+            console.log('✅ Real-time listeners active for all modules');
+        } catch (error) {
+            console.error('❌ Error setting up real-time listeners:', error);
+            this.showNotification('Error setting up real-time sync', 'error');
+        }
+    },
+
+    cleanupListeners() {
+        // Unsubscribe from all active listeners
+        this.realtimeListeners.forEach(unsubscribe => {
+            if (typeof unsubscribe === 'function') {
+                unsubscribe();
+            }
+        });
+        this.realtimeListeners = [];
+        console.log('🧹 Cleaned up real-time listeners');
+    },
+
+    onDataUpdate(source) {
+        // Track updates
+        this.lastUpdateTime = new Date();
+        this.updateCount++;
+
+        // Only re-render if reports page is currently active
+        const reportsPage = document.getElementById('reports-page');
+        const isReportsActive = reportsPage?.classList.contains('active');
+
+        if (!isReportsActive) {
+            console.log(`📊 Data updated (${source}) but reports page not active - skipping render`);
+            return;
+        }
+
+        // Update the last update indicator in UI
+        this.updateLastSyncIndicator();
+
+        // Debounce rapid updates to prevent excessive re-renders
+        clearTimeout(this.renderDebounceTimer);
+        this.renderDebounceTimer = setTimeout(() => {
+            console.log(`📊 Rendering reports after ${source} update`);
+            this.renderAllReports();
+        }, 1000); // Wait 1 second after last update before re-rendering
+    },
+
+    logDataStatistics() {
+        console.log('📊 Real-time Data Statistics:', {
+            sales: this.sales.length,
+            b2bSales: this.b2bSales.length,
+            expenses: this.expenses.length,
+            orders: this.orders.length,
+            inventory: this.inventory.length,
+            customers: this.customers.length,
+            suppliers: this.suppliers.length,
+            totalRevenue: this.sales.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0) +
+                         this.b2bSales.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0),
+            totalExpenses: this.expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0),
+            lastUpdate: this.lastUpdateTime?.toLocaleTimeString(),
+            updateCount: this.updateCount
+        });
+    },
+
+    updateLastSyncIndicator() {
+        // Update a visual indicator showing when data was last synced
+        const indicator = document.getElementById('lastSyncIndicator');
+        if (indicator) {
+            const timeStr = this.lastUpdateTime.toLocaleTimeString();
+            indicator.innerHTML = `
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align: middle; margin-right: 4px;">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                Last updated: ${timeStr}
+            `;
+            indicator.style.color = '#22c55e';
+            indicator.style.fontWeight = '600';
+            
+            // Add a pulse animation
+            indicator.classList.remove('pulse');
+            setTimeout(() => indicator.classList.add('pulse'), 10);
+            
+            // Show brief notification
+            this.showBriefUpdateNotification();
+        }
+    },
+
+    showBriefUpdateNotification() {
+        // Create or update a subtle notification
+        let notification = document.getElementById('realtimeUpdateBadge');
+        if (!notification) {
+            notification = document.createElement('div');
+            notification.id = 'realtimeUpdateBadge';
+            notification.style.cssText = `
+                position: fixed;
+                top: 80px;
+                right: 20px;
+                background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+                color: white;
+                padding: 8px 16px;
+                border-radius: 8px;
+                font-size: 13px;
+                font-weight: 600;
+                box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+                z-index: 9999;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                animation: slideIn 0.3s ease-out;
+                pointer-events: none;
+            `;
+            document.body.appendChild(notification);
+        }
+
+        notification.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            Data updated
+        `;
+        notification.style.display = 'flex';
+
+        // Auto-hide after 2 seconds
+        setTimeout(() => {
+            if (notification) {
+                notification.style.animation = 'slideOut 0.3s ease-out';
+                setTimeout(() => {
+                    notification.style.display = 'none';
+                }, 300);
+            }
+        }, 2000);
     },
 
     async loadAllData() {
-        console.log('📊 Loading all reports data...');
+        // Fallback method for manual refresh
+        console.log('📊 Manual data refresh...');
 
         try {
             await Promise.all([
@@ -97,33 +418,82 @@ const reportsManager = {
                 this.loadB2BSales(),
                 this.loadExpenses(),
                 this.loadOrders(),
-                this.loadInventory()
+                this.loadInventory(),
+                this.loadCustomers(),
+                this.loadSuppliers()
             ]);
 
-            // Log data statistics for verification
-            console.log('✅ All reports data loaded:', {
-                sales: this.sales.length,
-                b2bSales: this.b2bSales.length,
-                expenses: this.expenses.length,
-                orders: this.orders.length,
-                inventory: this.inventory.length,
-                totalRevenue: this.sales.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0) +
-                             this.b2bSales.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0),
-                totalExpenses: this.expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0)
-            });
-
+            this.logDataStatistics();
             this.renderAllReports();
+            this.showNotification('Reports refreshed successfully', 'success');
         } catch (error) {
             console.error('❌ Error loading reports data:', error);
             this.showNotification('Error loading data', 'error');
         }
     },
 
+    async loadDataFromManagers() {
+        // Load data from global managers
+        try {
+            // Get data from sales manager
+            if (window.salesManager?.sales) {
+                this.sales = window.salesManager.sales.filter(s => s.type !== 'b2b' && s.saleType !== 'wholesale');
+            }
+
+            // Get B2B sales
+            if (window.b2bSalesManager?.sales) {
+                this.b2bSales = window.b2bSalesManager.sales;
+            }
+
+            // Get expenses
+            if (window.expenseManager?.expenses) {
+                this.expenses = window.expenseManager.expenses;
+            }
+
+            // Get orders
+            if (window.ordersManager?.orders) {
+                this.orders = window.ordersManager.orders;
+            }
+
+            // Get inventory
+            if (window.inventoryManager?.inventory) {
+                this.inventory = window.inventoryManager.inventory;
+            }
+
+            // Get customers
+            if (window.customerManager?.customers) {
+                this.customers = window.customerManager.customers;
+            }
+
+            // Get suppliers
+            if (window.supplierManager?.suppliers) {
+                this.suppliers = window.supplierManager.suppliers;
+            }
+
+            console.log('📦 Data loaded:', {
+                sales: this.sales.length,
+                expenses: this.expenses.length,
+                inventory: this.inventory.length
+            });
+        } catch (error) {
+            console.error('Error loading data from managers:', error);
+        }
+    },
+
     async loadSales() {
         try {
-            if (!window.db) return;
+            if (!window.db) {
+                // Try to get from sales manager
+                if (window.salesManager?.sales) {
+                    this.sales = window.salesManager.sales.filter(s => s.type !== 'b2b' && s.saleType !== 'wholesale');
+                    return;
+                }
+                return;
+            }
 
-            const branchId = window.branchManager?.currentBranch;
+            const currentBranch = window.branchManager?.currentBranch;
+            const branchId = currentBranch?.id || currentBranch;
+            
             if (!branchId) {
                 this.sales = [];
                 return;
@@ -151,9 +521,18 @@ const reportsManager = {
 
     async loadB2BSales() {
         try {
-            if (!window.db) return;
+            if (!window.db) {
+                // Try to get from B2B manager
+                if (window.b2bSalesManager?.sales) {
+                    this.b2bSales = window.b2bSalesManager.sales;
+                    return;
+                }
+                return;
+            }
 
-            const branchId = window.branchManager?.currentBranch;
+            const currentBranch = window.branchManager?.currentBranch;
+            const branchId = currentBranch?.id || currentBranch;
+            
             if (!branchId) {
                 this.b2bSales = [];
                 return;
@@ -181,9 +560,18 @@ const reportsManager = {
 
     async loadExpenses() {
         try {
-            if (!window.db) return;
+            if (!window.db) {
+                // Try to get from expense manager
+                if (window.expenseManager?.expenses) {
+                    this.expenses = window.expenseManager.expenses;
+                    return;
+                }
+                return;
+            }
 
-            const branchId = window.branchManager?.currentBranch;
+            const currentBranch = window.branchManager?.currentBranch;
+            const branchId = currentBranch?.id || currentBranch;
+            
             if (!branchId) {
                 this.expenses = [];
                 return;
@@ -207,9 +595,18 @@ const reportsManager = {
 
     async loadOrders() {
         try {
-            if (!window.db) return;
+            if (!window.db) {
+                // Try to get from orders manager
+                if (window.ordersManager?.orders) {
+                    this.orders = window.ordersManager.orders;
+                    return;
+                }
+                return;
+            }
 
-            const branchId = window.branchManager?.currentBranch;
+            const currentBranch = window.branchManager?.currentBranch;
+            const branchId = currentBranch?.id || currentBranch;
+            
             if (!branchId) {
                 this.orders = [];
                 return;
@@ -233,9 +630,18 @@ const reportsManager = {
 
     async loadInventory() {
         try {
-            if (!window.db) return;
+            if (!window.db) {
+                // Try to get from inventory manager
+                if (window.inventoryManager?.inventory) {
+                    this.inventory = window.inventoryManager.inventory;
+                    return;
+                }
+                return;
+            }
 
-            const branchId = window.branchManager?.currentBranch;
+            const currentBranch = window.branchManager?.currentBranch;
+            const branchId = currentBranch?.id || currentBranch;
+            
             if (!branchId) {
                 this.inventory = [];
                 return;
@@ -257,7 +663,78 @@ const reportsManager = {
         }
     },
 
+    async loadCustomers() {
+        try {
+            if (!window.db) {
+                // Try to get from customer manager
+                if (window.customerManager?.customers) {
+                    this.customers = window.customerManager.customers;
+                    return;
+                }
+                return;
+            }
+
+            const currentBranch = window.branchManager?.currentBranch;
+            const branchId = currentBranch?.id || currentBranch;
+            
+            if (!branchId) {
+                this.customers = [];
+                return;
+            }
+
+            const customersRef = collection(db, 'customers');
+            const q = query(customersRef, where('branchId', '==', branchId));
+            const snapshot = await getDocs(q);
+
+            this.customers = [];
+            snapshot.forEach(doc => {
+                this.customers.push({ id: doc.id, ...doc.data() });
+            });
+
+            console.log(`✅ Loaded ${this.customers.length} customers`);
+        } catch (error) {
+            console.error('Error loading customers:', error);
+            this.customers = [];
+        }
+    },
+
+    async loadSuppliers() {
+        try {
+            if (!window.db) {
+                // Try to get from supplier manager
+                if (window.supplierManager?.suppliers) {
+                    this.suppliers = window.supplierManager.suppliers;
+                    return;
+                }
+                return;
+            }
+
+            const currentBranch = window.branchManager?.currentBranch;
+            const branchId = currentBranch?.id || currentBranch;
+            
+            if (!branchId) {
+                this.suppliers = [];
+                return;
+            }
+
+            const suppliersRef = collection(db, 'suppliers');
+            const q = query(suppliersRef, where('branchId', '==', branchId));
+            const snapshot = await getDocs(q);
+
+            this.suppliers = [];
+            snapshot.forEach(doc => {
+                this.suppliers.push({ id: doc.id, ...doc.data() });
+            });
+
+            console.log(`✅ Loaded ${this.suppliers.length} suppliers`);
+        } catch (error) {
+            console.error('Error loading suppliers:', error);
+            this.suppliers = [];
+        }
+    },
+
     renderAllReports() {
+        this.renderInsights();
         this.renderOverviewCards();
         this.renderSalesChart();
         this.renderRevenueBreakdownChart();
@@ -276,26 +753,38 @@ const reportsManager = {
         const netProfit = totalRevenue - totalExpenses;
         const totalTransactions = data.sales.length + data.b2bSales.length;
 
-        console.log('📊 Overview Cards Data:', {
+        console.log('📊 Overview Cards Data (Real-time):', {
             totalRevenue,
             totalExpenses,
             netProfit,
             totalTransactions,
             salesCount: data.sales.length,
             b2bSalesCount: data.b2bSales.length,
-            expensesCount: data.expenses.length
+            expensesCount: data.expenses.length,
+            timestamp: new Date().toLocaleTimeString()
         });
 
-        this.updateElement('reportTotalRevenue', this.formatCurrency(totalRevenue));
-        this.updateElement('reportTotalExpenses', this.formatCurrency(totalExpenses));
-        this.updateElement('reportNetProfit', this.formatCurrency(netProfit));
-        this.updateElement('reportTotalTransactions', totalTransactions);
+        // Update elements with animation
+        this.updateElementWithAnimation('reportTotalRevenue', this.formatCurrency(totalRevenue));
+        this.updateElementWithAnimation('reportTotalExpenses', this.formatCurrency(totalExpenses));
+        this.updateElementWithAnimation('reportNetProfit', this.formatCurrency(netProfit));
+        this.updateElementWithAnimation('reportTotalTransactions', totalTransactions);
 
-        // Update profit class
+        // Update profit class with animation
         const profitEl = document.getElementById('reportNetProfit');
         if (profitEl) {
-            profitEl.className = netProfit >= 0 ? 'stat-value profit' : 'stat-value loss';
+            const newClass = netProfit >= 0 ? 'stat-value profit' : 'stat-value loss';
+            if (profitEl.className !== newClass) {
+                profitEl.className = newClass;
+                this.highlightElement(profitEl);
+            }
         }
+
+        // Highlight cards on update
+        this.highlightCard('reportTotalRevenue');
+        this.highlightCard('reportTotalExpenses');
+        this.highlightCard('reportNetProfit');
+        this.highlightCard('reportTotalTransactions');
     },
 
     renderSalesChart() {
@@ -447,7 +936,8 @@ const reportsManager = {
         const ctx = canvas.getContext('2d');
         const width = canvas.width;
         const height = canvas.height;
-        const padding = 40;
+        const padding = 60;
+        const topPadding = 30;
 
         ctx.clearRect(0, 0, width, height);
 
@@ -459,56 +949,164 @@ const reportsManager = {
             return;
         }
 
-        const maxValue = Math.max(...data.revenue, ...data.expenses);
-        const step = width / (data.labels.length - 1 || 1);
+        // Calculate max value with buffer for better visualization
+        const maxRevenue = Math.max(...data.revenue, 0);
+        const maxExpenses = Math.max(...data.expenses, 0);
+        const maxValue = Math.max(maxRevenue, maxExpenses);
+        
+        // Add 20% buffer to max value for better scaling
+        const chartMax = maxValue > 0 ? maxValue * 1.2 : 100;
+        
+        // Calculate step for x-axis
+        const chartWidth = width - padding * 2;
+        const chartHeight = height - padding - topPadding;
+        const step = data.labels.length > 1 ? chartWidth / (data.labels.length - 1) : chartWidth / 2;
 
-        // Draw grid
-        ctx.strokeStyle = '#e5e7eb';
+        // Helper function to get y coordinate
+        const getY = (value) => {
+            const ratio = value / chartMax;
+            return height - padding - (ratio * chartHeight);
+        };
+
+        // Draw background grid
+        ctx.strokeStyle = '#f3f4f6';
         ctx.lineWidth = 1;
         for (let i = 0; i <= 5; i++) {
-            const y = padding + (height - padding * 2) * (i / 5);
+            const y = topPadding + (chartHeight * (i / 5));
             ctx.beginPath();
             ctx.moveTo(padding, y);
             ctx.lineTo(width - padding, y);
             ctx.stroke();
+            
+            // Draw y-axis labels
+            const value = chartMax * (1 - i / 5);
+            ctx.fillStyle = '#9ca3af';
+            ctx.font = '11px Arial';
+            ctx.textAlign = 'right';
+            ctx.fillText(this.formatCurrency(value), padding - 10, y + 4);
         }
 
-        // Draw revenue line
-        ctx.strokeStyle = color1;
-        ctx.lineWidth = 3;
+        // Draw axes
+        ctx.strokeStyle = '#d1d5db';
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        data.revenue.forEach((value, index) => {
-            const x = padding + step * index;
-            const y = height - padding - ((value / maxValue) * (height - padding * 2));
-            if (index === 0) {
-                ctx.moveTo(x, y);
-            } else {
-                ctx.lineTo(x, y);
-            }
-        });
+        ctx.moveTo(padding, topPadding);
+        ctx.lineTo(padding, height - padding);
+        ctx.lineTo(width - padding, height - padding);
         ctx.stroke();
+
+        // Draw revenue line with gradient
+        if (data.revenue.some(v => v > 0)) {
+            // Create gradient
+            const gradient1 = ctx.createLinearGradient(0, topPadding, 0, height - padding);
+            gradient1.addColorStop(0, color1);
+            gradient1.addColorStop(1, color1 + '80');
+
+            // Draw area under curve
+            ctx.beginPath();
+            data.revenue.forEach((value, index) => {
+                const x = padding + step * index;
+                const y = getY(value);
+                if (index === 0) {
+                    ctx.moveTo(x, height - padding);
+                    ctx.lineTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            ctx.lineTo(padding + step * (data.revenue.length - 1), height - padding);
+            ctx.closePath();
+            ctx.fillStyle = color1 + '20';
+            ctx.fill();
+
+            // Draw line
+            ctx.strokeStyle = color1;
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.beginPath();
+            data.revenue.forEach((value, index) => {
+                const x = padding + step * index;
+                const y = getY(value);
+                if (index === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            ctx.stroke();
+
+            // Draw data points
+            data.revenue.forEach((value, index) => {
+                const x = padding + step * index;
+                const y = getY(value);
+                ctx.beginPath();
+                ctx.arc(x, y, 5, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+                ctx.strokeStyle = color1;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
+        }
 
         // Draw expenses line
-        ctx.strokeStyle = color2;
-        ctx.beginPath();
-        data.expenses.forEach((value, index) => {
-            const x = padding + step * index;
-            const y = height - padding - ((value / maxValue) * (height - padding * 2));
-            if (index === 0) {
-                ctx.moveTo(x, y);
-            } else {
-                ctx.lineTo(x, y);
-            }
-        });
-        ctx.stroke();
+        if (data.expenses.some(v => v > 0)) {
+            // Draw area under curve
+            ctx.beginPath();
+            data.expenses.forEach((value, index) => {
+                const x = padding + step * index;
+                const y = getY(value);
+                if (index === 0) {
+                    ctx.moveTo(x, height - padding);
+                    ctx.lineTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            ctx.lineTo(padding + step * (data.expenses.length - 1), height - padding);
+            ctx.closePath();
+            ctx.fillStyle = color2 + '20';
+            ctx.fill();
 
-        // Draw labels
+            // Draw line
+            ctx.strokeStyle = color2;
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.beginPath();
+            data.expenses.forEach((value, index) => {
+                const x = padding + step * index;
+                const y = getY(value);
+                if (index === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            ctx.stroke();
+
+            // Draw data points
+            data.expenses.forEach((value, index) => {
+                const x = padding + step * index;
+                const y = getY(value);
+                ctx.beginPath();
+                ctx.arc(x, y, 5, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+                ctx.strokeStyle = color2;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
+        }
+
+        // Draw x-axis labels
         ctx.fillStyle = '#6b7280';
-        ctx.font = '12px Arial';
+        ctx.font = '11px Arial';
         ctx.textAlign = 'center';
         data.labels.forEach((label, index) => {
             const x = padding + step * index;
-            ctx.fillText(label, x, height - 10);
+            ctx.fillText(label, x, height - padding + 20);
         });
     },
 
@@ -698,9 +1296,11 @@ const reportsManager = {
 
         switch (this.currentPeriod) {
             case 'today':
-                // Hourly data for today
-                for (let i = 0; i < 24; i++) {
-                    periods.push({ hour: i, label: `${i}:00` });
+                // Hourly data for today (every 2 hours for better visualization)
+                for (let i = 0; i < 24; i += 2) {
+                    const hour = i === 0 ? 12 : i > 12 ? i - 12 : i;
+                    const ampm = i < 12 ? 'AM' : 'PM';
+                    periods.push({ hour: i, label: `${hour}${ampm}` });
                 }
                 break;
             case 'week':
@@ -708,15 +1308,24 @@ const reportsManager = {
                 for (let i = 6; i >= 0; i--) {
                     const date = new Date(now);
                     date.setDate(date.getDate() - i);
-                    periods.push({ date, label: date.toLocaleDateString('en-US', { weekday: 'short' }) });
+                    periods.push({ 
+                        date, 
+                        label: i === 0 ? 'Today' : date.toLocaleDateString('en-US', { weekday: 'short' })
+                    });
                 }
                 break;
             case 'month':
-                // Daily data for last 30 days (sample 10 points)
-                for (let i = 29; i >= 0; i -= 3) {
+                // Weekly data for last 4 weeks
+                for (let i = 3; i >= 0; i--) {
                     const date = new Date(now);
-                    date.setDate(date.getDate() - i);
-                    periods.push({ date, label: date.getDate().toString() });
+                    date.setDate(date.getDate() - (i * 7));
+                    const endDate = new Date(date);
+                    endDate.setDate(endDate.getDate() + 6);
+                    periods.push({ 
+                        date, 
+                        endDate,
+                        label: i === 0 ? 'This Week' : `Week ${4-i}`
+                    });
                 }
                 break;
             case 'year':
@@ -724,7 +1333,10 @@ const reportsManager = {
                 for (let i = 11; i >= 0; i--) {
                     const date = new Date(now);
                     date.setMonth(date.getMonth() - i);
-                    periods.push({ date, label: date.toLocaleDateString('en-US', { month: 'short' }) });
+                    periods.push({ 
+                        date, 
+                        label: date.toLocaleDateString('en-US', { month: 'short' })
+                    });
                 }
                 break;
         }
@@ -736,17 +1348,44 @@ const reportsManager = {
             let periodExpenses = 0;
 
             if (this.currentPeriod === 'today') {
-                // Filter by hour
+                // Filter by hour range (2-hour blocks)
+                const startHour = period.hour;
+                const endHour = period.hour + 2;
+
                 [...data.sales, ...data.b2bSales].forEach(sale => {
                     const saleDate = this.parseDate(sale);
-                    if (saleDate.getDate() === now.getDate() && saleDate.getHours() === period.hour) {
+                    const isToday = saleDate.toDateString() === now.toDateString();
+                    const hour = saleDate.getHours();
+                    if (isToday && hour >= startHour && hour < endHour) {
                         periodRevenue += parseFloat(sale.total) || 0;
                     }
                 });
 
                 data.expenses.forEach(expense => {
                     const expenseDate = this.parseDate(expense);
-                    if (expenseDate.getDate() === now.getDate() && expenseDate.getHours() === period.hour) {
+                    const isToday = expenseDate.toDateString() === now.toDateString();
+                    const hour = expenseDate.getHours();
+                    if (isToday && hour >= startHour && hour < endHour) {
+                        periodExpenses += parseFloat(expense.amount) || 0;
+                    }
+                });
+            } else if (this.currentPeriod === 'month' && period.endDate) {
+                // Filter by week range
+                const periodStart = new Date(period.date);
+                periodStart.setHours(0, 0, 0, 0);
+                const periodEnd = new Date(period.endDate);
+                periodEnd.setHours(23, 59, 59, 999);
+
+                [...data.sales, ...data.b2bSales].forEach(sale => {
+                    const saleDate = this.parseDate(sale);
+                    if (saleDate >= periodStart && saleDate <= periodEnd) {
+                        periodRevenue += parseFloat(sale.total) || 0;
+                    }
+                });
+
+                data.expenses.forEach(expense => {
+                    const expenseDate = this.parseDate(expense);
+                    if (expenseDate >= periodStart && expenseDate <= periodEnd) {
                         periodExpenses += parseFloat(expense.amount) || 0;
                     }
                 });
@@ -755,6 +1394,12 @@ const reportsManager = {
                 const periodStart = new Date(period.date);
                 periodStart.setHours(0, 0, 0, 0);
                 const periodEnd = new Date(period.date);
+                
+                if (this.currentPeriod === 'year') {
+                    // For yearly view, include entire month
+                    periodEnd.setMonth(periodEnd.getMonth() + 1);
+                    periodEnd.setDate(0); // Last day of month
+                }
                 periodEnd.setHours(23, 59, 59, 999);
 
                 [...data.sales, ...data.b2bSales].forEach(sale => {
@@ -774,6 +1419,15 @@ const reportsManager = {
 
             revenue.push(periodRevenue);
             expenses.push(periodExpenses);
+        });
+
+        console.log('📊 Sales Trend Data:', { 
+            period: this.currentPeriod, 
+            labels, 
+            revenue, 
+            expenses,
+            maxRevenue: Math.max(...revenue),
+            maxExpenses: Math.max(...expenses)
         });
 
         return { labels, revenue, expenses };
@@ -858,6 +1512,50 @@ const reportsManager = {
         const element = document.getElementById(id);
         if (element) {
             element.textContent = value;
+        }
+    },
+
+    updateElementWithAnimation(id, newValue) {
+        const element = document.getElementById(id);
+        if (element) {
+            const oldValue = element.textContent;
+            if (oldValue !== newValue) {
+                // Add update animation
+                element.style.transition = 'transform 0.3s ease, color 0.3s ease';
+                element.style.transform = 'scale(1.1)';
+                element.style.color = 'var(--primary-color)';
+                
+                // Update value
+                element.textContent = newValue;
+                
+                // Reset animation
+                setTimeout(() => {
+                    element.style.transform = 'scale(1)';
+                    element.style.color = '';
+                }, 300);
+            }
+        }
+    },
+
+    highlightElement(element) {
+        if (!element) return;
+        element.classList.add('stat-updated');
+        setTimeout(() => {
+            element.classList.remove('stat-updated');
+        }, 1000);
+    },
+
+    highlightCard(elementId) {
+        const element = document.getElementById(elementId);
+        if (!element) return;
+        
+        // Find parent card
+        const card = element.closest('.report-card');
+        if (card) {
+            card.classList.add('card-updated');
+            setTimeout(() => {
+                card.classList.remove('card-updated');
+            }, 1000);
         }
     },
 
@@ -1885,6 +2583,311 @@ const reportsManager = {
         setTimeout(() => {
             printWindow.print();
         }, 500);
+    },
+
+    // ============ ADVANCED FEATURES ============
+
+    showComparativeAnalysis() {
+        console.log('📊 Generating comparative analysis...');
+        
+        const periods = ['today', 'week', 'month', 'year'];
+        const comparisons = {};
+
+        periods.forEach(period => {
+            const originalPeriod = this.currentPeriod;
+            this.currentPeriod = period;
+            const data = this.getFilteredData();
+            
+            comparisons[period] = {
+                revenue: data.sales.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0) +
+                        data.b2bSales.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0),
+                expenses: data.expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0),
+                transactions: data.sales.length + data.b2bSales.length,
+                profit: 0
+            };
+            comparisons[period].profit = comparisons[period].revenue - comparisons[period].expenses;
+            
+            this.currentPeriod = originalPeriod;
+        });
+
+        this.renderComparativeAnalysis(comparisons);
+    },
+
+    renderComparativeAnalysis(comparisons) {
+        const html = `
+            <div class="comparative-analysis">
+                <h3>📊 Comparative Period Analysis</h3>
+                <table class="report-table">
+                    <thead>
+                        <tr>
+                            <th>Period</th>
+                            <th>Revenue</th>
+                            <th>Expenses</th>
+                            <th>Profit</th>
+                            <th>Transactions</th>
+                            <th>Avg Transaction</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${Object.entries(comparisons).map(([period, data]) => `
+                            <tr>
+                                <td><strong>${period.charAt(0).toUpperCase() + period.slice(1)}</strong></td>
+                                <td class="report-amount-positive">${this.formatCurrency(data.revenue)}</td>
+                                <td class="report-amount-negative">${this.formatCurrency(data.expenses)}</td>
+                                <td class="${data.profit >= 0 ? 'report-amount-positive' : 'report-amount-negative'}">
+                                    ${this.formatCurrency(data.profit)}
+                                </td>
+                                <td>${data.transactions}</td>
+                                <td>${this.formatCurrency(data.transactions > 0 ? data.revenue / data.transactions : 0)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        const previewContainer = document.getElementById('customReportPreview');
+        if (previewContainer) {
+            previewContainer.innerHTML = html;
+        }
+
+        this.showNotification('Comparative analysis generated', 'success');
+    },
+
+    // Get insights based on current data
+    getBusinessInsights() {
+        const data = this.getFilteredData();
+        const insights = [];
+
+        // Revenue insights
+        const totalRevenue = data.sales.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0) +
+                           data.b2bSales.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0);
+        const totalExpenses = data.expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+        const netProfit = totalRevenue - totalExpenses;
+        const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+
+        if (profitMargin > 30) {
+            insights.push({
+                type: 'success',
+                title: 'Excellent Profit Margin',
+                message: `Your profit margin of ${profitMargin.toFixed(1)}% is excellent. Keep up the good work!`
+            });
+        } else if (profitMargin < 10 && profitMargin > 0) {
+            insights.push({
+                type: 'warning',
+                title: 'Low Profit Margin',
+                message: `Your profit margin of ${profitMargin.toFixed(1)}% is low. Consider reviewing expenses or pricing.`
+            });
+        } else if (profitMargin < 0) {
+            insights.push({
+                type: 'danger',
+                title: 'Operating at a Loss',
+                message: `You're currently operating at a loss. Immediate action needed to reduce expenses or increase revenue.`
+            });
+        }
+
+        // Inventory insights
+        const lowStockItems = data.inventory.filter(item => (parseFloat(item.quantity) || 0) < 10);
+        if (lowStockItems.length > 0) {
+            insights.push({
+                type: 'warning',
+                title: 'Low Stock Alert',
+                message: `${lowStockItems.length} items are running low on stock. Consider reordering soon.`
+            });
+        }
+
+        // Order insights
+        const pendingOrders = data.orders.filter(o => o.status === 'pending');
+        if (pendingOrders.length > 5) {
+            insights.push({
+                type: 'info',
+                title: 'Pending Orders',
+                message: `You have ${pendingOrders.length} pending orders. Review and process them promptly.`
+            });
+        }
+
+        // Sales trend insights
+        const avgDailySales = totalRevenue / Math.max(this.getDaysInPeriod(), 1);
+        insights.push({
+            type: 'info',
+            title: 'Average Daily Sales',
+            message: `Your average daily sales for this period: ${this.formatCurrency(avgDailySales)}`
+        });
+
+        return insights;
+    },
+
+    getDaysInPeriod() {
+        switch (this.currentPeriod) {
+            case 'today': return 1;
+            case 'week': return 7;
+            case 'month': return 30;
+            case 'year': return 365;
+            default: return 30;
+        }
+    },
+
+    renderInsights() {
+        const insights = this.getBusinessInsights();
+        const container = document.getElementById('businessInsights');
+        
+        if (!container) return;
+
+        if (insights.length === 0) {
+            container.innerHTML = '<p class="no-data">No insights available at this time.</p>';
+            return;
+        }
+
+        container.innerHTML = insights.map(insight => `
+            <div class="insight-card insight-${insight.type}">
+                <div class="insight-icon">
+                    ${insight.type === 'success' ? '✓' : insight.type === 'warning' ? '⚠' : insight.type === 'danger' ? '✕' : 'ℹ'}
+                </div>
+                <div class="insight-content">
+                    <h4>${insight.title}</h4>
+                    <p>${insight.message}</p>
+                </div>
+            </div>
+        `).join('');
+    },
+
+    // Export with enhanced data
+    exportEnhancedReport(format = 'pdf') {
+        const data = this.getFilteredData();
+        const insights = this.getBusinessInsights();
+        
+        if (format === 'pdf') {
+            this.exportEnhancedPDF(data, insights);
+        } else {
+            this.exportEnhancedExcel(data, insights);
+        }
+    },
+
+    exportEnhancedPDF(data, insights) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        // Title
+        doc.setFontSize(24);
+        doc.setTextColor(99, 102, 241);
+        doc.text('Enhanced Business Report', 14, 20);
+
+        // Metadata
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 28);
+        doc.text(`Period: ${this.currentPeriod.toUpperCase()}`, 14, 34);
+        doc.text(`Branch: ${window.branchManager?.branches?.find(b => b.id === window.branchManager?.currentBranch)?.name || 'N/A'}`, 14, 40);
+
+        let yPos = 50;
+
+        // Executive Summary
+        doc.setFontSize(16);
+        doc.setTextColor(0, 0, 0);
+        doc.text('Executive Summary', 14, yPos);
+        yPos += 8;
+
+        const totalRevenue = data.sales.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0) +
+                           data.b2bSales.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0);
+        const totalExpenses = data.expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+        const netProfit = totalRevenue - totalExpenses;
+
+        doc.autoTable({
+            startY: yPos,
+            head: [['Metric', 'Value']],
+            body: [
+                ['Total Revenue', this.formatCurrency(totalRevenue)],
+                ['Total Expenses', this.formatCurrency(totalExpenses)],
+                ['Net Profit', this.formatCurrency(netProfit)],
+                ['Profit Margin', `${totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(2) : 0}%`],
+                ['Total Transactions', data.sales.length + data.b2bSales.length],
+                ['Average Transaction', this.formatCurrency((data.sales.length + data.b2bSales.length) > 0 ? totalRevenue / (data.sales.length + data.b2bSales.length) : 0)]
+            ],
+            theme: 'striped',
+            headStyles: { fillColor: [99, 102, 241] },
+            margin: { left: 14, right: 14 }
+        });
+
+        yPos = doc.lastAutoTable.finalY + 15;
+
+        // Business Insights
+        if (insights.length > 0 && yPos < 250) {
+            doc.setFontSize(16);
+            doc.text('Business Insights', 14, yPos);
+            yPos += 8;
+
+            doc.setFontSize(10);
+            insights.forEach(insight => {
+                if (yPos > 270) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+                doc.setTextColor(100, 100, 100);
+                doc.text(`• ${insight.title}: ${insight.message}`, 14, yPos, { maxWidth: 180 });
+                yPos += 12;
+            });
+        }
+
+        doc.save(`enhanced-report-${new Date().toISOString().split('T')[0]}.pdf`);
+        this.showNotification('Enhanced PDF report exported', 'success');
+    },
+
+    exportEnhancedExcel(data, insights) {
+        const XLSX = window.XLSX;
+        const wb = XLSX.utils.book_new();
+
+        // Summary sheet
+        const totalRevenue = data.sales.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0) +
+                           data.b2bSales.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0);
+        const totalExpenses = data.expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+        const netProfit = totalRevenue - totalExpenses;
+
+        const summaryData = [
+            ['Enhanced Business Report'],
+            ['Generated:', new Date().toLocaleString()],
+            ['Period:', this.currentPeriod.toUpperCase()],
+            [],
+            ['Executive Summary'],
+            ['Metric', 'Value'],
+            ['Total Revenue', totalRevenue],
+            ['Total Expenses', totalExpenses],
+            ['Net Profit', netProfit],
+            ['Profit Margin', `${totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(2) : 0}%`],
+            ['Total Transactions', data.sales.length + data.b2bSales.length],
+            [],
+            ['Business Insights'],
+            ...insights.map(i => [i.title, i.message])
+        ];
+
+        const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
+        XLSX.utils.book_append_sheet(wb, ws1, 'Summary');
+
+        // Sales detail sheet
+        if (data.sales.length > 0) {
+            const salesData = data.sales.map(sale => ({
+                Date: this.formatDate(this.parseDate(sale)),
+                Items: sale.items?.length || 0,
+                'Payment Method': sale.paymentMethod || 'N/A',
+                Total: parseFloat(sale.total) || 0
+            }));
+            const ws2 = XLSX.utils.json_to_sheet(salesData);
+            XLSX.utils.book_append_sheet(wb, ws2, 'Sales');
+        }
+
+        // Expenses detail sheet
+        if (data.expenses.length > 0) {
+            const expensesData = data.expenses.map(expense => ({
+                Date: this.formatDate(this.parseDate(expense)),
+                Category: expense.category || 'Other',
+                Description: expense.description || 'N/A',
+                Amount: parseFloat(expense.amount) || 0
+            }));
+            const ws3 = XLSX.utils.json_to_sheet(expensesData);
+            XLSX.utils.book_append_sheet(wb, ws3, 'Expenses');
+        }
+
+        XLSX.writeFile(wb, `enhanced-report-${new Date().toISOString().split('T')[0]}.xlsx`);
+        this.showNotification('Enhanced Excel report exported', 'success');
     }
 };
 

@@ -2914,8 +2914,23 @@
             <!-- Reports -->
             <div class="page" id="reports-page">
                 <div class="page-header">
-                    <h2>Reports & Analytics</h2>
+                    <div class="page-header-left">
+                        <h2>Reports & Analytics</h2>
+                        <div style="display: flex; align-items: center; gap: 12px; margin-top: 8px;">
+                            <span id="lastSyncIndicator" class="sync-indicator pulse" style="font-size: 12px; color: #64748b;">
+                                🔄 Real-time sync active
+                            </span>
+                        </div>
+                    </div>
                     <div class="header-actions">
+                        <button class="btn btn-secondary" id="autoCompareBtn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 20V10"></path>
+                                <path d="M12 20V4"></path>
+                                <path d="M6 20v-6"></path>
+                            </svg>
+                            Compare Periods
+                        </button>
                         <button class="btn btn-secondary" id="refreshReportsBtn">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="23 4 23 10 17 10"></polyline>
@@ -2950,47 +2965,69 @@
                         <button class="report-period-btn" data-period="year">Year</button>
                     </div>
 
+                    <!-- Business Insights -->
+                    <div class="business-insights-section" style="margin-bottom: 24px;">
+                        <div class="section-header">
+                            <h3>💡 Business Insights</h3>
+                        </div>
+                        <div id="businessInsights" class="insights-container">
+                            <p class="no-data">Loading insights...</p>
+                        </div>
+                    </div>
+
                     <!-- Overview Cards -->
                     <div class="reports-grid">
-                        <div class="report-card">
+                        <div class="report-card" data-realtime="true">
                             <div class="report-card-header">
                                 <span class="report-card-title">Total Revenue</span>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <line x1="12" y1="1" x2="12" y2="23"></line>
-                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                                </svg>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="realtime-badge" title="Updates in real-time">LIVE</span>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="12" y1="1" x2="12" y2="23"></line>
+                                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                    </svg>
+                                </div>
                             </div>
                             <div class="stat-value" id="reportTotalRevenue">KSh 0.00</div>
                         </div>
 
-                        <div class="report-card">
+                        <div class="report-card" data-realtime="true">
                             <div class="report-card-header">
                                 <span class="report-card-title">Total Expenses</span>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <polyline points="16 8 12 12 8 16"></polyline>
-                                </svg>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="realtime-badge" title="Updates in real-time">LIVE</span>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <polyline points="16 8 12 12 8 16"></polyline>
+                                    </svg>
+                                </div>
                             </div>
                             <div class="stat-value" id="reportTotalExpenses">KSh 0.00</div>
                         </div>
 
-                        <div class="report-card">
+                        <div class="report-card" data-realtime="true">
                             <div class="report-card-header">
                                 <span class="report-card-title">Net Profit</span>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                                </svg>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="realtime-badge" title="Updates in real-time">LIVE</span>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                                    </svg>
+                                </div>
                             </div>
                             <div class="stat-value profit" id="reportNetProfit">KSh 0.00</div>
                         </div>
 
-                        <div class="report-card">
+                        <div class="report-card" data-realtime="true">
                             <div class="report-card-header">
                                 <span class="report-card-title">Total Transactions</span>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
-                                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
-                                </svg>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="realtime-badge" title="Updates in real-time">LIVE</span>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                                        <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                                    </svg>
+                                </div>
                             </div>
                             <div class="stat-value" id="reportTotalTransactions">0</div>
                         </div>
