@@ -30,10 +30,11 @@ const accountsManager = {
                 clearInterval(this.refreshInterval);
             }
             
-            // Auto-refresh every 60 seconds
+            // Auto-refresh every 30 seconds for real-time updates
             this.refreshInterval = setInterval(() => {
+                console.log('🔄 Auto-refreshing financial data...');
                 this.loadAllFinancialData();
-            }, 60000);
+            }, 30000);
         });
     },
 
@@ -158,13 +159,18 @@ const accountsManager = {
                 return;
             }
 
-            const b2bRef = collection(db, 'b2bSales');
-            const q = query(b2bRef, where('branchId', '==', branchId));
+            // B2B sales are stored in the 'sales' collection with type='b2b' or saleType='wholesale'
+            const salesRef = collection(db, 'sales');
+            const q = query(salesRef, where('branchId', '==', branchId));
             const snapshot = await getDocs(q);
             
             this.b2bSales = [];
             snapshot.forEach(doc => {
-                this.b2bSales.push({ id: doc.id, ...doc.data() });
+                const data = doc.data();
+                // Filter for B2B/wholesale sales
+                if (data.type === 'b2b' || data.saleType === 'wholesale' || data.saleType === 'b2b') {
+                    this.b2bSales.push({ id: doc.id, ...data });
+                }
             });
 
             console.log(`✅ Loaded ${this.b2bSales.length} B2B sales`);
@@ -337,6 +343,13 @@ const accountsManager = {
     renderDashboard() {
         const financials = this.calculateFinancials();
 
+        console.log('💰 Updating dashboard cards with real-time data:', {
+            totalRevenue: financials.totalRevenue,
+            totalExpenses: financials.totalExpenses + financials.ordersCost,
+            netProfit: financials.netProfit,
+            cashBalance: financials.cashBalance
+        });
+
         // Update overview stats
         this.updateElement('totalRevenue', `KSh ${this.formatNumber(financials.totalRevenue)}`);
         this.updateElement('totalExpenses', `KSh ${this.formatNumber(financials.totalExpenses + financials.ordersCost)}`);
@@ -352,6 +365,8 @@ const accountsManager = {
 
         this.updateElement('revenueGrowth', `${revenueGrowth >= 0 ? '+' : ''}${revenueGrowth.toFixed(1)}% from last ${this.currentTimeframe}`);
         this.updateElement('expensesChange', `${expensesChange >= 0 ? '+' : ''}${expensesChange.toFixed(1)}% from last ${this.currentTimeframe}`);
+
+        console.log('✅ Dashboard cards updated successfully');
 
         // Render breakdowns
         this.renderRevenueBreakdown();
