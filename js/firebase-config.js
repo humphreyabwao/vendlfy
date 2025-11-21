@@ -3,7 +3,9 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc, getDoc, query, where, orderBy, limit, Timestamp, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, setPersistence, browserSessionPersistence, browserLocalPersistence, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
+
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -20,6 +22,7 @@ const firebaseConfig = {
 let app;
 let db;
 let auth;
+let storage;
 let analytics;
 let isFirebaseConfigured = false;
 
@@ -28,12 +31,13 @@ try {
     app = initializeApp(firebaseConfig);
     db = getFirestore(app);
     auth = getAuth(app);
+    storage = getStorage(app);
     analytics = getAnalytics(app);
     isFirebaseConfigured = true;
     
     // Make db globally available
     window.db = db;
-    window.firebase = { app, db, auth, analytics };
+    window.firebase = { app, db, auth, storage, analytics };
     
     console.log('✅ Firebase initialized successfully');
     console.log('✅ Firestore database connected');
@@ -50,6 +54,7 @@ export {
     app, 
     db, 
     auth,
+    storage,
     analytics,
     isFirebaseConfigured,
     // Firestore functions
@@ -68,6 +73,11 @@ export {
     Timestamp,
     serverTimestamp,
     onSnapshot,
+    // Storage functions
+    ref,
+    uploadBytes,
+    getDownloadURL,
+    deleteObject,
     // Auth functions
     signInWithEmailAndPassword,
     signOut,

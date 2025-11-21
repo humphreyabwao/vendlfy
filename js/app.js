@@ -627,7 +627,7 @@ function initProfilePictureUpload() {
     }
     
     // File input change
-    fileInput.addEventListener('change', function(e) {
+    fileInput.addEventListener('change', async function(e) {
         const file = e.target.files[0];
         if (!file) return;
         
@@ -643,35 +643,99 @@ function initProfilePictureUpload() {
             return;
         }
         
-        // Read and display image
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            const imageData = event.target.result;
-            displayProfilePicture(imageData);
+        // Show uploading state
+        showNotification('Uploading profile picture...', 'info');
+        
+        try {
+            // Upload to Firebase Storage first
+            const imageUrl = await uploadProfilePictureToFirebase(file);
             
-            // Save to localStorage
-            localStorage.setItem('profilePicture', imageData);
+            // Display the image
+            displayProfilePicture(imageUrl);
+            
+            // Save URL to localStorage as cache
+            localStorage.setItem('profilePicture', imageUrl);
             
             // Update profile avatar in header
-            updateHeaderProfileAvatar(imageData);
+            updateHeaderProfileAvatar(imageUrl);
             
             // Show remove button
             if (removeBtn) removeBtn.style.display = 'inline-flex';
             
             showNotification('Profile picture updated successfully!', 'success');
-        };
-        reader.readAsDataURL(file);
+        } catch (error) {
+            console.error('Error uploading profile picture:', error);
+            
+            // Fallback to localStorage only if Firebase fails
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const imageData = event.target.result;
+                displayProfilePicture(imageData);
+                localStorage.setItem('profilePicture', imageData);
+                updateHeaderProfileAvatar(imageData);
+                if (removeBtn) removeBtn.style.display = 'inline-flex';
+                showNotification('Profile picture saved locally', 'warning');
+            };
+            reader.readAsDataURL(file);
+        }
     });
     
     // Remove button click
     if (removeBtn) {
-        removeBtn.addEventListener('click', () => {
+        removeBtn.addEventListener('click', async () => {
             if (confirm('Are you sure you want to remove your profile picture?')) {
-                removeProfilePicture();
+                await removeProfilePicture();
                 removeBtn.style.display = 'none';
                 showNotification('Profile picture removed', 'info');
             }
         });
+    }
+}
+
+// Upload Profile Picture to Firebase Storage
+async function uploadProfilePictureToFirebase(file) {
+    try {
+        const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        const userId = currentUser.uid || currentUser.id || 'default-user';
+        
+        // Check if Firebase Storage is available
+        if (!window.firebase || !window.firebase.storage) {
+            throw new Error('Firebase Storage not initialized');
+        }
+        
+        // Import storage functions dynamically
+        const { storage } = window.firebase;
+        const { ref, uploadBytes, getDownloadURL } = await import('./firebase-config.js');
+        
+        // Create a reference to the profile picture location
+        const timestamp = Date.now();
+        const fileExtension = file.name.split('.').pop();
+        const fileName = `profile-${userId}-${timestamp}.${fileExtension}`;
+        const storageRef = ref(storage, `profile-pictures/${fileName}`);
+        
+        // Upload the file
+        const snapshot = await uploadBytes(storageRef, file);
+        console.log('✅ Profile picture uploaded to Firebase Storage');
+        
+        // Get the download URL
+        const downloadURL = await getDownloadURL(snapshot.ref);
+        console.log('✅ Profile picture URL:', downloadURL);
+        
+        // Save URL to Firestore user profile
+        if (window.db && currentUser.uid) {
+            const { doc, updateDoc } = await import('./firebase-config.js');
+            const userRef = doc(window.db, 'users', currentUser.uid);
+            await updateDoc(userRef, {
+                profilePictureUrl: downloadURL,
+                profilePictureUpdatedAt: new Date().toISOString()
+            });
+            console.log('✅ Profile picture URL saved to Firestore');
+        }
+        
+        return downloadURL;
+    } catch (error) {
+        console.error('❌ Error uploading to Firebase Storage:', error);
+        throw error;
     }
 }
 
@@ -696,9 +760,47 @@ function displayProfilePicture(imageData) {
 }
 
 // Remove Profile Picture
-function removeProfilePicture() {
+async function removeProfilePicture() {
     const preview = document.getElementById('profilePicturePreview');
     if (!preview) return;
+    
+    try {
+        // Try to delete from Firebase Storage
+        const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        const savedPictureUrl = localStorage.getItem('profilePicture');
+        
+        if (savedPictureUrl && savedPictureUrl.includes('firebase') && window.firebase && window.firebase.storage) {
+            try {
+                const { ref, deleteObject } = await import('./firebase-config.js');
+                const { storage } = window.firebase;
+                
+                // Extract the storage path from the URL
+                const urlObj = new URL(savedPictureUrl);
+                const pathMatch = urlObj.pathname.match(/\/o\/(.+)\?/);
+                if (pathMatch) {
+                    const storagePath = decodeURIComponent(pathMatch[1]);
+                    const fileRef = ref(storage, storagePath);
+                    await deleteObject(fileRef);
+                    console.log('✅ Profile picture deleted from Firebase Storage');
+                }
+                
+                // Remove from Firestore
+                if (window.db && currentUser.uid) {
+                    const { doc, updateDoc } = await import('./firebase-config.js');
+                    const userRef = doc(window.db, 'users', currentUser.uid);
+                    await updateDoc(userRef, {
+                        profilePictureUrl: null,
+                        profilePictureUpdatedAt: new Date().toISOString()
+                    });
+                    console.log('✅ Profile picture URL removed from Firestore');
+                }
+            } catch (deleteError) {
+                console.warn('Could not delete from Firebase:', deleteError);
+            }
+        }
+    } catch (error) {
+        console.error('Error during profile picture removal:', error);
+    }
     
     // Remove image
     const img = preview.querySelector('img');
@@ -763,7 +865,7 @@ function updateHeaderProfileAvatar(imageData) {
 }
 
 // Load User Profile Data
-function loadUserProfileData() {
+async function loadUserProfileData() {
     const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
     
     const emailInput = document.getElementById('profileEmail');
@@ -774,10 +876,38 @@ function loadUserProfileData() {
     if (nameInput) nameInput.value = currentUser.displayName || currentUser.name || '';
     if (roleInput) roleInput.value = currentUser.role || 'Administrator';
     
-    // Load profile picture in header if exists
-    const savedPhoto = localStorage.getItem('profilePicture');
-    if (savedPhoto) {
-        updateHeaderProfileAvatar(savedPhoto);
+    // Load profile picture - try Firebase first, then localStorage
+    let profilePictureUrl = null;
+    
+    try {
+        // Try to load from Firestore
+        if (window.db && currentUser.uid) {
+            const { doc, getDoc } = await import('./firebase-config.js');
+            const userRef = doc(window.db, 'users', currentUser.uid);
+            const userDoc = await getDoc(userRef);
+            
+            if (userDoc.exists() && userDoc.data().profilePictureUrl) {
+                profilePictureUrl = userDoc.data().profilePictureUrl;
+                // Cache in localStorage
+                localStorage.setItem('profilePicture', profilePictureUrl);
+                console.log('✅ Profile picture loaded from Firestore');
+            }
+        }
+    } catch (error) {
+        console.warn('Could not load profile picture from Firestore:', error);
+    }
+    
+    // Fallback to localStorage if Firebase didn't work
+    if (!profilePictureUrl) {
+        profilePictureUrl = localStorage.getItem('profilePicture');
+        if (profilePictureUrl) {
+            console.log('✅ Profile picture loaded from localStorage');
+        }
+    }
+    
+    // Display the profile picture if found
+    if (profilePictureUrl) {
+        updateHeaderProfileAvatar(profilePictureUrl);
     }
     
     // Update last login time
