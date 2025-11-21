@@ -11598,6 +11598,58 @@ canvas {
     scrollbar-color: #60a5fa #374151;
 }
 
+/* Vertical Scroll Wrapper for Monthly Summary */
+.table-wrapper-vertical {
+    max-height: 500px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-primary);
+}
+
+.table-wrapper-vertical::-webkit-scrollbar {
+    width: 6px;
+}
+
+.table-wrapper-vertical::-webkit-scrollbar-track {
+    background: #e5e7eb;
+    border-radius: 4px;
+    margin: 8px 0;
+}
+
+.table-wrapper-vertical::-webkit-scrollbar-thumb {
+    background: #3b82f6;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.table-wrapper-vertical::-webkit-scrollbar-thumb:hover {
+    background: #2563eb;
+}
+
+[data-theme="dark"] .table-wrapper-vertical::-webkit-scrollbar-track {
+    background: #374151;
+}
+
+[data-theme="dark"] .table-wrapper-vertical::-webkit-scrollbar-thumb {
+    background: #60a5fa;
+}
+
+[data-theme="dark"] .table-wrapper-vertical::-webkit-scrollbar-thumb:hover {
+    background: #3b82f6;
+}
+
+/* Firefox scrollbar styling for vertical */
+.table-wrapper-vertical {
+    scrollbar-width: thin;
+    scrollbar-color: #3b82f6 #e5e7eb;
+}
+
+[data-theme="dark"] .table-wrapper-vertical {
+    scrollbar-color: #60a5fa #374151;
+}
+
 /* Table with sticky action column */
 .table-wrapper-horizontal .data-table {
     table-layout: auto;
