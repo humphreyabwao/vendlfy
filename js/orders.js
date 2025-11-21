@@ -1,5 +1,5 @@
 // Orders Manager
-import { db, collection, getDocs, doc, updateDoc, query, where, orderBy as firestoreOrderBy, serverTimestamp } from './firebase-config.js';
+import { db, collection, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy as firestoreOrderBy, serverTimestamp } from './firebase-config.js';
 
 const ordersManager = {
     orders: [],
@@ -321,6 +321,14 @@ const ordersManager = {
                                 </svg>
                             </button>
                             ` : ''}
+                            <button class="btn-icon btn-delete" onclick="ordersManager.deleteOrder('${order.id}')" title="Delete Order">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                                </svg>
+                            </button>
                         </div>
                     </td>
                 </tr>
@@ -621,6 +629,40 @@ const ordersManager = {
         } catch (error) {
             console.error('❌ Error updating inventory:', error);
             console.error('Error details:', error.message);
+        }
+    },
+
+    async deleteOrder(orderId) {
+        const order = this.orders.find(o => o.id === orderId);
+        if (!order) {
+            this.showNotification('Order not found', 'error');
+            return;
+        }
+
+        const orderNumber = order.orderNumber || order.id.substring(0, 8).toUpperCase();
+        const confirmMessage = `Are you sure you want to delete Order #${orderNumber}?\n\nThis action cannot be undone.`;
+        
+        if (!confirm(confirmMessage)) return;
+
+        try {
+            const orderRef = doc(db, 'orders', orderId);
+            await deleteDoc(orderRef);
+
+            // Log activity
+            if (window.activityTracker) {
+                window.activityTracker.logActivity('order', 'deleted', {
+                    orderNumber: orderNumber,
+                    supplierName: order.supplierName,
+                    totalAmount: order.totalAmount,
+                    items: order.items?.length || 0
+                });
+            }
+
+            this.showNotification('Order deleted successfully!', 'success');
+            await this.loadOrders();
+        } catch (error) {
+            console.error('Error deleting order:', error);
+            this.showNotification('Failed to delete order. Please try again.', 'error');
         }
     },
 
