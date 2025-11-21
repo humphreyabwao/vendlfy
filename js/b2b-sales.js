@@ -17,7 +17,8 @@ class B2BSalesManager {
         this.pagination = {
             currentPage: 1,
             itemsPerPage: 10,
-            totalPages: 1
+            totalPages: 1,
+            totalItems: 0
         };
     }
 
@@ -292,8 +293,8 @@ class B2BSalesManager {
         if (!tbody) return;
 
         // Calculate pagination
-        const totalItems = this.filteredSales.length;
-        this.pagination.totalPages = Math.ceil(totalItems / this.pagination.itemsPerPage);
+        this.pagination.totalItems = this.filteredSales.length;
+        this.pagination.totalPages = Math.ceil(this.pagination.totalItems / this.pagination.itemsPerPage);
         
         // Ensure current page is valid
         if (this.pagination.currentPage > this.pagination.totalPages) {
@@ -302,15 +303,15 @@ class B2BSalesManager {
 
         // Calculate start and end indices
         const startIndex = (this.pagination.currentPage - 1) * this.pagination.itemsPerPage;
-        const endIndex = Math.min(startIndex + this.pagination.itemsPerPage, totalItems);
+        const endIndex = Math.min(startIndex + this.pagination.itemsPerPage, this.pagination.totalItems);
         
         // Get items for current page
         const pageItems = this.filteredSales.slice(startIndex, endIndex);
 
         // Update table info
-        this.updateTableInfo(totalItems, startIndex, endIndex);
+        this.updateTableInfo(this.pagination.totalItems, startIndex, endIndex);
 
-        if (totalItems === 0) {
+        if (this.pagination.totalItems === 0) {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="10" style="text-align: center; padding: 3rem;">
@@ -381,7 +382,7 @@ class B2BSalesManager {
         }).join('');
     }
 
-    // Generate page numbers for pagination
+    // Generate page numbers for pagination with smart ellipsis
     generatePageNumbers() {
         const current = this.pagination.currentPage;
         const total = this.pagination.totalPages;
@@ -395,17 +396,22 @@ class B2BSalesManager {
         } else {
             // Always show first page
             pages.push(1);
-
-            if (current <= 3) {
-                // Near the start
-                pages.push(2, 3, 4, '...', total);
-            } else if (current >= total - 2) {
-                // Near the end
-                pages.push('...', total - 3, total - 2, total - 1, total);
-            } else {
-                // In the middle
-                pages.push('...', current - 1, current, current + 1, '...', total);
+            
+            if (current > 3) {
+                pages.push('...');
             }
+            
+            // Show pages around current page
+            for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
+                pages.push(i);
+            }
+            
+            if (current < total - 2) {
+                pages.push('...');
+            }
+            
+            // Always show last page
+            pages.push(total);
         }
 
         return pages;

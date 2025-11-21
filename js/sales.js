@@ -12,6 +12,13 @@ class SalesManager {
             endDate: null,
             search: ''
         };
+        // Pagination settings
+        this.pagination = {
+            currentPage: 1,
+            itemsPerPage: 20,
+            totalPages: 1,
+            totalItems: 0
+        };
     }
 
     async init() {
@@ -64,12 +71,50 @@ class SalesManager {
             this.sales = await dataManager.getSales(filters);
             this.filteredSales = [...this.sales];
             
+            // Reset pagination when data changes
+            this.updatePagination();
+            
             console.log(`📦 Loaded ${this.sales.length} sales`);
         } catch (error) {
             console.error('Error loading sales:', error);
             this.sales = [];
             this.filteredSales = [];
+            this.updatePagination();
         }
+    }
+
+    // Update pagination calculations
+    updatePagination() {
+        this.pagination.totalItems = this.filteredSales.length;
+        this.pagination.totalPages = Math.ceil(this.pagination.totalItems / this.pagination.itemsPerPage);
+        
+        // Reset to page 1 if current page is out of bounds
+        if (this.pagination.currentPage > this.pagination.totalPages) {
+            this.pagination.currentPage = Math.max(1, this.pagination.totalPages);
+        }
+    }
+
+    // Get paginated sales for current page
+    getPaginatedSales() {
+        const startIndex = (this.pagination.currentPage - 1) * this.pagination.itemsPerPage;
+        const endIndex = startIndex + this.pagination.itemsPerPage;
+        return this.filteredSales.slice(startIndex, endIndex);
+    }
+
+    // Go to specific page
+    goToPage(pageNumber) {
+        if (pageNumber >= 1 && pageNumber <= this.pagination.totalPages) {
+            this.pagination.currentPage = pageNumber;
+            this.renderSales();
+        }
+    }
+
+    // Change items per page
+    changeItemsPerPage(itemsPerPage) {
+        this.pagination.itemsPerPage = parseInt(itemsPerPage);
+        this.pagination.currentPage = 1;
+        this.updatePagination();
+        this.renderSales();
     }
 
     // Render sales table
@@ -93,6 +138,10 @@ class SalesManager {
             return;
         }
 
+        const paginatedSales = this.getPaginatedSales();
+        const startIndex = (this.pagination.currentPage - 1) * this.pagination.itemsPerPage + 1;
+        const endIndex = Math.min(startIndex + paginatedSales.length - 1, this.pagination.totalItems);
+
         const tableHTML = `
             <div class="sales-summary-cards">
                 <div class="summary-card">
@@ -113,30 +162,186 @@ class SalesManager {
                 </div>
             </div>
             
-            <div class="table-container">
-                <table class="sales-table">
-                    <thead>
-                        <tr>
-                            <th>Sale ID</th>
-                            <th>Date & Time</th>
-                            <th>Items</th>
-                            <th>Subtotal</th>
-                            <th>Discount</th>
-                            <th>Tax</th>
-                            <th>Total</th>
-                            <th>Profit</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${this.filteredSales.map(sale => this.renderSaleRow(sale)).join('')}
-                    </tbody>
-                </table>
+            <div class="sales-table-wrapper">
+                <div class="table-container">
+                    <table class="sales-table data-table">
+                        <thead>
+                            <tr>
+                                <th>Sale ID</th>
+                                <th>Date & Time</th>
+                                <th>Items</th>
+                                <th>Subtotal</th>
+                                <th>Discount</th>
+                                <th>Tax</th>
+                                <th>Total</th>
+                                <th>Profit</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${paginatedSales.map(sale => this.renderSaleRow(sale)).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                ${this.renderPagination(startIndex, endIndex)}
             </div>
         `;
 
         container.innerHTML = tableHTML;
+        this.attachPaginationListeners();
+    }
+
+    // Render pagination controls
+    renderPagination(startIndex, endIndex) {
+        if (this.pagination.totalPages <= 1) {
+            return '';
+        }
+
+        const { currentPage, totalPages, totalItems, itemsPerPage } = this.pagination;
+
+        // Generate page numbers to display
+        const pageNumbers = this.getPageNumbers();
+
+        return `
+            <div class="table-pagination">
+                <div class="pagination-info">
+                    Showing ${startIndex} to ${endIndex} of ${totalItems} sales
+                </div>
+                <div class="pagination-controls">
+                    <select class="items-per-page" id="salesItemsPerPage">
+                        <option value="10" ${itemsPerPage === 10 ? 'selected' : ''}>10 per page</option>
+                        <option value="20" ${itemsPerPage === 20 ? 'selected' : ''}>20 per page</option>
+                        <option value="50" ${itemsPerPage === 50 ? 'selected' : ''}>50 per page</option>
+                        <option value="100" ${itemsPerPage === 100 ? 'selected' : ''}>100 per page</option>
+                    </select>
+                    
+                    <button class="btn-pagination" id="salesFirstPage" ${currentPage === 1 ? 'disabled' : ''}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="11 17 6 12 11 7"></polyline>
+                            <polyline points="18 17 13 12 18 7"></polyline>
+                        </svg>
+                    </button>
+                    
+                    <button class="btn-pagination" id="salesPrevPage" ${currentPage === 1 ? 'disabled' : ''}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                    </button>
+                    
+                    <div class="page-numbers">
+                        ${pageNumbers.map(page => {
+                            if (page === '...') {
+                                return '<span class="page-number ellipsis">...</span>';
+                            }
+                            return `
+                                <button class="page-number ${page === currentPage ? 'active' : ''}" 
+                                        data-page="${page}">
+                                    ${page}
+                                </button>
+                            `;
+                        }).join('')}
+                    </div>
+                    
+                    <button class="btn-pagination" id="salesNextPage" ${currentPage === totalPages ? 'disabled' : ''}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </button>
+                    
+                    <button class="btn-pagination" id="salesLastPage" ${currentPage === totalPages ? 'disabled' : ''}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="13 17 18 12 13 7"></polyline>
+                            <polyline points="6 17 11 12 6 7"></polyline>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    // Get page numbers to display with ellipsis
+    getPageNumbers() {
+        const { currentPage, totalPages } = this.pagination;
+        const pageNumbers = [];
+        
+        if (totalPages <= 7) {
+            // Show all pages if 7 or fewer
+            for (let i = 1; i <= totalPages; i++) {
+                pageNumbers.push(i);
+            }
+        } else {
+            // Always show first page
+            pageNumbers.push(1);
+            
+            if (currentPage > 3) {
+                pageNumbers.push('...');
+            }
+            
+            // Show pages around current page
+            for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+                pageNumbers.push(i);
+            }
+            
+            if (currentPage < totalPages - 2) {
+                pageNumbers.push('...');
+            }
+            
+            // Always show last page
+            pageNumbers.push(totalPages);
+        }
+        
+        return pageNumbers;
+    }
+
+    // Attach pagination event listeners
+    attachPaginationListeners() {
+        // First page button
+        const firstPageBtn = document.getElementById('salesFirstPage');
+        if (firstPageBtn) {
+            firstPageBtn.addEventListener('click', () => this.goToPage(1));
+        }
+
+        // Previous page button
+        const prevPageBtn = document.getElementById('salesPrevPage');
+        if (prevPageBtn) {
+            prevPageBtn.addEventListener('click', () => {
+                this.goToPage(this.pagination.currentPage - 1);
+            });
+        }
+
+        // Next page button
+        const nextPageBtn = document.getElementById('salesNextPage');
+        if (nextPageBtn) {
+            nextPageBtn.addEventListener('click', () => {
+                this.goToPage(this.pagination.currentPage + 1);
+            });
+        }
+
+        // Last page button
+        const lastPageBtn = document.getElementById('salesLastPage');
+        if (lastPageBtn) {
+            lastPageBtn.addEventListener('click', () => {
+                this.goToPage(this.pagination.totalPages);
+            });
+        }
+
+        // Page number buttons
+        const pageButtons = document.querySelectorAll('.page-number:not(.ellipsis)');
+        pageButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                const page = parseInt(e.target.dataset.page);
+                this.goToPage(page);
+            });
+        });
+
+        // Items per page selector
+        const itemsPerPageSelect = document.getElementById('salesItemsPerPage');
+        if (itemsPerPageSelect) {
+            itemsPerPageSelect.addEventListener('change', (e) => {
+                this.changeItemsPerPage(e.target.value);
+            });
+        }
     }
 
     // Render individual sale row
