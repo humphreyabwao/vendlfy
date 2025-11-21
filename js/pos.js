@@ -270,14 +270,15 @@ class POSSystem {
             return;
         }
 
-        // Check if item already in cart
-        const existingItem = this.cart.find(i => i.id === itemId);
+        // Check if item already in cart (check by both id AND name to catch duplicates)
+        const existingItem = this.cart.find(i => i.id === itemId || (i.name === item.name && !i.isManual));
         if (existingItem) {
             if (existingItem.quantity >= itemStock) {
                 this.showNotification('Cannot exceed available stock', 'error');
                 return;
             }
             existingItem.quantity++;
+            console.log(`✅ Updated quantity for "${item.name}" to ${existingItem.quantity}`);
         } else {
             // Use price field (matches add-item.js structure)
             const itemPrice = item.price || item.sellingPrice || 0;
@@ -293,6 +294,7 @@ class POSSystem {
                 barcode: item.barcode || '',
                 sku: item.sku || ''
             });
+            console.log(`✅ Added new item to cart: "${item.name}"`);
         }
 
         this.renderCart();
@@ -946,25 +948,38 @@ class POSSystem {
             return;
         }
 
-        this.cart.push({
-            id: 'manual_' + Date.now(),
-            name: name,
-            price: price,
-            cost: 0,
-            quantity: quantity,
-            maxStock: 999999,
-            barcode: barcode,
-            sku: '',
-            isManual: true
-        });
+        // Check if item with same name and price already exists in cart
+        const existingItem = this.cart.find(i => 
+            i.isManual && 
+            i.name.toLowerCase() === name.toLowerCase() && 
+            i.price === price
+        );
+
+        if (existingItem) {
+            // Add to existing quantity instead of creating duplicate
+            existingItem.quantity += quantity;
+            this.showNotification(`Updated quantity for "${name}"`, 'success');
+        } else {
+            // Add new item to cart
+            this.cart.push({
+                id: 'manual_' + Date.now(),
+                name: name,
+                price: price,
+                cost: 0,
+                quantity: quantity,
+                maxStock: 999999,
+                barcode: barcode,
+                sku: '',
+                isManual: true
+            });
+            this.showNotification('Manual item added to cart', 'success');
+        }
 
         this.renderCart();
         this.updateTotals();
         
         // Close modal
         document.querySelector('.pos-modal').remove();
-        
-        this.showNotification('Manual item added to cart', 'success');
     }
 
     // Show receipt dialog

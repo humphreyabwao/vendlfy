@@ -69,6 +69,14 @@ class SalesManager {
             }
 
             this.sales = await dataManager.getSales(filters);
+            
+            // Sort by date - most recent first
+            this.sales.sort((a, b) => {
+                const dateA = new Date(a.createdAt);
+                const dateB = new Date(b.createdAt);
+                return dateB - dateA; // Descending order (newest first)
+            });
+            
             this.filteredSales = [...this.sales];
             
             // Reset pagination when data changes

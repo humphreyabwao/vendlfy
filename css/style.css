@@ -3020,7 +3020,7 @@ textarea.form-input {
 
 .pos-modal-content {
     background: white;
-    border-radius: 12px;
+    border-radius: 0;
     max-width: 500px;
     width: 100%;
     max-height: 90vh;
@@ -6548,6 +6548,7 @@ textarea.form-input {
 .success-modal-content {
     max-width: 600px;
     text-align: center;
+    border-radius: 0 !important;
 }
 
 .success-icon-container {
@@ -6589,9 +6590,10 @@ textarea.form-input {
 .success-details {
     background: #f9fafb;
     padding: 1.5rem;
-    border-radius: 12px;
+    border-radius: 0;
     margin-bottom: 2rem;
     text-align: left;
+    border: 1px solid #e5e7eb;
 }
 
 .success-detail-row {
@@ -6624,15 +6626,58 @@ textarea.form-input {
 
 .success-actions {
     display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
+    flex-direction: row;
+    gap: 1rem;
+    justify-content: center;
+    align-items: center;
+}
+
+.success-icon-btn {
+    width: 56px;
+    height: 56px;
+    border: 2px solid #e5e7eb;
+    background: white;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 0;
+}
+
+.success-icon-btn:hover {
+    background: #f9fafb;
+    border-color: #3b82f6;
+    color: #3b82f6;
+    transform: translateY(-2px);
+}
+
+.success-icon-btn:active {
+    transform: translateY(0);
+}
+
+.success-icon-btn svg {
+    width: 24px;
+    height: 24px;
+}
+
+.success-icon-btn.danger-btn {
+    border-color: #ef4444;
+    color: #ef4444;
+}
+
+.success-icon-btn.danger-btn:hover {
+    background: #ef4444;
+    border-color: #ef4444;
+    color: white;
 }
 
 .btn-large {
     padding: 1rem 1.5rem;
     font-size: 1rem;
     font-weight: 600;
-    border-radius: 8px;
+    border-radius: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -6850,6 +6895,29 @@ textarea.form-input {
 
 [data-theme="dark"] .success-detail-row strong {
     color: var(--text-primary);
+}
+
+[data-theme="dark"] .success-icon-btn {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .success-icon-btn:hover {
+    background: var(--bg-tertiary);
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+
+[data-theme="dark"] .success-icon-btn.danger-btn {
+    border-color: #ef4444;
+    color: #ef4444;
+}
+
+[data-theme="dark"] .success-icon-btn.danger-btn:hover {
+    background: #ef4444;
+    border-color: #ef4444;
+    color: white;
 }
 
 /* B2B Sales Table Dark Theme */
@@ -11493,26 +11561,27 @@ canvas {
 }
 
 .table-wrapper-horizontal::-webkit-scrollbar-track {
-    background: #f3f4f6;
+    background: #e5e7eb;
     border-radius: 4px;
+    margin: 0 8px;
 }
 
 .table-wrapper-horizontal::-webkit-scrollbar-thumb {
-    background: #d1d5db;
+    background: #3b82f6;
     border-radius: 4px;
-    transition: background 0.2s;
+    transition: all 0.2s ease;
 }
 
 .table-wrapper-horizontal::-webkit-scrollbar-thumb:hover {
-    background: #3b82f6;
+    background: #2563eb;
 }
 
 [data-theme="dark"] .table-wrapper-horizontal::-webkit-scrollbar-track {
-    background: var(--bg-tertiary);
+    background: #374151;
 }
 
 [data-theme="dark"] .table-wrapper-horizontal::-webkit-scrollbar-thumb {
-    background: #4b5563;
+    background: #60a5fa;
 }
 
 [data-theme="dark"] .table-wrapper-horizontal::-webkit-scrollbar-thumb:hover {
@@ -11522,11 +11591,11 @@ canvas {
 /* Firefox scrollbar styling */
 .table-wrapper-horizontal {
     scrollbar-width: thin;
-    scrollbar-color: #d1d5db #f3f4f6;
+    scrollbar-color: #3b82f6 #e5e7eb;
 }
 
 [data-theme="dark"] .table-wrapper-horizontal {
-    scrollbar-color: #4b5563 var(--bg-tertiary);
+    scrollbar-color: #60a5fa #374151;
 }
 
 /* Table with sticky action column */

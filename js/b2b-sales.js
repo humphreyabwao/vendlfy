@@ -461,20 +461,19 @@ class B2BSalesManager {
                                 <circle cx="12" cy="12" r="3"></circle>
                             </svg>
                         </button>
-                        ${status === 'pending' || status === 'cancelled' ? `
-                            <button class="btn-icon primary" onclick="window.b2bSalesManager.editSale('${sale.id}')" title="Edit Order">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
-                                </svg>
-                            </button>
-                        ` : ''}
-                        ${status === 'pending' ? `
-                            <button class="btn-icon success" onclick="window.b2bSalesManager.markAsCompleted('${sale.id}')" title="Mark as Completed">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="20 6 9 17 4 12"></polyline>
-                                </svg>
-                            </button>
-                        ` : ''}
+                        <button class="btn-icon primary" onclick="window.b2bSalesManager.editSale('${sale.id}')" title="Edit Sale">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+                            </svg>
+                        </button>
+                        <button class="btn-icon danger" onclick="window.b2bSalesManager.deleteSale('${sale.id}')" title="Delete Sale">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                <line x1="10" y1="11" x2="10" y2="17"></line>
+                                <line x1="14" y1="11" x2="14" y2="17"></line>
+                            </svg>
+                        </button>
                         <button class="btn-icon" onclick="window.b2bSalesManager.printInvoice('${sale.id}')" title="Print Invoice">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="6 9 6 2 18 2 18 9"></polyline>
@@ -1425,6 +1424,38 @@ class B2BSalesManager {
         const b2bLink = document.querySelector('[data-page="new-b2b-sale"]');
         if (b2bLink) {
             b2bLink.click();
+        }
+    }
+
+    // Delete sale
+    async deleteSale(saleId) {
+        const sale = this.sales.find(s => s.id === saleId);
+        if (!sale) return;
+
+        // Confirmation dialog
+        const confirmed = confirm(
+            `Are you sure you want to delete this B2B sale?\n\n` +
+            `Invoice: ${sale.saleNumber}\n` +
+            `Customer: ${sale.customer || 'Walk-in'}\n` +
+            `Amount: KES ${this.formatCurrency(sale.total)}\n\n` +
+            `This action cannot be undone.`
+        );
+
+        if (!confirmed) return;
+
+        try {
+            // Delete from database
+            await dataManager.deleteSale(saleId);
+            
+            this.showNotification('B2B sale deleted successfully', 'success');
+            
+            // Reload sales
+            await this.loadB2BSales();
+            this.renderStats();
+            this.renderSalesTable();
+        } catch (error) {
+            console.error('Error deleting sale:', error);
+            this.showNotification('Failed to delete sale: ' + error.message, 'error');
         }
     }
 

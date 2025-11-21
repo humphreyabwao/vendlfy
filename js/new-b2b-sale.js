@@ -226,21 +226,35 @@ class NewB2BSaleManager {
             return;
         }
 
-        // Add to cart
-        const manualId = 'manual_' + Date.now();
-        this.cart.push({
-            id: manualId,
-            name: name,
-            sku: 'MANUAL',
-            price: price,
-            quantity: quantity,
-            total: price * quantity,
-            isManual: true
-        });
+        // Check if item with same name and price already exists in cart
+        const existingIndex = this.cart.findIndex(c => 
+            c.isManual && 
+            c.name.toLowerCase() === name.toLowerCase() && 
+            c.price === price
+        );
+
+        if (existingIndex >= 0) {
+            // Add to existing quantity instead of creating duplicate
+            this.cart[existingIndex].quantity += quantity;
+            this.cart[existingIndex].total = this.cart[existingIndex].quantity * this.cart[existingIndex].price;
+            this.showNotification('Quantity updated for ' + name, 'success');
+        } else {
+            // Add new item to cart
+            const manualId = 'manual_' + Date.now();
+            this.cart.push({
+                id: manualId,
+                name: name,
+                sku: 'MANUAL',
+                price: price,
+                quantity: quantity,
+                total: price * quantity,
+                isManual: true
+            });
+            this.showNotification('Manual item added to cart', 'success');
+        }
 
         this.renderCart();
         this.updateTotals();
-        this.showNotification('Manual item added to cart', 'success');
 
         // Clear form
         nameInput.value = '';
@@ -763,19 +777,29 @@ class NewB2BSaleManager {
                 </div>
 
                 <div class="success-actions">
-                    <button onclick="window.newB2BSaleManager.printInvoice('${sale.saleNumber}'); this.closest('.pos-modal').remove();" class="btn btn-primary btn-large">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button onclick="window.newB2BSaleManager.printInvoice('${sale.saleNumber}'); this.closest('.pos-modal').remove();" class="success-icon-btn" title="Print Invoice">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="6 9 6 2 18 2 18 9"></polyline>
                             <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
                             <rect x="6" y="14" width="12" height="8"></rect>
                         </svg>
-                        Print Invoice
                     </button>
-                    <button onclick="this.closest('.pos-modal').remove(); document.querySelector('[data-page=\\'b2b-sales\\']').click();" class="btn btn-secondary btn-large">
-                        View All B2B Sales
+                    <button onclick="this.closest('.pos-modal').remove(); document.querySelector('[data-page=\\'b2b-sales\\']').click();" class="success-icon-btn" title="View All B2B Sales">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"></path>
+                        </svg>
                     </button>
-                    <button onclick="this.closest('.pos-modal').remove();" class="btn btn-outline btn-large">
-                        Create Another Order
+                    <button onclick="this.closest('.pos-modal').remove();" class="success-icon-btn" title="Create Another Order">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </button>
+                    <button onclick="this.closest('.pos-modal').remove();" class="success-icon-btn danger-btn" title="Close">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
                     </button>
                 </div>
             </div>

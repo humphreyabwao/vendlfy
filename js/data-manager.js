@@ -202,6 +202,18 @@ class DataManager {
         }
     }
 
+    async deleteSale(saleId) {
+        try {
+            const saleRef = doc(db, 'sales', saleId);
+            await deleteDoc(saleRef);
+            console.log('✅ Sale deleted successfully:', saleId);
+            return true;
+        } catch (error) {
+            console.error('Error deleting sale:', error);
+            throw error;
+        }
+    }
+
     // ============================================
     // HELD SALES OPERATIONS
     // ============================================
