@@ -60,6 +60,8 @@ class B2BSalesManager {
         try {
             const allSales = await dataManager.getSales();
             this.sales = allSales.filter(sale => sale.type === 'b2b' || sale.saleType === 'wholesale');
+            // Sort by date descending (most recent first)
+            this.sales.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
             this.filteredSales = [...this.sales];
             console.log(`💼 Loaded ${this.sales.length} B2B sales`);
         } catch (error) {
@@ -239,6 +241,9 @@ class B2BSalesManager {
 
             return true;
         });
+
+        // Sort by date descending (most recent first)
+        this.filteredSales.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
         this.renderSalesTable();
     }
