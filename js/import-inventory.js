@@ -515,11 +515,37 @@ class InventoryImporter {
         const errors = [];
 
         try {
+            // Get existing inventory to check for duplicates
+            console.log('📋 Checking for existing items...');
+            const existingItems = await dataManager.getInventory();
+            const existingSKUs = new Set(existingItems.map(item => (item.sku || '').toLowerCase().trim()));
+            const existingNames = new Set(existingItems.map(item => (item.name || '').toLowerCase().trim()));
+            
+            console.log(`📊 Found ${existingItems.length} existing items in database`);
+            
             // Import items one by one
             for (let i = 0; i < this.validItems.length; i++) {
                 const item = this.validItems[i];
                 
                 try {
+                    // Check for duplicate SKU or Name
+                    const itemSKU = (item.sku || '').toLowerCase().trim();
+                    const itemName = (item.name || '').toLowerCase().trim();
+                    
+                    if (existingSKUs.has(itemSKU)) {
+                        console.warn(`⚠️ Skipping duplicate SKU: ${item.sku} (${item.name})`);
+                        failCount++;
+                        errors.push(`${item.name}: Item with SKU "${item.sku}" already exists`);
+                        continue;
+                    }
+                    
+                    if (existingNames.has(itemName)) {
+                        console.warn(`⚠️ Skipping duplicate name: ${item.name}`);
+                        failCount++;
+                        errors.push(`${item.name}: Item with this name already exists`);
+                        continue;
+                    }
+                    
                     // Add timestamp and default values
                     const itemData = {
                         ...item,
@@ -529,6 +555,11 @@ class InventoryImporter {
 
                     // Save to database
                     await dataManager.createInventoryItem(itemData);
+                    
+                    // Add to tracking sets to prevent duplicates within the same import
+                    existingSKUs.add(itemSKU);
+                    existingNames.add(itemName);
+                    
                     successCount++;
 
                     // Update progress
@@ -559,15 +590,11 @@ class InventoryImporter {
 
             // Log audit
             if (window.auditLogger) {
-                await auditLogger.log({
-                    action: 'BULK_IMPORT',
-                    category: 'inventory',
-                    description: `Imported ${successCount} items from Excel`,
-                    metadata: {
-                        totalItems: this.validItems.length,
-                        successCount: successCount,
-                        failCount: failCount
-                    }
+                await auditLogger.logActivity('BULK_IMPORT', 'INVENTORY', {
+                    message: `Imported ${successCount} items from Excel`,
+                    totalItems: this.validItems.length,
+                    successCount: successCount,
+                    failCount: failCount
                 });
             }
 
@@ -575,13 +602,19 @@ class InventoryImporter {
             if (successCount > 0) {
                 window.showNotification(
                     `Successfully imported ${successCount} item${successCount > 1 ? 's' : ''}` +
-                    (failCount > 0 ? `, ${failCount} failed` : ''),
+                    (failCount > 0 ? `, ${failCount} skipped (duplicates or errors)` : ''),
                     failCount > 0 ? 'warning' : 'success'
+                );
+            } else if (failCount > 0) {
+                window.showNotification(
+                    `Import failed: All ${failCount} items were duplicates or had errors`,
+                    'error'
                 );
             }
 
             if (failCount > 0) {
-                console.error('Import errors:', errors);
+                console.warn('Import issues:', errors);
+                console.log('📋 Items skipped:', errors.slice(0, 5).join(', ') + (errors.length > 5 ? `... and ${errors.length - 5} more` : ''));
             }
 
             // Refresh inventory

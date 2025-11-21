@@ -95,11 +95,51 @@ class InventoryManager {
             }
             
             // Only keep Firebase items (items without local IDs)
-            this.items = items.filter(item => 
+            let filteredItems = items.filter(item => 
                 !item.id || (!item.id.startsWith('item_') && !item.id.startsWith('local_'))
             );
             
-            console.log(`✅ Using ${this.items.length} Firebase-synced items`);
+            // Remove duplicates based on multiple criteria - keep only the first occurrence
+            const uniqueItems = [];
+            const seenIds = new Set();
+            const seenSKUs = new Set();
+            const seenNames = new Set();
+            
+            filteredItems.forEach(item => {
+                const itemSKU = (item.sku || '').toLowerCase().trim();
+                const itemName = (item.name || '').toLowerCase().trim();
+                
+                // Skip if we've seen this ID, SKU, or exact name before
+                if (item.id && seenIds.has(item.id)) {
+                    console.warn(`⚠️ Duplicate ID detected: ${item.id} - ${item.name}`);
+                    return;
+                }
+                
+                if (itemSKU && seenSKUs.has(itemSKU)) {
+                    console.warn(`⚠️ Duplicate SKU detected: ${item.sku} - ${item.name}`);
+                    return;
+                }
+                
+                if (itemName && seenNames.has(itemName)) {
+                    console.warn(`⚠️ Duplicate name detected: ${item.name}`);
+                    return;
+                }
+                
+                // Add to tracking sets
+                if (item.id) seenIds.add(item.id);
+                if (itemSKU) seenSKUs.add(itemSKU);
+                if (itemName) seenNames.add(itemName);
+                
+                uniqueItems.push(item);
+            });
+            
+            const duplicateCount = filteredItems.length - uniqueItems.length;
+            if (duplicateCount > 0) {
+                console.warn(`⚠️ Removed ${duplicateCount} duplicate items`);
+            }
+            
+            this.items = uniqueItems;
+            console.log(`✅ Using ${this.items.length} unique Firebase-synced items`);
             this.calculateStats();
         } catch (error) {
             console.error('Error loading inventory:', error);
