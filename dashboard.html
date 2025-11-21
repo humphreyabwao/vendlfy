@@ -1809,35 +1809,37 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="table-wrapper">
-                            <table class="data-table" id="ordersTable">
-                                <thead>
-                                    <tr>
-                                        <th>Order #</th>
-                                        <th>Date</th>
-                                        <th>Supplier</th>
-                                        <th>Items</th>
-                                        <th>Total Amount</th>
-                                        <th>Payment Status</th>
-                                        <th>Delivery Status</th>
-                                        <th>Expected Delivery</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="ordersTableBody">
-                                    <tr>
-                                        <td colspan="9" style="text-align: center; padding: 3rem;">
-                                            <div class="empty-state-inline">
-                                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
-                                                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
-                                                </svg>
-                                                <p>No orders found. Create your first order!</p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                        <div class="table-scroll-wrapper">
+                            <div class="table-wrapper-horizontal">
+                                <table class="data-table" id="ordersTable">
+                                    <thead>
+                                        <tr>
+                                            <th style="min-width: 120px;">Order #</th>
+                                            <th style="min-width: 140px;">Date</th>
+                                            <th style="min-width: 180px;">Supplier</th>
+                                            <th style="min-width: 80px;">Items</th>
+                                            <th style="min-width: 130px;">Total Amount</th>
+                                            <th style="min-width: 140px;">Payment Status</th>
+                                            <th style="min-width: 140px;">Delivery Status</th>
+                                            <th style="min-width: 140px;">Expected Delivery</th>
+                                            <th class="sticky-action-cell" style="min-width: 180px;">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="ordersTableBody">
+                                        <tr>
+                                            <td colspan="9" style="text-align: center; padding: 3rem;">
+                                                <div class="empty-state-inline">
+                                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                                        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                                                        <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                                                    </svg>
+                                                    <p>No orders found. Create your first order!</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                         
                         <!-- Pagination -->

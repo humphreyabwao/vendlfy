@@ -314,6 +314,13 @@ const ordersManager = {
                                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                                 </svg>
                             </button>
+                            <button class="btn-icon" onclick="ordersManager.printOrder('${order.id}')" title="Print Order">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                                    <rect x="6" y="14" width="12" height="8"></rect>
+                                </svg>
+                            </button>
                             ${order.deliveryStatus !== 'delivered' ? `
                             <button class="btn-icon" onclick="ordersManager.markAsDelivered('${order.id}')" title="Mark as Delivered">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -630,6 +637,142 @@ const ordersManager = {
             console.error('❌ Error updating inventory:', error);
             console.error('Error details:', error.message);
         }
+    },
+
+    printOrder(orderId) {
+        const order = this.orders.find(o => o.id === orderId);
+        if (!order) {
+            this.showNotification('Order not found', 'error');
+            return;
+        }
+
+        const printWindow = window.open('', '_blank');
+        const orderNumber = order.orderNumber || order.id.substring(0, 8).toUpperCase();
+        const orderDate = this.formatDate(order.createdAt);
+        
+        let itemsHTML = '';
+        if (order.items && order.items.length > 0) {
+            itemsHTML = order.items.map(item => `
+                <tr>
+                    <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">${item.name || 'N/A'}</td>
+                    <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">${item.quantity || 0}</td>
+                    <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">KSh ${this.formatNumber(item.price || 0)}</td>
+                    <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right;"><strong>KSh ${this.formatNumber((item.quantity || 0) * (item.price || 0))}</strong></td>
+                </tr>
+            `).join('');
+        }
+
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Order #${orderNumber}</title>
+                <style>
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    body { font-family: Arial, sans-serif; padding: 40px; background: white; }
+                    .header { text-align: center; margin-bottom: 40px; border-bottom: 3px solid #3b82f6; padding-bottom: 20px; }
+                    .header h1 { color: #1f2937; font-size: 28px; margin-bottom: 8px; }
+                    .header p { color: #6b7280; font-size: 14px; }
+                    .order-info { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 40px; }
+                    .info-section h3 { color: #1f2937; font-size: 16px; margin-bottom: 12px; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px; }
+                    .info-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
+                    .info-row .label { color: #6b7280; }
+                    .info-row .value { color: #1f2937; font-weight: 600; }
+                    table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+                    thead { background: #f3f4f6; }
+                    th { padding: 12px; text-align: left; font-size: 14px; color: #374151; font-weight: 600; border-bottom: 2px solid #d1d5db; }
+                    td { font-size: 14px; color: #1f2937; }
+                    .totals { margin-top: 30px; text-align: right; }
+                    .total-row { display: flex; justify-content: flex-end; padding: 8px 0; font-size: 14px; }
+                    .total-row .label { color: #6b7280; margin-right: 20px; min-width: 120px; }
+                    .total-row.grand-total { font-size: 18px; font-weight: bold; color: #1f2937; border-top: 2px solid #3b82f6; padding-top: 12px; margin-top: 12px; }
+                    .footer { margin-top: 60px; text-align: center; color: #9ca3af; font-size: 12px; border-top: 1px solid #e5e7eb; padding-top: 20px; }
+                    @media print {
+                        body { padding: 20px; }
+                        .no-print { display: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>PURCHASE ORDER</h1>
+                    <p>Order #${orderNumber}</p>
+                </div>
+                
+                <div class="order-info">
+                    <div class="info-section">
+                        <h3>Order Information</h3>
+                        <div class="info-row">
+                            <span class="label">Order Date:</span>
+                            <span class="value">${orderDate}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Expected Delivery:</span>
+                            <span class="value">${order.expectedDelivery ? this.formatDate(order.expectedDelivery) : 'TBD'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Delivery Status:</span>
+                            <span class="value">${this.capitalizeFirst(order.deliveryStatus || 'pending')}</span>
+                        </div>
+                    </div>
+                    <div class="info-section">
+                        <h3>Supplier Information</h3>
+                        <div class="info-row">
+                            <span class="label">Supplier:</span>
+                            <span class="value">${order.supplierName || 'N/A'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Contact:</span>
+                            <span class="value">${order.supplierContact || 'N/A'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Payment Status:</span>
+                            <span class="value">${this.capitalizeFirst(order.paymentStatus || 'pending')}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th style="text-align: center;">Quantity</th>
+                            <th style="text-align: right;">Unit Price</th>
+                            <th style="text-align: right;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${itemsHTML}
+                    </tbody>
+                </table>
+
+                <div class="totals">
+                    <div class="total-row grand-total">
+                        <span class="label">TOTAL AMOUNT:</span>
+                        <span class="value">KSh ${this.formatNumber(order.totalAmount || 0)}</span>
+                    </div>
+                </div>
+
+                ${order.notes ? `
+                <div style="margin-top: 30px; padding: 15px; background: #f9fafb; border-left: 4px solid #3b82f6;">
+                    <strong style="color: #1f2937;">Notes:</strong>
+                    <p style="color: #6b7280; margin-top: 8px;">${order.notes}</p>
+                </div>
+                ` : ''}
+
+                <div class="footer">
+                    <p>Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
+                    <p style="margin-top: 5px;">Vendify POS - Order Management System</p>
+                </div>
+                
+                <script>
+                    window.onload = function() { window.print(); };
+                </script>
+            </body>
+            </html>
+        `);
+        
+        printWindow.document.close();
     },
 
     async deleteOrder(orderId) {
