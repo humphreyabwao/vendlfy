@@ -11649,24 +11649,26 @@ canvas {
     scrollbar-color: #60a5fa #374151;
 }
 
-/* Vertical Scroll Wrapper for Monthly Summary */
+/* Vertical Scroll Wrapper for Monthly Summary & Audit Trail */
 .table-wrapper-vertical {
     max-height: 500px;
     overflow-y: auto;
-    overflow-x: hidden;
+    overflow-x: auto;
     border: 1px solid var(--border-color);
     border-radius: 8px;
     background: var(--bg-primary);
 }
 
+/* Vertical scrollbar */
 .table-wrapper-vertical::-webkit-scrollbar {
     width: 6px;
+    height: 6px;
 }
 
 .table-wrapper-vertical::-webkit-scrollbar-track {
-    background: #e5e7eb;
+    background: #f3f4f6;
     border-radius: 4px;
-    margin: 8px 0;
+    margin: 4px;
 }
 
 .table-wrapper-vertical::-webkit-scrollbar-thumb {
@@ -11679,6 +11681,28 @@ canvas {
     background: #2563eb;
 }
 
+/* Horizontal scrollbar - slim and clean */
+.table-wrapper-vertical::-webkit-scrollbar:horizontal {
+    height: 6px;
+}
+
+.table-wrapper-vertical::-webkit-scrollbar-track:horizontal {
+    background: #f3f4f6;
+    border-radius: 4px;
+    margin: 4px 8px;
+}
+
+.table-wrapper-vertical::-webkit-scrollbar-thumb:horizontal {
+    background: #3b82f6;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.table-wrapper-vertical::-webkit-scrollbar-thumb:horizontal:hover {
+    background: #2563eb;
+}
+
+/* Dark theme scrollbars */
 [data-theme="dark"] .table-wrapper-vertical::-webkit-scrollbar-track {
     background: #374151;
 }
@@ -11691,10 +11715,22 @@ canvas {
     background: #3b82f6;
 }
 
-/* Firefox scrollbar styling for vertical */
+[data-theme="dark"] .table-wrapper-vertical::-webkit-scrollbar-track:horizontal {
+    background: #374151;
+}
+
+[data-theme="dark"] .table-wrapper-vertical::-webkit-scrollbar-thumb:horizontal {
+    background: #60a5fa;
+}
+
+[data-theme="dark"] .table-wrapper-vertical::-webkit-scrollbar-thumb:horizontal:hover {
+    background: #3b82f6;
+}
+
+/* Firefox scrollbar styling for vertical and horizontal */
 .table-wrapper-vertical {
     scrollbar-width: thin;
-    scrollbar-color: #3b82f6 #e5e7eb;
+    scrollbar-color: #3b82f6 #f3f4f6;
 }
 
 [data-theme="dark"] .table-wrapper-vertical {
