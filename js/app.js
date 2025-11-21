@@ -52,6 +52,7 @@ async function initializeApp() {
     initSidebar();
     initNavigation();
     initProfileDropdown();
+    initSystemSettingsTabs();
     await initBranchSystem();
     globalSearch.init();
     notificationManager.init();
@@ -475,6 +476,7 @@ async function initDashboardActivities() {
 function initProfileDropdown() {
     const profileBtn = document.getElementById('profileBtn');
     const profileDropdown = profileBtn.closest('.profile-dropdown');
+    const profileMenuItems = profileDropdown.querySelectorAll('.profile-menu-item');
     
     profileBtn.addEventListener('click', function(e) {
         e.stopPropagation();
@@ -487,6 +489,299 @@ function initProfileDropdown() {
             profileDropdown.classList.remove('active');
         }
     });
+
+    // Handle profile menu item clicks
+    profileMenuItems.forEach(item => {
+        if (item.hasAttribute('data-page')) {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                const page = this.getAttribute('data-page');
+                showPage(page);
+                profileDropdown.classList.remove('active');
+            });
+        }
+    });
+}
+
+// System Settings Tab Management
+function initSystemSettingsTabs() {
+    const tabs = document.querySelectorAll('.settings-tab');
+    const contents = document.querySelectorAll('.settings-content');
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const targetTab = this.getAttribute('data-tab');
+            
+            // Remove active class from all tabs
+            tabs.forEach(t => t.classList.remove('active'));
+            
+            // Add active class to clicked tab
+            this.classList.add('active');
+            
+            // Hide all content
+            contents.forEach(content => content.classList.remove('active'));
+            
+            // Show target content
+            const targetContent = document.getElementById(`${targetTab}-tab`);
+            if (targetContent) {
+                targetContent.classList.add('active');
+            }
+        });
+    });
+
+    // Handle form submissions
+    const profileForm = document.getElementById('profileForm');
+    if (profileForm) {
+        profileForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            showNotification('Profile updated successfully!', 'success');
+        });
+    }
+
+    const passwordForm = document.getElementById('passwordForm');
+    if (passwordForm) {
+        passwordForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            if (newPassword !== confirmPassword) {
+                showNotification('Passwords do not match!', 'warning');
+                return;
+            }
+            
+            showNotification('Password updated successfully!', 'success');
+            passwordForm.reset();
+        });
+    }
+
+    const preferencesForm = document.getElementById('preferencesForm');
+    if (preferencesForm) {
+        preferencesForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            showNotification('Preferences saved successfully!', 'success');
+        });
+    }
+
+    const notificationsForm = document.getElementById('notificationsForm');
+    if (notificationsForm) {
+        notificationsForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            showNotification('Notification settings saved!', 'success');
+        });
+    }
+
+    // Dark mode toggle
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    if (darkModeToggle) {
+        // Set initial state based on current theme
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        darkModeToggle.checked = currentTheme === 'dark';
+        
+        darkModeToggle.addEventListener('change', function() {
+            const themeToggleBtn = document.getElementById('themeToggle');
+            if (themeToggleBtn) {
+                themeToggleBtn.click();
+            }
+        });
+    }
+
+    // Load user data into profile form
+    loadUserProfileData();
+    
+    // Initialize profile picture upload
+    initProfilePictureUpload();
+}
+
+// Initialize Profile Picture Upload
+function initProfilePictureUpload() {
+    const uploadBtn = document.getElementById('uploadProfilePictureBtn');
+    const removeBtn = document.getElementById('removeProfilePictureBtn');
+    const fileInput = document.getElementById('profilePictureInput');
+    const preview = document.getElementById('profilePicturePreview');
+    const overlay = document.getElementById('profilePictureOverlay');
+    
+    if (!uploadBtn || !fileInput || !preview) return;
+    
+    // Load saved profile picture
+    const savedPhoto = localStorage.getItem('profilePicture');
+    if (savedPhoto) {
+        displayProfilePicture(savedPhoto);
+        if (removeBtn) removeBtn.style.display = 'inline-flex';
+    }
+    
+    // Upload button click
+    uploadBtn.addEventListener('click', () => {
+        fileInput.click();
+    });
+    
+    // Overlay click
+    if (overlay) {
+        overlay.addEventListener('click', () => {
+            fileInput.click();
+        });
+    }
+    
+    // File input change
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            showNotification('Please select an image file', 'warning');
+            return;
+        }
+        
+        // Validate file size (5MB max)
+        if (file.size > 5 * 1024 * 1024) {
+            showNotification('Image size must be less than 5MB', 'warning');
+            return;
+        }
+        
+        // Read and display image
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const imageData = event.target.result;
+            displayProfilePicture(imageData);
+            
+            // Save to localStorage
+            localStorage.setItem('profilePicture', imageData);
+            
+            // Update profile avatar in header
+            updateHeaderProfileAvatar(imageData);
+            
+            // Show remove button
+            if (removeBtn) removeBtn.style.display = 'inline-flex';
+            
+            showNotification('Profile picture updated successfully!', 'success');
+        };
+        reader.readAsDataURL(file);
+    });
+    
+    // Remove button click
+    if (removeBtn) {
+        removeBtn.addEventListener('click', () => {
+            if (confirm('Are you sure you want to remove your profile picture?')) {
+                removeProfilePicture();
+                removeBtn.style.display = 'none';
+                showNotification('Profile picture removed', 'info');
+            }
+        });
+    }
+}
+
+// Display Profile Picture
+function displayProfilePicture(imageData) {
+    const preview = document.getElementById('profilePicturePreview');
+    if (!preview) return;
+    
+    // Create or update image element
+    let img = preview.querySelector('img');
+    if (!img) {
+        // Remove SVG if exists
+        const svg = preview.querySelector('svg');
+        if (svg) svg.remove();
+        
+        img = document.createElement('img');
+        preview.appendChild(img);
+    }
+    
+    img.src = imageData;
+    img.alt = 'Profile Picture';
+}
+
+// Remove Profile Picture
+function removeProfilePicture() {
+    const preview = document.getElementById('profilePicturePreview');
+    if (!preview) return;
+    
+    // Remove image
+    const img = preview.querySelector('img');
+    if (img) img.remove();
+    
+    // Add back SVG
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '80');
+    svg.setAttribute('height', '80');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '1.5');
+    
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2');
+    svg.appendChild(path);
+    
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', '12');
+    circle.setAttribute('cy', '7');
+    circle.setAttribute('r', '4');
+    svg.appendChild(circle);
+    
+    preview.appendChild(svg);
+    
+    // Remove from localStorage
+    localStorage.removeItem('profilePicture');
+    
+    // Update header avatar
+    updateHeaderProfileAvatar(null);
+}
+
+// Update Header Profile Avatar
+function updateHeaderProfileAvatar(imageData) {
+    const profileAvatar = document.querySelector('.profile-avatar');
+    if (!profileAvatar) return;
+    
+    if (imageData) {
+        // Add image
+        let img = profileAvatar.querySelector('img');
+        if (!img) {
+            const svg = profileAvatar.querySelector('svg');
+            if (svg) svg.style.display = 'none';
+            
+            img = document.createElement('img');
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.objectFit = 'cover';
+            img.style.borderRadius = '50%';
+            profileAvatar.appendChild(img);
+        }
+        img.src = imageData;
+    } else {
+        // Remove image, show SVG
+        const img = profileAvatar.querySelector('img');
+        if (img) img.remove();
+        
+        const svg = profileAvatar.querySelector('svg');
+        if (svg) svg.style.display = 'block';
+    }
+}
+
+// Load User Profile Data
+function loadUserProfileData() {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    
+    const emailInput = document.getElementById('profileEmail');
+    const nameInput = document.getElementById('profileFullName');
+    const roleInput = document.getElementById('profileRole');
+    
+    if (emailInput) emailInput.value = currentUser.email || '';
+    if (nameInput) nameInput.value = currentUser.displayName || currentUser.name || '';
+    if (roleInput) roleInput.value = currentUser.role || 'Administrator';
+    
+    // Load profile picture in header if exists
+    const savedPhoto = localStorage.getItem('profilePicture');
+    if (savedPhoto) {
+        updateHeaderProfileAvatar(savedPhoto);
+    }
+    
+    // Update last login time
+    const lastLoginTime = document.getElementById('lastLoginTime');
+    if (lastLoginTime) {
+        const now = new Date();
+        lastLoginTime.textContent = now.toLocaleString();
+    }
 }
 
 // Refresh Dashboard Stats
