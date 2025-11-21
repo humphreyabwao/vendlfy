@@ -492,6 +492,14 @@
                         <p class="page-subtitle">Monitor and manage your stock levels</p>
                     </div>
                     <div class="page-header-right">
+                        <button class="btn btn-secondary" id="importInventoryBtn">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            Import Excel
+                        </button>
                         <div class="export-dropdown">
                             <button class="btn btn-secondary" id="exportInventoryBtn">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -4691,6 +4699,130 @@
         </div>
     </div>
 
+    <!-- Import Inventory Modal -->
+    <div class="modal" id="importInventoryModal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h3>Import Inventory from Excel</h3>
+                <button class="modal-close" id="closeImportModal">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Upload Section -->
+                <div id="importUploadSection">
+                    <div class="import-instructions">
+                        <h4>Import Instructions</h4>
+                        <ol>
+                            <li>Download the Excel template to ensure proper formatting</li>
+                            <li>Fill in your inventory data (Product Name, Category, Price, and Quantity are required)</li>
+                            <li>Upload your completed Excel file</li>
+                            <li>Review the preview and confirm import</li>
+                        </ol>
+                        <p class="note"><strong>Note:</strong> SKU numbers will be automatically generated for items without one. All dates should be in YYYY-MM-DD format.</p>
+                    </div>
+
+                    <div class="import-actions">
+                        <button class="btn btn-secondary" id="downloadTemplateBtn">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Download Template
+                        </button>
+                    </div>
+
+                    <div class="file-upload-area">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                        </svg>
+                        <h4>Select Excel File</h4>
+                        <p>Drag and drop or click to browse</p>
+                        <input type="file" id="importFileInput" accept=".xlsx,.xls,.csv" style="display: none;">
+                        <button class="btn btn-primary" onclick="document.getElementById('importFileInput').click()">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            Choose File
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Preview Section -->
+                <div id="importPreviewSection" style="display: none;">
+                    <div class="import-summary" id="importSummary"></div>
+
+                    <!-- Valid Items -->
+                    <div id="validItemsSection" class="import-section">
+                        <h4 class="import-section-title">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                            Valid Items (Ready to Import)
+                        </h4>
+                        <div class="table-wrapper" style="max-height: 300px; overflow-y: auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Product Name</th>
+                                        <th>Category</th>
+                                        <th>SKU</th>
+                                        <th>Price</th>
+                                        <th>Quantity</th>
+                                        <th>Supplier</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="validItemsTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Invalid Items -->
+                    <div id="invalidItemsSection" class="import-section" style="display: none;">
+                        <h4 class="import-section-title error">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="15" y1="9" x2="9" y2="15"></line>
+                                <line x1="9" y1="9" x2="15" y2="15"></line>
+                            </svg>
+                            Invalid Items (Will be Skipped)
+                        </h4>
+                        <div class="table-wrapper" style="max-height: 200px; overflow-y: auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Row</th>
+                                        <th>Product Name</th>
+                                        <th>Errors</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="invalidItemsTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="import-footer">
+                        <button class="btn btn-secondary" id="cancelImportBtn">Cancel</button>
+                        <button class="btn btn-primary" id="confirmImportBtn">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            Confirm Import
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Export Format Modal -->
     <div id="exportFormatModal" class="modal">

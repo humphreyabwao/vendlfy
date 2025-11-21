@@ -12513,3 +12513,275 @@ canvas {
 }
 
 
+
+/* Import Inventory Modal Styles */
+.import-instructions {
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.import-instructions h4 {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.import-instructions ol {
+    margin-left: 1.5rem;
+    margin-bottom: 1rem;
+    color: var(--text-secondary);
+}
+
+.import-instructions ol li {
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+}
+
+.import-instructions .note {
+    color: var(--primary-orange);
+    background: rgba(245, 158, 11, 0.1);
+    padding: 0.75rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    margin-top: 1rem;
+}
+
+.import-actions {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 2rem;
+}
+
+.file-upload-area {
+    border: 2px dashed var(--border-color);
+    border-radius: 12px;
+    padding: 3rem 2rem;
+    text-align: center;
+    background: var(--bg-tertiary);
+    transition: all 0.3s;
+}
+
+.file-upload-area:hover {
+    border-color: var(--primary-blue);
+    background: rgba(37, 99, 235, 0.05);
+}
+
+.file-upload-area svg {
+    color: var(--text-tertiary);
+    margin-bottom: 1rem;
+}
+
+.file-upload-area h4 {
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+}
+
+.file-upload-area p {
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+}
+
+.import-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.import-summary-item {
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border-left: 4px solid;
+}
+
+.import-summary-item.success {
+    border-color: var(--success);
+}
+
+.import-summary-item.success svg {
+    color: var(--success);
+}
+
+.import-summary-item.error {
+    border-color: var(--danger);
+}
+
+.import-summary-item.error svg {
+    color: var(--danger);
+}
+
+.import-summary-item.info {
+    border-color: var(--primary-blue);
+}
+
+.import-summary-item.info svg {
+    color: var(--primary-blue);
+}
+
+.import-summary-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+.import-summary-label {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.import-section {
+    margin-bottom: 2rem;
+}
+
+.import-section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.import-section-title svg {
+    color: var(--success);
+}
+
+.import-section-title.error svg {
+    color: var(--danger);
+}
+
+.error-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.error-list li {
+    color: var(--danger);
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.error-list li:before {
+    content: "•";
+    font-weight: bold;
+}
+
+.import-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.modal-lg {
+    max-width: 900px;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.badge-electronics {
+    background: rgba(37, 99, 235, 0.1);
+    color: var(--primary-blue);
+}
+
+.badge-clothing {
+    background: rgba(139, 92, 246, 0.1);
+    color: var(--primary-purple);
+}
+
+.badge-food {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--primary-green);
+}
+
+.badge-beauty {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--primary-orange);
+}
+
+.badge-home {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--primary-red);
+}
+
+.badge-sports {
+    background: rgba(6, 182, 212, 0.1);
+    color: #06b6d4;
+}
+
+.badge-books {
+    background: rgba(168, 85, 247, 0.1);
+    color: #a855f7;
+}
+
+.badge-toys {
+    background: rgba(236, 72, 153, 0.1);
+    color: #ec4899;
+}
+
+.badge-automotive {
+    background: rgba(100, 116, 139, 0.1);
+    color: #64748b;
+}
+
+.badge-other {
+    background: rgba(107, 114, 128, 0.1);
+    color: var(--text-secondary);
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.spinning {
+    animation: spin 1s linear infinite;
+}
+
+/* Responsive adjustments for import modal */
+@media (max-width: 768px) {
+    .import-summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .file-upload-area {
+        padding: 2rem 1rem;
+    }
+
+    .import-footer {
+        flex-direction: column;
+    }
+
+    .import-footer button {
+        width: 100%;
+    }
+}

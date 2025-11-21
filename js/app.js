@@ -3,6 +3,7 @@ import branchManager from './branch-manager.js';
 import dataManager from './data-manager.js';
 import inventoryManager from './inventory.js';
 import addItemManager from './add-item.js';
+import inventoryImporter from './import-inventory.js';
 import posSystem from './pos.js';
 import salesManager from './sales.js';
 import expenseManager from './expenses.js';
@@ -27,6 +28,7 @@ window.branchManager = branchManager;
 window.dataManager = dataManager;
 window.inventoryManager = inventoryManager;
 window.addItemManager = addItemManager;
+window.inventoryImporter = inventoryImporter;
 window.posSystem = posSystem;
 window.salesManager = salesManager;
 window.expenseManager = expenseManager;
@@ -306,6 +308,7 @@ function initNavigation() {
                 // Initialize inventory page if that's what we're navigating to
                 if (pageId === 'inventory') {
                     inventoryManager.init();
+                    inventoryImporter.init();
                 }
                 
                 // Initialize add-item page (init checks if already initialized)
