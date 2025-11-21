@@ -2,6 +2,7 @@
 import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy, limit } from './firebase-config.js';
 import branchManager from './branch-manager.js';
 import dataManager from './data-manager.js';
+import auditLogger from './audit-logger.js';
 
 class POSSystem {
     constructor() {
@@ -550,6 +551,16 @@ class POSSystem {
                 console.error('❌ Failed to save sale to database:', saleError);
                 throw new Error(`Failed to save sale: ${saleError.message}`);
             }
+
+            // Log POS sale to audit trail
+            await auditLogger.logSale('POS', {
+                total: total,
+                items: this.cart,
+                itemCount: this.cart.length,
+                customerName: 'Walk-in',
+                discount: discountAmount,
+                tax: taxAmount
+            });
 
             // Update inventory stock (non-critical - sale already saved)
             try {

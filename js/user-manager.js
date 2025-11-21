@@ -1,6 +1,7 @@
 // User Management System
 import { db, auth, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot, createUserWithEmailAndPassword, isFirebaseConfigured } from './firebase-config.js';
 import branchManager from './branch-manager.js';
+import auditLogger from './audit-logger.js';
 
 class UserManager {
     constructor() {
@@ -147,6 +148,14 @@ class UserManager {
                 }
                 
                 await this.loadUsers();
+                
+                // Log user creation to audit trail
+                await auditLogger.logUserManagement('CREATE_USER', {
+                    fullName: userProfile.fullName,
+                    email: userProfile.email,
+                    role: userProfile.role
+                });
+                
                 return { id: docRef.id, ...userProfile };
             } else {
                 // Fallback to localStorage
@@ -181,6 +190,16 @@ class UserManager {
                 console.log('✅ User updated in Firestore');
                 
                 await this.loadUsers();
+                
+                // Log user update to audit trail
+                const user = this.getUserById(userId);
+                if (user) {
+                    await auditLogger.logUserManagement('UPDATE_USER', {
+                        fullName: user.fullName,
+                        email: user.email,
+                        role: user.role
+                    });
+                }
             } else {
                 // Update in localStorage
                 const userIndex = this.users.findIndex(user => user.id === userId);
@@ -201,6 +220,9 @@ class UserManager {
     // Delete user
     async deleteUser(userId) {
         try {
+            // Get user data before deletion for audit log
+            const user = this.getUserById(userId);
+            
             if (this.isFirebaseAvailable()) {
                 console.log('🗑️ Deleting user from Firestore:', userId);
                 const userRef = doc(db, 'users', userId);
@@ -214,12 +236,84 @@ class UserManager {
                 localStorage.setItem('vendify_users', JSON.stringify(this.users));
                 console.log('📦 User deleted from local storage');
             }
+            
+            // Log user deletion to audit trail
+            if (user) {
+                await auditLogger.logUserManagement('DELETE_USER', {
+                    fullName: user.fullName,
+                    email: user.email,
+                    role: user.role
+                });
+            }
 
             return true;
         } catch (error) {
             console.error('❌ Error deleting user:', error);
             throw new Error(`Failed to delete user: ${error.message}`);
         }
+    }
+
+    // Update user activity (lastActive timestamp)
+    async updateUserActivity(userId) {
+        try {
+            const updates = {
+                lastActive: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+
+            if (this.isFirebaseAvailable()) {
+                const userRef = doc(db, 'users', userId);
+                await updateDoc(userRef, updates);
+                
+                // Update local cache
+                const userIndex = this.users.findIndex(u => u.id === userId);
+                if (userIndex !== -1) {
+                    this.users[userIndex] = { ...this.users[userIndex], ...updates };
+                }
+            } else {
+                // Update in localStorage
+                const userIndex = this.users.findIndex(user => user.id === userId);
+                if (userIndex !== -1) {
+                    this.users[userIndex] = { ...this.users[userIndex], ...updates };
+                    localStorage.setItem('vendify_users', JSON.stringify(this.users));
+                }
+            }
+
+            return true;
+        } catch (error) {
+            console.error('❌ Error updating user activity:', error);
+            return false;
+        }
+    }
+
+    // Check if user is online (active in last 5 minutes)
+    isUserOnline(user) {
+        if (!user || !user.lastActive) return false;
+        
+        const lastActiveTime = new Date(user.lastActive).getTime();
+        const currentTime = Date.now();
+        const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
+        
+        return (currentTime - lastActiveTime) < fiveMinutes;
+    }
+
+    // Get time since last active
+    getLastSeenText(user) {
+        if (!user || !user.lastActive) return 'Never';
+        
+        const lastActiveTime = new Date(user.lastActive).getTime();
+        const currentTime = Date.now();
+        const diffMs = currentTime - lastActiveTime;
+        
+        const diffMinutes = Math.floor(diffMs / (1000 * 60));
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        
+        if (diffMinutes < 1) return 'Just now';
+        if (diffMinutes < 5) return 'Online';
+        if (diffMinutes < 60) return `${diffMinutes} min ago`;
+        if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+        return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
     }
 
     // Get all users

@@ -3335,6 +3335,71 @@
                             <!-- Users will be loaded here -->
                         </div>
                     </div>
+
+                    <!-- Audit Trail Section -->
+                    <div class="admin-section">
+                        <div class="section-header">
+                            <h3>Audit Trail</h3>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <button class="btn btn-secondary" onclick="refreshAuditLogs()" title="Refresh">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="23 4 23 10 17 10"></polyline>
+                                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                    </svg>
+                                    Refresh
+                                </button>
+                                <select id="auditCategoryFilter" class="form-input" style="width: auto; padding: 8px 12px;" onchange="filterAuditLogs()">
+                                    <option value="">All Categories</option>
+                                    <option value="AUTH">Authentication</option>
+                                    <option value="SALES">Sales</option>
+                                    <option value="INVENTORY">Inventory</option>
+                                    <option value="EXPENSES">Expenses</option>
+                                    <option value="USER_MANAGEMENT">User Management</option>
+                                    <option value="REPORTS">Reports</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div style="background: var(--bg-secondary); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                                <div>
+                                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Total Activities</div>
+                                    <div style="font-size: 24px; font-weight: 600;" id="auditTotalCount">0</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Active Users Today</div>
+                                    <div style="font-size: 24px; font-weight: 600;" id="auditActiveUsers">0</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Last Activity</div>
+                                    <div style="font-size: 14px; font-weight: 500;" id="auditLastActivity">-</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="table-wrapper-vertical" style="max-height: 600px;">
+                            <table class="data-table" id="auditLogsTable">
+                                <thead>
+                                    <tr>
+                                        <th style="min-width: 160px;">Timestamp</th>
+                                        <th style="min-width: 150px;">User</th>
+                                        <th style="min-width: 120px;">Category</th>
+                                        <th style="min-width: 150px;">Action</th>
+                                        <th style="min-width: 250px;">Details</th>
+                                        <th style="min-width: 120px;">Device</th>
+                                        <th style="min-width: 120px;">IP Address</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="auditLogsTableBody">
+                                    <tr>
+                                        <td colspan="7" style="text-align: center; padding: 40px;">
+                                            <div style="color: var(--text-secondary);">Loading audit logs...</div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -4556,6 +4621,76 @@
         </div>
     </div>
 
+    <!-- User Modal -->
+    <div class="modal" id="userModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="userModalTitle">Add New User</h3>
+                <button class="modal-close" onclick="closeUserModal()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <form id="userForm" onsubmit="saveUser(event)">
+                <input type="hidden" id="userId" name="userId">
+                
+                <div class="form-group">
+                    <label for="userEmail">Email *</label>
+                    <input type="email" id="userEmail" name="email" required placeholder="user@example.com">
+                </div>
+                
+                <div class="form-group">
+                    <label for="userFullName">Full Name *</label>
+                    <input type="text" id="userFullName" name="fullName" required placeholder="John Doe">
+                </div>
+                
+                <div class="form-group" id="userPasswordGroup">
+                    <label for="userPassword">Password *</label>
+                    <input type="password" id="userPassword" name="password" required placeholder="Minimum 6 characters" minlength="6">
+                    <small style="font-size: 11px; color: var(--text-tertiary); margin-top: 4px; display: block;">Password is required for new users only</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="userRole">Role *</label>
+                    <select id="userRole" name="role" required>
+                        <option value="">Select Role</option>
+                        <option value="admin">Admin</option>
+                        <option value="manager">Manager</option>
+                        <option value="cashier">Cashier</option>
+                        <option value="viewer">Viewer</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="userBranch">Branch</label>
+                    <select id="userBranch" name="branchId">
+                        <option value="">All Branches</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="userPhone">Phone</label>
+                    <input type="tel" id="userPhone" name="phone" placeholder="+1234567890">
+                </div>
+                
+                <div class="form-group">
+                    <label for="userStatus">Status</label>
+                    <select id="userStatus" name="status">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeUserModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
 
     <!-- Export Format Modal -->
     <div id="exportFormatModal" class="modal">
@@ -4615,6 +4750,8 @@
     <!-- Auth Guard - Check authentication status -->
     <script type="module">
         import { auth, onAuthStateChanged } from './js/firebase-config.js';
+        import userManager from './js/user-manager.js';
+        import auditLogger from './js/audit-logger.js';
         
         // Authentication state handler
         onAuthStateChanged(auth, (user) => {
@@ -4638,6 +4775,12 @@
                 };
                 localStorage.setItem('currentUser', JSON.stringify(userInfo));
                 
+                // Initialize audit logger
+                auditLogger.initialize(userInfo);
+                
+                // Log login activity
+                auditLogger.logLogin(user.email, userName);
+                
                 // Update UI with user info
                 const profileName = document.querySelector('.profile-btn span');
                 if (profileName) {
@@ -4658,12 +4801,37 @@
                     greetingElement.textContent = `${greeting}, ${capitalizedName}`;
                 }
                 
+                // Initialize user activity tracking
+                const updateActivity = async () => {
+                    try {
+                        // Find user by email in Firestore
+                        const users = await userManager.loadUsers();
+                        const currentUser = users.find(u => u.email === user.email);
+                        
+                        if (currentUser) {
+                            await userManager.updateUserActivity(currentUser.id);
+                            console.log('🟢 User activity updated');
+                        }
+                    } catch (error) {
+                        console.error('❌ Error updating user activity:', error);
+                    }
+                };
+                
+                // Update activity immediately on login
+                updateActivity();
+                
+                // Update activity every 2 minutes
+                setInterval(updateActivity, 2 * 60 * 1000);
+                
                 // Add logout functionality
                 const logoutLink = document.querySelector('.profile-menu-item:last-child');
                 if (logoutLink) {
                     logoutLink.addEventListener('click', async (e) => {
                         e.preventDefault();
                         try {
+                            // Log logout activity before signing out
+                            await auditLogger.logLogout(user.email, userName);
+                            
                             const { signOut } = await import('./js/firebase-config.js');
                             await signOut(auth);
                             console.log('✅ User signed out');
@@ -4681,6 +4849,7 @@
     <script type="module" src="js/data-manager.js"></script>
     <script type="module" src="js/branch-ui.js"></script>
     <script type="module" src="js/user-ui.js"></script>
+    <script type="module" src="js/audit-ui.js"></script>
     <script type="module" src="js/activity-tracker.js"></script>
     <script type="module" src="js/activity-ui.js"></script>
     <script type="module" src="js/global-search.js"></script>

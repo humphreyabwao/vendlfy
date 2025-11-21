@@ -1,6 +1,7 @@
 // Expense Management Module
 import dataManager from './data-manager.js';
 import branchManager from './branch-manager.js';
+import auditLogger from './audit-logger.js';
 
 class ExpenseManager {
     constructor() {

@@ -19,6 +19,8 @@ import activityTracker from './activity-tracker.js';
 import activityUI from './activity-ui.js';
 import globalSearch from './global-search.js';
 import notificationManager from './notification-manager.js';
+import auditLogger from './audit-logger.js';
+import { initializeAuditTrail } from './audit-ui.js';
 
 // Make managers globally available
 window.branchManager = branchManager;
@@ -40,6 +42,7 @@ window.userManager = userManager;
 window.activityTracker = activityTracker;
 window.activityUI = activityUI;
 window.globalSearch = globalSearch;
+window.auditLogger = auditLogger;
 
 // App Initialization
 document.addEventListener('DOMContentLoaded', async function() {
@@ -56,6 +59,7 @@ async function initializeApp() {
     await initBranchSystem();
     globalSearch.init();
     notificationManager.init();
+    await initializeAuditTrail();
 }
 
 // Initialize Branch System

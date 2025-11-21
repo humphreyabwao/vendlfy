@@ -1,6 +1,7 @@
 // New B2B Sale Module - Wholesale Order Creation
 import dataManager from './data-manager.js';
 import branchManager from './branch-manager.js';
+import auditLogger from './audit-logger.js';
 
 class NewB2BSaleManager {
     constructor() {
@@ -647,6 +648,16 @@ class NewB2BSaleManager {
             // Save to database
             const savedSale = await dataManager.createSale(saleData);
             console.log('✅ B2B Sale created successfully:', savedSale);
+            
+            // Log to audit trail
+            await auditLogger.logSale('B2B', {
+                total: total,
+                items: this.cart,
+                itemCount: this.cart.length,
+                customerName: this.selectedCustomer.name,
+                creditTerm: this.creditTerm,
+                paymentMethod: this.paymentMethod
+            });
             
             // Log activity
             if (window.activityTracker) {

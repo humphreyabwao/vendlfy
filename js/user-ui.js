@@ -174,20 +174,26 @@ function generateUsersHTML(users) {
     return users.map(user => {
         const branch = user.branchId ? branchManager.getBranchById(user.branchId) : null;
         const branchName = branch ? branch.name : 'All Branches';
+        const isOnline = userManager.isUserOnline(user);
+        const lastSeenText = userManager.getLastSeenText(user);
         
         return `
         <div class="user-card">
             <div class="user-card-header">
                 <div class="user-info">
-                    <div class="user-avatar">
+                    <div class="user-avatar" style="position: relative;">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                             <circle cx="12" cy="7" r="4"></circle>
                         </svg>
+                        ${isOnline ? '<span class="online-indicator" style="position: absolute; bottom: -2px; right: -2px; width: 10px; height: 10px; background: #10b981; border: 2px solid var(--bg-primary); border-radius: 50%; animation: pulse 2s infinite;"></span>' : ''}
                     </div>
                     <div class="user-details">
                         <h4 class="user-name">${user.fullName || 'N/A'}</h4>
                         <p class="user-email">${user.email || 'N/A'}</p>
+                        <small style="font-size: 11px; color: ${isOnline ? '#10b981' : 'var(--text-tertiary)'}; margin-top: 2px; display: block; font-weight: 500;">
+                            ${isOnline ? '🟢 Online' : '⚪ ' + lastSeenText}
+                        </small>
                     </div>
                 </div>
                 <div class="user-status">
