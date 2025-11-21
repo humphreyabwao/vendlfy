@@ -25,6 +25,11 @@ class POSSystem {
         this.scannerActive = false;
         this.lastScannedCode = null;
         this.scanCooldown = false;
+        
+        // Physical barcode scanner support
+        this.barcodeBuffer = '';
+        this.barcodeTimeout = null;
+        this.scannerInputSpeed = 50; // ms between characters (scanners type fast)
     }
 
     async init() {
@@ -142,6 +147,11 @@ class POSSystem {
         // Search input with debounce
         const searchInput = document.getElementById('posSearchInput');
         if (searchInput) {
+            // Physical barcode scanner detection
+            searchInput.addEventListener('keydown', (e) => {
+                this.handleBarcodeScanner(e);
+            });
+
             searchInput.addEventListener('input', (e) => {
                 clearTimeout(this.searchTimeout);
                 this.searchTimeout = setTimeout(() => {
@@ -155,6 +165,20 @@ class POSSystem {
                     this.searchItems(e.target.value);
                 }
             });
+
+            // Keep focus on search input for barcode scanner
+            searchInput.addEventListener('blur', () => {
+                // Auto-refocus after a short delay if on POS page
+                setTimeout(() => {
+                    const posPage = document.getElementById('pos-page');
+                    if (posPage && posPage.classList.contains('active')) {
+                        searchInput.focus();
+                    }
+                }, 100);
+            });
+
+            // Focus on load
+            setTimeout(() => searchInput.focus(), 500);
         }
 
         // Discount inputs
@@ -269,6 +293,102 @@ class POSSystem {
 
         resultsContainer.innerHTML = resultsHTML;
         resultsContainer.style.display = 'block';
+    }
+
+    // Handle physical barcode scanner input
+    handleBarcodeScanner(e) {
+        // Detect rapid keyboard input (characteristic of barcode scanners)
+        const char = e.key;
+        
+        // Ignore special keys except Enter
+        if (char.length > 1 && char !== 'Enter') {
+            return;
+        }
+
+        // Clear previous timeout
+        clearTimeout(this.barcodeTimeout);
+
+        if (char === 'Enter') {
+            // Enter key pressed - process the barcode
+            if (this.barcodeBuffer.length > 3) { // Minimum barcode length
+                e.preventDefault();
+                this.processBarcodeFromScanner(this.barcodeBuffer);
+                this.barcodeBuffer = '';
+                
+                // Clear the search input
+                const searchInput = document.getElementById('posSearchInput');
+                if (searchInput) {
+                    searchInput.value = '';
+                }
+            }
+        } else {
+            // Add character to buffer
+            this.barcodeBuffer += char;
+            
+            // Reset buffer after delay (if typing is slow, it's manual input)
+            this.barcodeTimeout = setTimeout(() => {
+                this.barcodeBuffer = '';
+            }, this.scannerInputSpeed);
+        }
+    }
+
+    // Process barcode from physical scanner
+    processBarcodeFromScanner(barcode) {
+        console.log('🔍 Barcode scanner input:', barcode);
+
+        // Clean the barcode (remove any whitespace)
+        const cleanBarcode = barcode.trim();
+
+        // Find item by barcode or SKU
+        const item = this.inventory.find(i => 
+            (i.barcode && i.barcode.toLowerCase() === cleanBarcode.toLowerCase()) ||
+            (i.sku && i.sku.toLowerCase() === cleanBarcode.toLowerCase())
+        );
+
+        if (item) {
+            // Add to cart
+            this.addToCart(item.id);
+            
+            // Visual feedback
+            this.showBarcodeScannedFeedback(item.name, cleanBarcode);
+            
+            // Play beep sound
+            this.playBeep();
+            
+            console.log(`✅ Item added via barcode scanner: ${item.name}`);
+        } else {
+            // Item not found
+            this.showNotification(`Item not found: ${cleanBarcode}`, 'error');
+            console.log(`❌ No item found for barcode: ${cleanBarcode}`);
+        }
+    }
+
+    // Show visual feedback for scanned item
+    showBarcodeScannedFeedback(itemName, barcode) {
+        // Create temporary notification
+        const feedback = document.createElement('div');
+        feedback.className = 'barcode-scan-feedback';
+        feedback.innerHTML = `
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <div>
+                <div class="feedback-title">Scanned!</div>
+                <div class="feedback-item">${itemName}</div>
+                <div class="feedback-code">${barcode}</div>
+            </div>
+        `;
+
+        document.body.appendChild(feedback);
+
+        // Animate in
+        setTimeout(() => feedback.classList.add('show'), 10);
+
+        // Remove after 2 seconds
+        setTimeout(() => {
+            feedback.classList.remove('show');
+            setTimeout(() => feedback.remove(), 300);
+        }, 2000);
     }
 
     // Open barcode scanner
