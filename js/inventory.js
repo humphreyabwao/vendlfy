@@ -121,9 +121,9 @@ class InventoryManager {
         const today = new Date();
         
         this.items.forEach(item => {
-            const quantity = item.quantity || 0;
-            const price = item.price || 0;
-            const reorderLevel = item.reorderLevel || 5;
+            const quantity = Math.max(0, parseInt(item.quantity) || 0); // Ensure non-negative
+            const price = parseFloat(item.price) || 0;
+            const reorderLevel = parseInt(item.reorderLevel) || 5;
             
             // Total value and items
             this.stats.totalValue += quantity * price;
@@ -299,9 +299,9 @@ class InventoryManager {
     // Create table row
     createTableRow(item) {
         const row = document.createElement('tr');
-        const quantity = item.quantity || 0;
-        const price = item.price || 0;
-        const reorderLevel = item.reorderLevel || 5;
+        const quantity = Math.max(0, parseInt(item.quantity) || 0); // Ensure non-negative
+        const price = parseFloat(item.price) || 0;
+        const reorderLevel = parseInt(item.reorderLevel) || 5;
         const value = quantity * price;
         const itemId = item.id || '';
 

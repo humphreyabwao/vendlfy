@@ -675,7 +675,9 @@ class NewB2BSaleManager {
                 if (!item.isManual) {
                     const inventoryItem = this.inventory.find(i => i.id === item.id);
                     if (inventoryItem) {
-                        const newQuantity = inventoryItem.quantity - item.quantity;
+                        const currentQuantity = inventoryItem.quantity || 0;
+                        const newQuantity = Math.max(0, currentQuantity - item.quantity); // Prevent negative stock
+                        console.log(`📊 B2B: Updating ${item.name}: ${currentQuantity} → ${newQuantity} (sold: ${item.quantity})`);
                         await dataManager.updateInventoryItem(item.id, { quantity: newQuantity });
                     }
                 }

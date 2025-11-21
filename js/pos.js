@@ -572,7 +572,9 @@ class POSSystem {
                     if (inventoryItem) {
                         // Use quantity or stock field (matches the structure from add-item.js)
                         const currentStock = inventoryItem.quantity || inventoryItem.stock || 0;
-                        const newStock = currentStock - item.quantity;
+                        const newStock = Math.max(0, currentStock - item.quantity); // Prevent negative stock
+                        
+                        console.log(`📊 Updating ${item.name}: ${currentStock} → ${newStock} (sold: ${item.quantity})`);
                         
                         // Update using 'quantity' field to match add-item.js structure
                         await dataManager.updateInventoryItem(item.id, { 

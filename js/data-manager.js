@@ -499,6 +499,15 @@ class DataManager {
 
             console.log('🔄 Updating inventory item:', itemId);
             console.log('📝 Updates:', updates);
+            
+            // Ensure quantity is never negative
+            if (updates.quantity !== undefined) {
+                updates.quantity = Math.max(0, parseInt(updates.quantity) || 0);
+                console.log('✅ Validated quantity:', updates.quantity);
+            }
+            if (updates.stock !== undefined) {
+                updates.stock = Math.max(0, parseInt(updates.stock) || 0);
+            }
 
             // Use localStorage if Firebase not configured
             if (this.useLocalStorage) {
