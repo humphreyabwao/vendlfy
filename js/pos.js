@@ -21,6 +21,10 @@ class POSSystem {
             revenue: 0
         };
         this.searchTimeout = null;
+        this.scannerStream = null;
+        this.scannerActive = false;
+        this.lastScannedCode = null;
+        this.scanCooldown = false;
     }
 
     async init() {
@@ -202,6 +206,18 @@ class POSSystem {
         if (manualEntryBtn) {
             manualEntryBtn.addEventListener('click', () => this.showManualEntryDialog());
         }
+
+        // Barcode scanner button
+        const scanBarcodeBtn = document.getElementById('posScanBarcode');
+        if (scanBarcodeBtn) {
+            scanBarcodeBtn.addEventListener('click', () => this.openBarcodeScanner());
+        }
+
+        // Close scanner button
+        const closeScannerBtn = document.getElementById('closePOSScannerBtn');
+        if (closeScannerBtn) {
+            closeScannerBtn.addEventListener('click', () => this.closeBarcodeScanner());
+        }
     }
 
     // Search items in inventory
@@ -253,6 +269,206 @@ class POSSystem {
 
         resultsContainer.innerHTML = resultsHTML;
         resultsContainer.style.display = 'block';
+    }
+
+    // Open barcode scanner
+    async openBarcodeScanner() {
+        const modal = document.getElementById('posScannerModal');
+        const video = document.getElementById('posScannerVideo');
+        const statusDiv = document.getElementById('posScannerStatus');
+
+        if (!modal || !video) return;
+
+        modal.classList.add('active');
+        this.scannerActive = true;
+
+        try {
+            // Request camera access
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    facingMode: 'environment',
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                } 
+            });
+            
+            video.srcObject = stream;
+            this.scannerStream = stream;
+
+            // Update status
+            if (statusDiv) {
+                statusDiv.innerHTML = `
+                    <span class="status-indicator active"></span>
+                    <span class="status-text">Scanning... Position barcode in frame</span>
+                `;
+            }
+
+            // Load QuaggaJS for barcode scanning if not loaded
+            if (typeof Quagga === 'undefined') {
+                await this.loadQuagga();
+            }
+
+            // Initialize Quagga
+            Quagga.init({
+                inputStream: {
+                    name: 'Live',
+                    type: 'LiveStream',
+                    target: video,
+                    constraints: {
+                        facingMode: 'environment'
+                    }
+                },
+                decoder: {
+                    readers: [
+                        'code_128_reader', 
+                        'ean_reader', 
+                        'ean_8_reader', 
+                        'upc_reader',
+                        'code_39_reader'
+                    ]
+                },
+                locate: true
+            }, (err) => {
+                if (err) {
+                    console.error('Error initializing Quagga:', err);
+                    this.showNotification('Failed to start scanner', 'error');
+                    this.closeBarcodeScanner();
+                    return;
+                }
+                Quagga.start();
+            });
+
+            // Listen for detected barcodes
+            Quagga.onDetected((data) => {
+                if (this.scannerActive && data && data.codeResult && data.codeResult.code) {
+                    const barcode = data.codeResult.code;
+                    this.handleScannedBarcode(barcode);
+                }
+            });
+
+        } catch (error) {
+            console.error('Error accessing camera:', error);
+            this.showNotification('Camera access denied or not available', 'error');
+            modal.classList.remove('active');
+            this.scannerActive = false;
+        }
+    }
+
+    // Close barcode scanner
+    closeBarcodeScanner() {
+        const modal = document.getElementById('posScannerModal');
+        const resultDiv = document.getElementById('posScannerResult');
+
+        if (modal) {
+            modal.classList.remove('active');
+        }
+
+        if (resultDiv) {
+            resultDiv.style.display = 'none';
+        }
+
+        this.scannerActive = false;
+
+        // Stop Quagga
+        if (typeof Quagga !== 'undefined') {
+            Quagga.stop();
+        }
+
+        // Stop camera stream
+        if (this.scannerStream) {
+            this.scannerStream.getTracks().forEach(track => track.stop());
+            this.scannerStream = null;
+        }
+    }
+
+    // Handle scanned barcode
+    handleScannedBarcode(barcode) {
+        // Prevent duplicate scans (cooldown of 1 second)
+        if (this.scanCooldown || barcode === this.lastScannedCode) {
+            return;
+        }
+
+        console.log('📷 Scanned barcode:', barcode);
+
+        // Find item by barcode or SKU
+        const item = this.inventory.find(i => 
+            (i.barcode && i.barcode.toLowerCase() === barcode.toLowerCase()) ||
+            (i.sku && i.sku.toLowerCase() === barcode.toLowerCase())
+        );
+
+        const resultDiv = document.getElementById('posScannerResult');
+        const itemNameDiv = document.getElementById('scannedItemName');
+        const itemCodeDiv = document.getElementById('scannedItemCode');
+
+        if (item) {
+            // Add to cart
+            this.addToCart(item.id);
+
+            // Show success message
+            if (resultDiv && itemNameDiv && itemCodeDiv) {
+                itemNameDiv.textContent = item.name;
+                itemCodeDiv.textContent = `${item.sku ? 'SKU: ' + item.sku : 'Barcode: ' + barcode}`;
+                resultDiv.style.display = 'flex';
+
+                // Hide after 2 seconds
+                setTimeout(() => {
+                    if (resultDiv) resultDiv.style.display = 'none';
+                }, 2000);
+            }
+
+            // Play success sound (optional)
+            this.playBeep();
+
+        } else {
+            this.showNotification(`Item not found: ${barcode}`, 'error');
+        }
+
+        // Set cooldown
+        this.lastScannedCode = barcode;
+        this.scanCooldown = true;
+        setTimeout(() => {
+            this.scanCooldown = false;
+            this.lastScannedCode = null;
+        }, 1000);
+    }
+
+    // Load QuaggaJS library
+    loadQuagga() {
+        return new Promise((resolve, reject) => {
+            if (typeof Quagga !== 'undefined') {
+                resolve();
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js';
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+    }
+
+    // Play beep sound
+    playBeep() {
+        try {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.1);
+        } catch (error) {
+            // Silently fail if audio not supported
+        }
     }
 
     // Add item to cart
