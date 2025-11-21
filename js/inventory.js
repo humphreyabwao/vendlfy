@@ -1164,13 +1164,18 @@ class InventoryManager {
                                 <label>Category</label>
                                 <select id="editItemCategory" class="form-input">
                                     <option value="">Select Category</option>
-                                    <option value="Electronics" ${item.category === 'Electronics' ? 'selected' : ''}>Electronics</option>
-                                    <option value="Clothing" ${item.category === 'Clothing' ? 'selected' : ''}>Clothing</option>
-                                    <option value="Food & Beverages" ${item.category === 'Food & Beverages' ? 'selected' : ''}>Food & Beverages</option>
-                                    <option value="Home & Garden" ${item.category === 'Home & Garden' ? 'selected' : ''}>Home & Garden</option>
-                                    <option value="Sports" ${item.category === 'Sports' ? 'selected' : ''}>Sports</option>
-                                    <option value="Books" ${item.category === 'Books' ? 'selected' : ''}>Books</option>
-                                    <option value="Other" ${item.category === 'Other' ? 'selected' : ''}>Other</option>
+                                    <option value="vodka" ${item.category === 'vodka' ? 'selected' : ''}>Vodka</option>
+                                    <option value="whisky" ${item.category === 'whisky' ? 'selected' : ''}>Whisky / Whiskey</option>
+                                    <option value="gin" ${item.category === 'gin' ? 'selected' : ''}>Gin</option>
+                                    <option value="rum" ${item.category === 'rum' ? 'selected' : ''}>Rum</option>
+                                    <option value="brandy" ${item.category === 'brandy' ? 'selected' : ''}>Brandy & Cognac</option>
+                                    <option value="tequila" ${item.category === 'tequila' ? 'selected' : ''}>Tequila & Mezcal</option>
+                                    <option value="wine" ${item.category === 'wine' ? 'selected' : ''}>Wine</option>
+                                    <option value="beer" ${item.category === 'beer' ? 'selected' : ''}>Beer & Cider</option>
+                                    <option value="liqueurs" ${item.category === 'liqueurs' ? 'selected' : ''}>Liqueurs & Creams</option>
+                                    <option value="rtd" ${item.category === 'rtd' ? 'selected' : ''}>Ready-to-Drink (RTD) & Flavored Alcohol</option>
+                                    <option value="non-alcoholic" ${item.category === 'non-alcoholic' ? 'selected' : ''}>Non-Alcoholic Drinks</option>
+                                    <option value="others" ${item.category === 'others' ? 'selected' : ''}>Others</option>
                                 </select>
                             </div>
                             

@@ -12709,6 +12709,61 @@ canvas {
     color: var(--primary-blue);
 }
 
+.badge-vodka {
+    background: rgba(37, 99, 235, 0.1);
+    color: var(--primary-blue);
+}
+
+.badge-whisky {
+    background: rgba(180, 83, 9, 0.1);
+    color: #b45309;
+}
+
+.badge-gin {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--primary-green);
+}
+
+.badge-rum {
+    background: rgba(139, 92, 246, 0.1);
+    color: var(--primary-purple);
+}
+
+.badge-brandy {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--primary-orange);
+}
+
+.badge-tequila {
+    background: rgba(234, 179, 8, 0.1);
+    color: #eab308;
+}
+
+.badge-wine {
+    background: rgba(190, 18, 60, 0.1);
+    color: #be123c;
+}
+
+.badge-beer {
+    background: rgba(251, 146, 60, 0.1);
+    color: #fb923c;
+}
+
+.badge-liqueurs {
+    background: rgba(236, 72, 153, 0.1);
+    color: #ec4899;
+}
+
+.badge-rtd {
+    background: rgba(168, 85, 247, 0.1);
+    color: #a855f7;
+}
+
+.badge-non-alcoholic {
+    background: rgba(6, 182, 212, 0.1);
+    color: #06b6d4;
+}
+
 .badge-clothing {
     background: rgba(139, 92, 246, 0.1);
     color: var(--primary-purple);
@@ -12750,6 +12805,11 @@ canvas {
 }
 
 .badge-other {
+    background: rgba(107, 114, 128, 0.1);
+    color: var(--text-secondary);
+}
+
+.badge-others {
     background: rgba(107, 114, 128, 0.1);
     color: var(--text-secondary);
 }

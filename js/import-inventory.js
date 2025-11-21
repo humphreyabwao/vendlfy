@@ -282,38 +282,41 @@ class InventoryImporter {
     // Normalize category to match form options
     normalizeCategory(category) {
         const categoryMap = {
-            'electronics': 'electronics',
-            'electronic': 'electronics',
-            'tech': 'electronics',
-            'clothing': 'clothing',
-            'clothes': 'clothing',
-            'fashion': 'clothing',
-            'apparel': 'clothing',
-            'food': 'food',
-            'beverage': 'food',
-            'beverages': 'food',
-            'food & beverages': 'food',
-            'beauty': 'beauty',
-            'personal care': 'beauty',
-            'cosmetics': 'beauty',
-            'home': 'home',
-            'garden': 'home',
-            'home & garden': 'home',
-            'sports': 'sports',
-            'outdoor': 'sports',
-            'sports & outdoors': 'sports',
-            'books': 'books',
-            'media': 'books',
-            'toys': 'toys',
-            'games': 'toys',
-            'automotive': 'automotive',
-            'auto': 'automotive',
-            'car': 'automotive',
-            'other': 'other'
+            'vodka': 'vodka',
+            'whisky': 'whisky',
+            'whiskey': 'whisky',
+            'whisky / whiskey': 'whisky',
+            'gin': 'gin',
+            'rum': 'rum',
+            'brandy': 'brandy',
+            'cognac': 'brandy',
+            'brandy & cognac': 'brandy',
+            'tequila': 'tequila',
+            'mezcal': 'tequila',
+            'tequila & mezcal': 'tequila',
+            'wine': 'wine',
+            'wines': 'wine',
+            'beer': 'beer',
+            'cider': 'beer',
+            'beer & cider': 'beer',
+            'liqueurs': 'liqueurs',
+            'liqueur': 'liqueurs',
+            'creams': 'liqueurs',
+            'liqueurs & creams': 'liqueurs',
+            'rtd': 'rtd',
+            'ready-to-drink': 'rtd',
+            'flavored alcohol': 'rtd',
+            'ready-to-drink (rtd) & flavored alcohol': 'rtd',
+            'non-alcoholic': 'non-alcoholic',
+            'non alcoholic': 'non-alcoholic',
+            'soft drinks': 'non-alcoholic',
+            'non-alcoholic drinks': 'non-alcoholic',
+            'others': 'others',
+            'other': 'others'
         };
 
         const normalized = category.toLowerCase().trim();
-        return categoryMap[normalized] || 'other';
+        return categoryMap[normalized] || 'others';
     }
 
     // Normalize unit to match form options
@@ -614,7 +617,7 @@ class InventoryImporter {
         const template = [
             {
                 'Product Name': 'Sample Product',
-                'Category': 'Electronics',
+                'Category': 'Vodka',
                 'Description': 'Product description',
                 'Price': '100.00',
                 'Cost': '80.00',
