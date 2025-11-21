@@ -13133,3 +13133,163 @@ canvas {
         height: 14px;
     }
 }
+
+/* ============================================
+   HELD SALES MODAL
+   ============================================ */
+.held-sales-list {
+    display: grid;
+    gap: 1rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.held-sale-card {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    transition: transform 0.2s;
+}
+
+.held-sale-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--primary-color);
+}
+
+.held-sale-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 0.75rem;
+}
+
+.held-sale-customer {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--text-primary);
+}
+
+.held-sale-time {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.held-sale-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.held-sale-item-tag {
+    background: var(--primary-alpha);
+    color: var(--primary-color);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+}
+
+.held-sale-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.held-sale-total {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.held-sale-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.held-sales-empty {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-secondary);
+}
+
+/* ============================================
+   QUOTE PREVIEW MODAL
+   ============================================ */
+.quote-preview {
+    background: var(--surface-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+
+.quote-header {
+    text-align: center;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid var(--primary-color);
+    margin-bottom: 1.5rem;
+}
+
+.quote-number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+
+.quote-customer {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.quote-date {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.quote-items {
+    margin-bottom: 1.5rem;
+}
+
+.quote-items h4 {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.quote-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.quote-item:last-child {
+    border-bottom: none;
+}
+
+.quote-totals {
+    background: var(--bg-color);
+    padding: 1rem;
+    border-radius: 8px;
+}
+
+.quote-total-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    color: var(--text-primary);
+}
+
+.quote-total-row.total {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    padding-top: 1rem;
+    border-top: 2px solid var(--border-color);
+    margin-top: 0.5rem;
+}

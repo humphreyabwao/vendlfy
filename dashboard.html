@@ -1051,6 +1051,35 @@
                 </div>
             </div>
 
+            <!-- Held Sales Modal -->
+            <div class="modal" id="heldSalesModal">
+                <div class="modal-content modal-lg">
+                    <div class="modal-header">
+                        <h3>Held Sales</h3>
+                        <button class="modal-close" id="closeHeldSalesModal">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="heldSalesList" class="held-sales-list">
+                            <!-- Held sales will be rendered here -->
+                        </div>
+                        <div id="heldSalesEmpty" class="empty-state" style="display: none;">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            <h3>No Held Sales</h3>
+                            <p>You don't have any held sales at the moment</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- POS / Sales -->
             <div class="page" id="pos-page">
                 <div class="page-header">
@@ -1225,7 +1254,7 @@
 
                                 <!-- Quick Actions -->
                                 <div class="pos-quick-actions">
-                                    <button class="pos-quick-btn" onclick="window.posManager.holdSale()">
+                                    <button class="pos-quick-btn" id="posHoldSaleBtn">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <circle cx="12" cy="12" r="10"></circle>
                                             <line x1="12" y1="8" x2="12" y2="12"></line>
@@ -1233,7 +1262,15 @@
                                         </svg>
                                         Hold
                                     </button>
-                                    <button class="pos-quick-btn" onclick="window.posManager.generateQuote()">
+                                    <button class="pos-quick-btn" id="posLoadHeldBtn">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                            <polyline points="17 8 12 3 7 8"></polyline>
+                                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                                        </svg>
+                                        Load Held
+                                    </button>
+                                    <button class="pos-quick-btn" id="posGenerateQuoteBtn">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                                             <polyline points="14 2 14 8 20 8"></polyline>

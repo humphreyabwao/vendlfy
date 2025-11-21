@@ -242,6 +242,30 @@ class POSSystem {
         if (closeScannerBtn) {
             closeScannerBtn.addEventListener('click', () => this.closeBarcodeScanner());
         }
+
+        // Hold sale button
+        const holdSaleBtn = document.getElementById('posHoldSaleBtn');
+        if (holdSaleBtn) {
+            holdSaleBtn.addEventListener('click', () => this.holdSale());
+        }
+
+        // Load held sales button
+        const loadHeldBtn = document.getElementById('posLoadHeldBtn');
+        if (loadHeldBtn) {
+            loadHeldBtn.addEventListener('click', () => this.showHeldSales());
+        }
+
+        // Generate quote button
+        const generateQuoteBtn = document.getElementById('posGenerateQuoteBtn');
+        if (generateQuoteBtn) {
+            generateQuoteBtn.addEventListener('click', () => this.generateQuote());
+        }
+
+        // Close held sales modal
+        const closeHeldModal = document.getElementById('closeHeldSalesModal');
+        if (closeHeldModal) {
+            closeHeldModal.addEventListener('click', () => this.closeHeldSalesModal());
+        }
     }
 
     // Search items in inventory
@@ -1047,34 +1071,194 @@ class POSSystem {
             return;
         }
 
+        const customerName = prompt('Enter customer name (optional):');
+
         const holdData = {
             cart: JSON.parse(JSON.stringify(this.cart)), // Deep copy
             discount: this.discount,
             discountType: this.discountType,
             tax: this.tax,
             taxType: this.taxType,
+            customerName: customerName || 'Walk-in Customer',
+            subtotal: this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
             heldAt: new Date().toISOString(),
-            heldBy: branchManager.getCurrentBranch()?.name || 'Unknown'
+            heldBy: branchManager.getCurrentBranch()?.name || 'Main Branch'
         };
 
         try {
             // Save to Firestore
             const heldSale = await dataManager.createHeldSale(holdData);
             
-            // Also save to localStorage as backup
-            const heldSales = JSON.parse(localStorage.getItem('heldSales') || '[]');
-            heldSales.push({ id: heldSale.id, ...holdData });
-            localStorage.setItem('heldSales', JSON.stringify(heldSales));
-
             // Clear current cart
-            this.clearCart();
+            this.cart = [];
+            this.discount = 0;
+            this.tax = 0;
+            this.renderCart();
+            this.updateTotals();
 
-            this.showNotification('Sale held successfully! Access from "Load Held Sales"', 'success');
+            this.showNotification('✅ Sale held successfully! Click "Load Held" to restore.', 'success');
             console.log('✅ Sale held:', heldSale.id);
+
+            // Log activity
+            if (window.activityTracker) {
+                window.activityTracker.logActivity('pos', 'hold_sale', {
+                    heldSaleId: heldSale.id,
+                    itemCount: holdData.cart.length,
+                    subtotal: holdData.subtotal
+                });
+            }
         } catch (error) {
             console.error('❌ Error holding sale:', error);
             this.showNotification('Error holding sale', 'error');
         }
+    }
+
+    // Show held sales modal
+    async showHeldSales() {
+        const modal = document.getElementById('heldSalesModal');
+        const listContainer = document.getElementById('heldSalesList');
+        const emptyState = document.getElementById('heldSalesEmpty');
+
+        if (!modal) return;
+
+        modal.classList.add('active');
+
+        try {
+            const heldSales = await dataManager.getHeldSales();
+
+            if (heldSales.length === 0) {
+                listContainer.innerHTML = '';
+                emptyState.style.display = 'flex';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+
+            const salesHTML = heldSales.map(sale => {
+                const heldDate = new Date(sale.heldAt);
+                const timeAgo = this.getTimeAgo(heldDate);
+                
+                return `
+                    <div class="held-sale-card">
+                        <div class="held-sale-header">
+                            <div class="held-sale-info">
+                                <h4>${sale.customerName || 'Walk-in Customer'}</h4>
+                                <p class="held-sale-time">${timeAgo} • ${sale.cart.length} item(s)</p>
+                            </div>
+                            <div class="held-sale-amount">KES ${this.formatCurrency(sale.subtotal)}</div>
+                        </div>
+                        <div class="held-sale-items">
+                            ${sale.cart.slice(0, 3).map(item => 
+                                `<span class="held-item-tag">${item.quantity}x ${item.name}</span>`
+                            ).join('')}
+                            ${sale.cart.length > 3 ? `<span class="held-item-more">+${sale.cart.length - 3} more</span>` : ''}
+                        </div>
+                        <div class="held-sale-actions">
+                            <button class="btn btn-sm btn-primary" onclick="posSystem.loadHeldSale('${sale.id}')">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="9 11 12 14 22 4"></polyline>
+                                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                                </svg>
+                                Load
+                            </button>
+                            <button class="btn btn-sm btn-secondary" onclick="posSystem.deleteHeldSale('${sale.id}')">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                </svg>
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            listContainer.innerHTML = salesHTML;
+
+        } catch (error) {
+            console.error('Error loading held sales:', error);
+            this.showNotification('Error loading held sales', 'error');
+        }
+    }
+
+    // Load a held sale
+    async loadHeldSale(saleId) {
+        try {
+            const heldSales = await dataManager.getHeldSales();
+            const sale = heldSales.find(s => s.id === saleId);
+
+            if (!sale) {
+                this.showNotification('Held sale not found', 'error');
+                return;
+            }
+
+            // Restore cart and settings
+            this.cart = JSON.parse(JSON.stringify(sale.cart));
+            this.discount = sale.discount || 0;
+            this.discountType = sale.discountType || 'percent';
+            this.tax = sale.tax || 0;
+            this.taxType = sale.taxType || 'percent';
+
+            // Update UI
+            this.renderCart();
+            this.updateTotals();
+
+            // Update discount and tax inputs
+            const discountInput = document.getElementById('posDiscountInput');
+            if (discountInput) discountInput.value = this.discount;
+
+            const taxInput = document.getElementById('posTaxInput');
+            if (taxInput) taxInput.value = this.tax;
+
+            // Delete the held sale
+            await dataManager.deleteHeldSale(saleId);
+
+            // Close modal
+            this.closeHeldSalesModal();
+
+            this.showNotification(`✅ Loaded sale for ${sale.customerName}`, 'success');
+            console.log('✅ Held sale loaded:', saleId);
+
+        } catch (error) {
+            console.error('Error loading held sale:', error);
+            this.showNotification('Error loading held sale', 'error');
+        }
+    }
+
+    // Delete a held sale
+    async deleteHeldSale(saleId) {
+        if (!confirm('Are you sure you want to delete this held sale?')) {
+            return;
+        }
+
+        try {
+            await dataManager.deleteHeldSale(saleId);
+            this.showNotification('Held sale deleted', 'success');
+            
+            // Refresh the list
+            this.showHeldSales();
+        } catch (error) {
+            console.error('Error deleting held sale:', error);
+            this.showNotification('Error deleting held sale', 'error');
+        }
+    }
+
+    // Close held sales modal
+    closeHeldSalesModal() {
+        const modal = document.getElementById('heldSalesModal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+    }
+
+    // Get time ago string
+    getTimeAgo(date) {
+        const seconds = Math.floor((new Date() - date) / 1000);
+        
+        if (seconds < 60) return 'Just now';
+        if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`;
+        if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
+        return `${Math.floor(seconds / 86400)} days ago`;
     }
 
     // Generate quote from current cart
@@ -1084,13 +1268,19 @@ class POSSystem {
             return;
         }
 
+        const customerName = prompt('Enter customer name:');
+        if (!customerName) {
+            this.showNotification('Customer name is required for quote', 'info');
+            return;
+        }
+
         // Calculate totals
         const subtotal = this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        const discountAmount = this.discountType === 'percentage' 
+        const discountAmount = this.discountType === 'percent' 
             ? subtotal * (this.discount / 100)
             : this.discount;
         const taxableAmount = subtotal - discountAmount;
-        const taxAmount = this.taxType === 'percentage'
+        const taxAmount = this.taxType === 'percent'
             ? taxableAmount * (this.tax / 100)
             : this.tax;
         const total = taxableAmount + taxAmount;
@@ -1098,10 +1288,12 @@ class POSSystem {
         // Create quote data
         const quoteData = {
             quoteNumber: `Q-${Date.now()}`,
+            customerName: customerName,
             items: this.cart.map(item => ({
                 id: item.id || 'manual',
                 name: item.name,
                 barcode: item.barcode || '',
+                sku: item.sku || '',
                 price: item.price,
                 quantity: item.quantity,
                 total: item.price * item.quantity
@@ -1114,22 +1306,290 @@ class POSSystem {
             taxType: this.taxType,
             taxValue: this.tax,
             total: total,
-            status: 'quote',
+            status: 'pending',
             validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
             createdAt: new Date().toISOString(),
-            branch: branchManager.getCurrentBranch()?.name || 'Main Branch'
+            branch: branchManager.getCurrentBranch()?.name || 'Main Branch',
+            branchId: branchManager.getCurrentBranch()?.id || 'main'
         };
 
         try {
             // Save quote to Firestore
             const quote = await dataManager.createQuote(quoteData);
             
-            this.showNotification('Quote generated successfully!', 'success');
-            this.showQuoteDialog(quote);
+            this.showNotification('✅ Quote generated successfully!', 'success');
+            
+            // Show quote details
+            this.showQuotePreview(quote);
+            
+            // Log activity
+            if (window.activityTracker) {
+                window.activityTracker.logActivity('pos', 'generate_quote', {
+                    quoteId: quote.id,
+                    quoteNumber: quote.quoteNumber,
+                    customerName: customerName,
+                    total: total
+                });
+            }
+
             console.log('✅ Quote generated:', quote.id);
         } catch (error) {
             console.error('❌ Error generating quote:', error);
             this.showNotification('Error generating quote', 'error');
+        }
+    }
+
+    // Show quote preview
+    showQuotePreview(quote) {
+        const validUntilDate = new Date(quote.validUntil).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+
+        const modal = document.createElement('div');
+        modal.className = 'modal active';
+        modal.innerHTML = `
+            <div class="modal-content modal-md">
+                <div class="modal-header">
+                    <h3>Quote Generated</h3>
+                    <button class="modal-close" onclick="this.closest('.modal').remove()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="quote-preview">
+                        <div class="quote-header">
+                            <div class="quote-number">Quote #${quote.quoteNumber}</div>
+                            <div class="quote-customer">${quote.customerName}</div>
+                            <div class="quote-date">Valid until ${validUntilDate}</div>
+                        </div>
+                        
+                        <div class="quote-items">
+                            <h4>Items</h4>
+                            ${quote.items.map(item => `
+                                <div class="quote-item">
+                                    <span>${item.quantity}x ${item.name}</span>
+                                    <span>KES ${this.formatCurrency(item.total)}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <div class="quote-totals">
+                            <div class="quote-total-row">
+                                <span>Subtotal:</span>
+                                <span>KES ${this.formatCurrency(quote.subtotal)}</span>
+                            </div>
+                            ${quote.discount > 0 ? `
+                                <div class="quote-total-row">
+                                    <span>Discount:</span>
+                                    <span>- KES ${this.formatCurrency(quote.discount)}</span>
+                                </div>
+                            ` : ''}
+                            ${quote.tax > 0 ? `
+                                <div class="quote-total-row">
+                                    <span>Tax:</span>
+                                    <span>KES ${this.formatCurrency(quote.tax)}</span>
+                                </div>
+                            ` : ''}
+                            <div class="quote-total-row total">
+                                <span>Total:</span>
+                                <span>KES ${this.formatCurrency(quote.total)}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Close</button>
+                    <button class="btn btn-primary" onclick="posSystem.printQuote('${quote.id}'); this.closest('.modal').remove();">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                            <rect x="6" y="14" width="12" height="8"></rect>
+                        </svg>
+                        Print Quote
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+    }
+
+    // Print quote
+    async printQuote(quoteId) {
+        try {
+            const quotes = await dataManager.getQuotes();
+            const quote = quotes.find(q => q.id === quoteId);
+
+            if (!quote) {
+                this.showNotification('Quote not found', 'error');
+                return;
+            }
+
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Quote Receipt #${quote.quoteNumber}</title>
+                    <style>
+                        @media print {
+                            body { margin: 0; }
+                        }
+                        body { 
+                            font-family: 'Courier New', monospace; 
+                            max-width: 300px; 
+                            margin: 0 auto; 
+                            padding: 10px;
+                            font-size: 12px;
+                        }
+                        .receipt-header { 
+                            text-align: center; 
+                            margin-bottom: 15px;
+                            border-bottom: 2px dashed #000;
+                            padding-bottom: 10px;
+                        }
+                        .receipt-header h2 { 
+                            margin: 5px 0; 
+                            font-size: 16px;
+                        }
+                        .receipt-info { 
+                            margin-bottom: 15px; 
+                            font-size: 11px;
+                        }
+                        .receipt-info div { 
+                            display: flex; 
+                            justify-content: space-between;
+                            margin: 3px 0;
+                        }
+                        .items { 
+                            border-top: 1px dashed #000;
+                            border-bottom: 1px dashed #000;
+                            padding: 10px 0;
+                            margin: 10px 0;
+                        }
+                        .item { 
+                            margin: 5px 0;
+                        }
+                        .item-name {
+                            font-weight: bold;
+                        }
+                        .item-details {
+                            display: flex;
+                            justify-content: space-between;
+                            font-size: 11px;
+                        }
+                        .totals { 
+                            margin-top: 10px;
+                        }
+                        .total-row { 
+                            display: flex;
+                            justify-content: space-between;
+                            margin: 5px 0;
+                        }
+                        .total-row.final {
+                            font-weight: bold;
+                            font-size: 14px;
+                            border-top: 2px solid #000;
+                            padding-top: 8px;
+                            margin-top: 8px;
+                        }
+                        .footer {
+                            text-align: center;
+                            margin-top: 15px;
+                            padding-top: 10px;
+                            border-top: 2px dashed #000;
+                            font-size: 11px;
+                        }
+                        .quote-tag {
+                            background: #000;
+                            color: #fff;
+                            padding: 3px 8px;
+                            display: inline-block;
+                            margin: 10px 0;
+                            font-weight: bold;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="receipt-header">
+                        <h2>VENDLY POS</h2>
+                        <div class="quote-tag">QUOTATION</div>
+                        <div style="font-weight: bold;">#${quote.quoteNumber}</div>
+                    </div>
+                    
+                    <div class="receipt-info">
+                        <div>
+                            <span>Customer:</span>
+                            <span>${quote.customerName}</span>
+                        </div>
+                        <div>
+                            <span>Date:</span>
+                            <span>${new Date(quote.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        <div>
+                            <span>Valid Until:</span>
+                            <span>${new Date(quote.validUntil).toLocaleDateString()}</span>
+                        </div>
+                        <div>
+                            <span>Branch:</span>
+                            <span>${quote.branch}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="items">
+                        ${quote.items.map(item => `
+                            <div class="item">
+                                <div class="item-name">${item.name}</div>
+                                <div class="item-details">
+                                    <span>${item.quantity} x KES ${item.price.toFixed(2)}</span>
+                                    <span>KES ${item.total.toFixed(2)}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div class="totals">
+                        <div class="total-row">
+                            <span>Subtotal:</span>
+                            <span>KES ${quote.subtotal.toFixed(2)}</span>
+                        </div>
+                        ${quote.discount > 0 ? `
+                            <div class="total-row">
+                                <span>Discount:</span>
+                                <span>-KES ${quote.discount.toFixed(2)}</span>
+                            </div>
+                        ` : ''}
+                        ${quote.tax > 0 ? `
+                            <div class="total-row">
+                                <span>Tax:</span>
+                                <span>KES ${quote.tax.toFixed(2)}</span>
+                            </div>
+                        ` : ''}
+                        <div class="total-row final">
+                            <span>TOTAL:</span>
+                            <span>KES ${quote.total.toFixed(2)}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="footer">
+                        <div>This is a quotation, not a receipt</div>
+                        <div>Valid for 30 days from issue date</div>
+                        <div style="margin-top: 10px;">Thank you for your business!</div>
+                    </div>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.print();
+
+        } catch (error) {
+            console.error('Error printing quote:', error);
+            this.showNotification('Error printing quote', 'error');
         }
     }
 
