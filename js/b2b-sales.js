@@ -637,70 +637,353 @@ class B2BSalesManager {
         const sale = this.sales.find(s => s.id === saleId);
         if (!sale) return;
 
-        const printWindow = window.open('', '', 'height=800,width=600');
+        const printWindow = window.open('', '', 'height=900,width=800');
+        const invoiceDate = new Date(sale.createdAt);
+        const dueDate = this.calculateDueDate(invoiceDate, sale.creditTerm);
+        
         printWindow.document.write(`
+            <!DOCTYPE html>
             <html>
             <head>
+                <meta charset="UTF-8">
                 <title>Invoice ${sale.saleNumber}</title>
                 <style>
-                    body { font-family: Arial, sans-serif; padding: 20px; }
-                    h1 { text-align: center; color: #333; }
-                    .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
-                    .info { margin: 20px 0; }
-                    .info-row { display: flex; justify-content: space-between; margin: 5px 0; }
-                    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-                    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-                    th { background: #f4f4f4; font-weight: bold; }
-                    .totals { text-align: right; margin-top: 20px; }
-                    .totals div { margin: 10px 0; }
-                    .grand-total { font-size: 1.5em; font-weight: bold; color: #667eea; }
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    @page { size: A4; margin: 15mm; }
+                    body {
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        color: #1f2937;
+                        line-height: 1.5;
+                        max-width: 210mm;
+                        margin: 0 auto;
+                        padding: 10mm;
+                        background: white;
+                    }
+                    .invoice-header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: flex-start;
+                        margin-bottom: 30px;
+                        padding-bottom: 20px;
+                        border-bottom: 3px solid #2563eb;
+                    }
+                    .company-info h1 {
+                        font-size: 32px;
+                        color: #2563eb;
+                        font-weight: 700;
+                        margin-bottom: 5px;
+                    }
+                    .company-info p {
+                        font-size: 12px;
+                        color: #6b7280;
+                        margin: 2px 0;
+                    }
+                    .invoice-meta {
+                        text-align: right;
+                    }
+                    .invoice-meta h2 {
+                        font-size: 24px;
+                        color: #1f2937;
+                        margin-bottom: 10px;
+                        font-weight: 600;
+                    }
+                    .invoice-meta p {
+                        font-size: 11px;
+                        color: #4b5563;
+                        margin: 4px 0;
+                    }
+                    .invoice-meta strong {
+                        color: #1f2937;
+                        font-weight: 600;
+                    }
+                    .invoice-details {
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 25px;
+                        margin-bottom: 30px;
+                    }
+                    .detail-box {
+                        background: #f9fafb;
+                        padding: 15px;
+                        border-radius: 8px;
+                        border-left: 4px solid #2563eb;
+                    }
+                    .detail-box h3 {
+                        font-size: 12px;
+                        color: #6b7280;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                        margin-bottom: 8px;
+                        font-weight: 600;
+                    }
+                    .detail-box p {
+                        font-size: 13px;
+                        color: #1f2937;
+                        margin: 4px 0;
+                    }
+                    .detail-box .customer-name {
+                        font-size: 15px;
+                        font-weight: 600;
+                        color: #1f2937;
+                        margin-bottom: 6px;
+                    }
+                    .status-badge {
+                        display: inline-block;
+                        padding: 4px 12px;
+                        border-radius: 12px;
+                        font-size: 11px;
+                        font-weight: 600;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                    }
+                    .status-badge.completed { background: #d1fae5; color: #065f46; }
+                    .status-badge.pending { background: #fef3c7; color: #92400e; }
+                    .status-badge.cancelled { background: #fee2e2; color: #991b1b; }
+                    .items-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin: 25px 0;
+                        font-size: 12px;
+                    }
+                    .items-table thead {
+                        background: #f3f4f6;
+                    }
+                    .items-table th {
+                        padding: 12px 10px;
+                        text-align: left;
+                        font-weight: 600;
+                        color: #374151;
+                        text-transform: uppercase;
+                        font-size: 10px;
+                        letter-spacing: 0.5px;
+                        border-bottom: 2px solid #e5e7eb;
+                    }
+                    .items-table th:last-child,
+                    .items-table td:last-child {
+                        text-align: right;
+                    }
+                    .items-table td {
+                        padding: 12px 10px;
+                        border-bottom: 1px solid #e5e7eb;
+                        color: #1f2937;
+                    }
+                    .items-table tbody tr:hover {
+                        background: #f9fafb;
+                    }
+                    .items-table .item-name {
+                        font-weight: 500;
+                        color: #1f2937;
+                    }
+                    .items-table .item-sku {
+                        color: #6b7280;
+                        font-size: 11px;
+                    }
+                    .totals-section {
+                        display: flex;
+                        justify-content: flex-end;
+                        margin-top: 20px;
+                        margin-bottom: 30px;
+                    }
+                    .totals-box {
+                        min-width: 300px;
+                        background: #f9fafb;
+                        padding: 20px;
+                        border-radius: 8px;
+                    }
+                    .total-row {
+                        display: flex;
+                        justify-content: space-between;
+                        padding: 8px 0;
+                        font-size: 13px;
+                        color: #4b5563;
+                    }
+                    .total-row.subtotal {
+                        border-bottom: 1px solid #e5e7eb;
+                    }
+                    .total-row.grand-total {
+                        border-top: 2px solid #2563eb;
+                        padding-top: 12px;
+                        margin-top: 8px;
+                        font-size: 16px;
+                        font-weight: 700;
+                        color: #1f2937;
+                    }
+                    .total-row.grand-total .amount {
+                        color: #2563eb;
+                    }
+                    .invoice-footer {
+                        margin-top: 40px;
+                        padding-top: 20px;
+                        border-top: 2px solid #e5e7eb;
+                    }
+                    .footer-grid {
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 20px;
+                        margin-bottom: 20px;
+                    }
+                    .footer-section h4 {
+                        font-size: 11px;
+                        color: #6b7280;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                        margin-bottom: 8px;
+                        font-weight: 600;
+                    }
+                    .footer-section p {
+                        font-size: 12px;
+                        color: #4b5563;
+                        margin: 4px 0;
+                    }
+                    .footer-note {
+                        background: #eff6ff;
+                        padding: 15px;
+                        border-radius: 8px;
+                        border-left: 4px solid #2563eb;
+                        margin-top: 20px;
+                    }
+                    .footer-note p {
+                        font-size: 12px;
+                        color: #1e40af;
+                        text-align: center;
+                        margin: 0;
+                    }
+                    @media print {
+                        body { padding: 0; }
+                        .no-print { display: none; }
+                    }
                 </style>
             </head>
             <body>
-                <div class="header">
-                    <h1>WHOLESALE INVOICE</h1>
-                    <p><strong>Invoice #:</strong> ${sale.saleNumber}</p>
-                    <p>${new Date(sale.createdAt).toLocaleString()}</p>
+                <div class="invoice-header">
+                    <div class="company-info">
+                        <h1>Vendify</h1>
+                        <p>Point of Sale System</p>
+                        <p>vendly-pos.firebaseapp.com</p>
+                    </div>
+                    <div class="invoice-meta">
+                        <h2>INVOICE</h2>
+                        <p><strong>Invoice #:</strong> ${sale.saleNumber}</p>
+                        <p><strong>Date:</strong> ${invoiceDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                        <p><strong>Time:</strong> ${invoiceDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
+                        ${sale.creditTerm !== 'immediate' ? `<p><strong>Due Date:</strong> ${dueDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>` : ''}
+                    </div>
                 </div>
-                <div class="info">
-                    <div class="info-row"><strong>Customer:</strong> ${sale.customer}</div>
-                    <div class="info-row"><strong>Phone:</strong> ${sale.customerPhone || 'N/A'}</div>
-                    <div class="info-row"><strong>Branch:</strong> ${sale.branchName || 'N/A'}</div>
-                    <div class="info-row"><strong>Payment:</strong> ${this.formatPaymentMethod(sale.paymentMethod)}</div>
-                    <div class="info-row"><strong>Terms:</strong> ${this.formatCreditTerm(sale.creditTerm)}</div>
+
+                <div class="invoice-details">
+                    <div class="detail-box">
+                        <h3>Bill To</h3>
+                        <div class="customer-name">${sale.customer}</div>
+                        ${sale.customerPhone ? `<p>Phone: ${sale.customerPhone}</p>` : ''}
+                        ${sale.customerId ? `<p>Customer ID: ${sale.customerId.substring(0, 8)}</p>` : ''}
+                    </div>
+                    <div class="detail-box">
+                        <h3>Invoice Details</h3>
+                        <p><strong>Branch:</strong> ${sale.branchName || 'Main Branch'}</p>
+                        <p><strong>Payment Method:</strong> ${this.formatPaymentMethod(sale.paymentMethod)}</p>
+                        <p><strong>Terms:</strong> ${this.formatCreditTerm(sale.creditTerm)}</p>
+                        <p><strong>Status:</strong> <span class="status-badge ${sale.status || 'completed'}">${(sale.status || 'completed').toUpperCase()}</span></p>
+                    </div>
                 </div>
-                <table>
+
+                <table class="items-table">
                     <thead>
                         <tr>
-                            <th>Item</th>
-                            <th>SKU</th>
-                            <th>Price</th>
-                            <th>Qty</th>
-                            <th>Total</th>
+                            <th style="width: 5%;">#</th>
+                            <th style="width: 40%;">Item Description</th>
+                            <th style="width: 15%;">SKU</th>
+                            <th style="width: 13%;">Unit Price</th>
+                            <th style="width: 10%;">Quantity</th>
+                            <th style="width: 17%;">Amount</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${sale.items?.map(item => `
+                        ${sale.items?.map((item, index) => `
                             <tr>
-                                <td>${item.name}</td>
+                                <td>${index + 1}</td>
+                                <td>
+                                    <div class="item-name">${item.name}</div>
+                                    ${item.category ? `<div class="item-sku">${item.category}</div>` : ''}
+                                </td>
                                 <td>${item.sku || 'N/A'}</td>
                                 <td>${this.formatCurrency(item.price)}</td>
                                 <td>${item.quantity}</td>
                                 <td>${this.formatCurrency(item.total)}</td>
                             </tr>
-                        `).join('') || ''}
+                        `).join('') || '<tr><td colspan="6" style="text-align: center; color: #9ca3af;">No items</td></tr>'}
                     </tbody>
                 </table>
-                <div class="totals">
-                    <div>Subtotal: ${this.formatCurrency(sale.subtotal || sale.total)}</div>
-                    ${sale.discount ? `<div>Discount: -${this.formatCurrency(sale.discount)}</div>` : ''}
-                    <div class="grand-total">Grand Total: ${this.formatCurrency(sale.total)}</div>
+
+                <div class="totals-section">
+                    <div class="totals-box">
+                        <div class="total-row subtotal">
+                            <span>Subtotal:</span>
+                            <span>${this.formatCurrency(sale.subtotal || sale.total)}</span>
+                        </div>
+                        ${sale.discount > 0 ? `
+                        <div class="total-row">
+                            <span>Discount:</span>
+                            <span>-${this.formatCurrency(sale.discount)}</span>
+                        </div>
+                        ` : ''}
+                        <div class="total-row grand-total">
+                            <span>Grand Total:</span>
+                            <span class="amount">${this.formatCurrency(sale.total)}</span>
+                        </div>
+                    </div>
                 </div>
-                <script>window.print(); window.onafterprint = function(){ window.close(); }</script>
+
+                <div class="invoice-footer">
+                    <div class="footer-grid">
+                        <div class="footer-section">
+                            <h4>Payment Information</h4>
+                            <p><strong>Method:</strong> ${this.formatPaymentMethod(sale.paymentMethod)}</p>
+                            <p><strong>Terms:</strong> ${this.formatCreditTerm(sale.creditTerm)}</p>
+                            ${sale.creditTerm !== 'immediate' ? `<p><strong>Due Date:</strong> ${dueDate.toLocaleDateString('en-GB')}</p>` : ''}
+                        </div>
+                        <div class="footer-section">
+                            <h4>Order Summary</h4>
+                            <p><strong>Total Items:</strong> ${sale.items?.length || 0}</p>
+                            <p><strong>Total Quantity:</strong> ${sale.items?.reduce((sum, item) => sum + item.quantity, 0) || 0}</p>
+                            <p><strong>Created By:</strong> ${sale.createdBy || 'System'}</p>
+                        </div>
+                    </div>
+                    <div class="footer-note">
+                        <p>Thank you for your business! For questions about this invoice, please contact your branch.</p>
+                    </div>
+                </div>
+
+                <script>
+                    window.onload = function() {
+                        window.print();
+                    };
+                    window.onafterprint = function() {
+                        window.close();
+                    };
+                </script>
             </body>
             </html>
         `);
         printWindow.document.close();
+    }
+
+    // Calculate due date based on credit terms
+    calculateDueDate(invoiceDate, creditTerm) {
+        const date = new Date(invoiceDate);
+        switch(creditTerm) {
+            case 'net30':
+                date.setDate(date.getDate() + 30);
+                break;
+            case 'net60':
+                date.setDate(date.getDate() + 60);
+                break;
+            case 'net90':
+                date.setDate(date.getDate() + 90);
+                break;
+            default:
+                return date;
+        }
+        return date;
     }
 
     // Edit sale
