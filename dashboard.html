@@ -1182,100 +1182,142 @@
                                 
                                 <!-- Subtotal -->
                                 <div class="pos-summary-row">
-                                    <span>Subtotal</span>
-                                    <span id="posSubtotal">KES 0.00</span>
+                                    <span class="pos-label">Subtotal</span>
+                                    <span class="pos-value" id="posSubtotal">KES 0.00</span>
                                 </div>
 
-                                <!-- Discount -->
-                                <div class="pos-editable-row">
-                                    <div class="pos-editable-label">
+                                <!-- Discount Section -->
+                                <div class="pos-summary-section" id="discountSection">
+                                    <div class="pos-section-label">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
                                             <line x1="7" y1="7" x2="7.01" y2="7"></line>
                                         </svg>
-                                        Discount
+                                        <span>Discount</span>
                                     </div>
-                                    <div class="pos-editable-input">
-                                        <input type="number" 
+                                    <div class="pos-input-row">
+                                        <input type="text" 
+                                               inputmode="decimal"
                                                id="posDiscountInput" 
-                                               class="pos-input-small" 
-                                               placeholder="0" 
-                                               min="0" 
-                                               step="0.01">
-                                        <select id="posDiscountType" class="pos-select-small">
+                                               class="pos-input-field" 
+                                               placeholder="0.00" 
+                                               autocomplete="off">
+                                        <select id="posDiscountType" class="pos-select-field">
                                             <option value="percent">%</option>
                                             <option value="fixed">KES</option>
                                         </select>
                                     </div>
-                                    <span id="posDiscountAmount" class="pos-amount">-KES 0.00</span>
+                                    <div class="pos-result-value" id="posDiscountAmount">-KES 0.00</div>
                                 </div>
 
-                                <!-- Tax -->
-                                <div class="pos-editable-row">
-                                    <div class="pos-editable-label">
+                                <!-- Tax Section -->
+                                <div class="pos-summary-section" id="taxSection">
+                                    <div class="pos-section-label">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
                                             <line x1="1" y1="10" x2="23" y2="10"></line>
                                         </svg>
-                                        Tax
+                                        <span>Tax</span>
                                     </div>
-                                    <div class="pos-editable-input">
-                                        <input type="number" 
+                                    <div class="pos-input-row">
+                                        <input type="text" 
+                                               inputmode="decimal"
                                                id="posTaxInput" 
-                                               class="pos-input-small" 
-                                               placeholder="0" 
-                                               min="0" 
-                                               step="0.01">
-                                        <select id="posTaxType" class="pos-select-small">
+                                               class="pos-input-field" 
+                                               placeholder="0.00" 
+                                               autocomplete="off">
+                                        <select id="posTaxType" class="pos-select-field">
                                             <option value="percent">%</option>
                                             <option value="fixed">KES</option>
                                         </select>
                                     </div>
-                                    <span id="posTaxAmount" class="pos-amount">+KES 0.00</span>
+                                    <div class="pos-result-value" id="posTaxAmount">+KES 0.00</div>
                                 </div>
 
+                                <!-- Divider -->
+                                <div class="pos-divider"></div>
+
+                                <!-- Payment Method -->
+                                <div class="pos-payment-section">
+                                    <label class="pos-payment-label">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                                            <line x1="1" y1="10" x2="23" y2="10"></line>
+                                        </svg>
+                                        Payment Method
+                                    </label>
+                                    <div class="pos-payment-methods">
+                                        <button class="pos-payment-btn active" data-method="cash" id="paymentCash">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <line x1="12" y1="1" x2="12" y2="23"></line>
+                                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                            </svg>
+                                            Cash
+                                        </button>
+                                        <button class="pos-payment-btn" data-method="mpesa" id="paymentMpesa">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                                                <line x1="12" y1="18" x2="12.01" y2="18"></line>
+                                            </svg>
+                                            M-Pesa
+                                        </button>
+                                        <button class="pos-payment-btn" data-method="card" id="paymentCard">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                                                <line x1="1" y1="10" x2="23" y2="10"></line>
+                                            </svg>
+                                            Card
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Divider -->
                                 <div class="pos-divider"></div>
 
                                 <!-- Total -->
-                                <div class="pos-total-row">
-                                    <span>Total</span>
-                                    <span id="posTotal">KES 0.00</span>
+                                <div class="pos-total-section">
+                                    <div class="pos-total-label">Total Amount</div>
+                                    <div class="pos-total-amount" id="posTotal">KES 0.00</div>
                                 </div>
 
-                                <!-- Action Buttons -->
-                                <div class="pos-actions">
-                                    <button class="btn-pos-primary" id="posCompleteSale">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <polyline points="20 6 9 17 4 12"></polyline>
-                                        </svg>
-                                        Complete Sale
-                                    </button>
-                                </div>
+                                <!-- Complete Sale Button -->
+                                <button class="btn-pos-complete" id="posCompleteSale">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                    Complete Sale
+                                </button>
 
                                 <!-- Quick Actions -->
                                 <div class="pos-quick-actions">
-                                    <button class="pos-quick-btn" id="posHoldSaleBtn">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <button class="pos-action-btn" id="posHoldSaleBtn" title="Hold Sale">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <circle cx="12" cy="12" r="10"></circle>
-                                            <line x1="12" y1="8" x2="12" y2="12"></line>
-                                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                            <rect x="9" y="9" width="6" height="6"></rect>
                                         </svg>
-                                        Hold
+                                        <span>Hold</span>
                                     </button>
-                                    <button class="pos-quick-btn" id="posLoadHeldBtn">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                            <polyline points="17 8 12 3 7 8"></polyline>
-                                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                                    <button class="pos-action-btn" id="posLoadHeldBtn" title="Load Held Sale">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M3 15v4c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2v-4M17 9l-5-5-5 5M12 4v12"></path>
                                         </svg>
-                                        Load Held
+                                        <span>Load Held</span>
                                     </button>
-                                    <button class="pos-quick-btn" id="posGenerateQuoteBtn">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <button class="pos-action-btn" id="posGenerateQuoteBtn" title="Generate Quote">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                                             <polyline points="14 2 14 8 20 8"></polyline>
+                                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                                            <line x1="16" y1="17" x2="8" y2="17"></line>
                                         </svg>
-                                        Quote
+                                        <span>Quote</span>
+                                    </button>
+                                    <button class="pos-action-btn" id="posClearCart" title="Clear Cart">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="3 6 5 6 21 6"></polyline>
+                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                        </svg>
+                                        <span>Clear</span>
                                     </button>
                                 </div>
                             </div>
@@ -1302,12 +1344,18 @@
                         <p class="page-subtitle">View and manage all sales transactions</p>
                     </div>
                     <div class="page-header-right">
+                        <select id="salesPaymentMethod" class="filter-select">
+                            <option value="all">All Payments</option>
+                            <option value="cash">Cash</option>
+                            <option value="mpesa">M-Pesa</option>
+                            <option value="card">Card</option>
+                        </select>
                         <select id="salesDateRange" class="filter-select">
                             <option value="today">Today</option>
                             <option value="yesterday">Yesterday</option>
                             <option value="week">Last 7 Days</option>
                             <option value="month">Last 30 Days</option>
-                            <option value="all">All Time</option>
+                            <option value="all" selected>All Time</option>
                         </select>
                         <button class="btn btn-secondary" id="exportExcelBtn" title="Export to Excel">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

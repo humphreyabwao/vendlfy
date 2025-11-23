@@ -11,6 +11,7 @@ class POSSystem {
         this.discountType = 'percent'; // 'percent' or 'fixed'
         this.tax = 0;
         this.taxType = 'percent'; // 'percent' or 'fixed'
+        this.paymentMethod = 'cash'; // 'cash', 'mpesa', or 'card'
         this.inventory = [];
         this.heldSales = []; // Store held sales
         this.todayStats = {
@@ -25,6 +26,8 @@ class POSSystem {
         this.scannerActive = false;
         this.lastScannedCode = null;
         this.scanCooldown = false;
+        this.initialized = false; // Track if already initialized
+        this.isProcessingSale = false; // Prevent duplicate sale processing
         
         // Physical barcode scanner support
         this.barcodeBuffer = '';
@@ -37,7 +40,14 @@ class POSSystem {
         await this.loadInventory();
         await this.loadTodayStats();
         this.renderStats();
-        this.attachEventListeners();
+        
+        // Only attach event listeners once to prevent duplicates
+        if (!this.initialized) {
+            this.attachEventListeners();
+            this.initialized = true;
+            console.log('✅ Event listeners attached');
+        }
+        
         this.startRealtimeSync();
         console.log('✅ POS System ready');
     }
@@ -166,12 +176,22 @@ class POSSystem {
                 }
             });
 
-            // Keep focus on search input for barcode scanner
-            searchInput.addEventListener('blur', () => {
-                // Auto-refocus after a short delay if on POS page
+            // Keep focus on search input for barcode scanner, but not when using other inputs
+            searchInput.addEventListener('blur', (e) => {
+                // Don't refocus if user is clicking on discount/tax inputs or other interactive elements
                 setTimeout(() => {
                     const posPage = document.getElementById('pos-page');
-                    if (posPage && posPage.classList.contains('active')) {
+                    const activeElement = document.activeElement;
+                    
+                    // Don't steal focus if user is in another input/select/button
+                    const isUsingOtherInput = activeElement && (
+                        activeElement.tagName === 'INPUT' ||
+                        activeElement.tagName === 'SELECT' ||
+                        activeElement.tagName === 'BUTTON' ||
+                        activeElement.tagName === 'TEXTAREA'
+                    );
+                    
+                    if (posPage && posPage.classList.contains('active') && !isUsingOtherInput) {
                         searchInput.focus();
                     }
                 }, 100);
@@ -179,18 +199,46 @@ class POSSystem {
 
             // Focus on load
             setTimeout(() => searchInput.focus(), 500);
+            
+            // Hide search results when clicking outside
+            document.addEventListener('click', (e) => {
+                const resultsContainer = document.getElementById('posSearchResults');
+                const searchSection = document.querySelector('.pos-search-section');
+                
+                if (resultsContainer && searchSection) {
+                    if (!searchSection.contains(e.target)) {
+                        resultsContainer.style.display = 'none';
+                    }
+                }
+            });
         }
 
         // Discount inputs
         const discountInput = document.getElementById('posDiscountInput');
         const discountType = document.getElementById('posDiscountType');
         if (discountInput) {
-            discountInput.addEventListener('input', (e) => {
-                this.discount = parseFloat(e.target.value) || 0;
-                this.updateTotals();
+            // Ensure field is fully interactive
+            discountInput.disabled = false;
+            discountInput.readOnly = false;
+            discountInput.style.pointerEvents = 'auto';
+            
+            // Multiple input event types for compatibility
+            ['input', 'change', 'keyup'].forEach(eventType => {
+                discountInput.addEventListener(eventType, (e) => {
+                    this.discount = parseFloat(e.target.value) || 0;
+                    this.updateTotals();
+                });
+            });
+            
+            // Ensure it can receive focus
+            discountInput.addEventListener('focus', function() {
+                this.style.pointerEvents = 'auto';
             });
         }
         if (discountType) {
+            discountType.disabled = false;
+            discountType.style.pointerEvents = 'auto';
+            
             discountType.addEventListener('change', (e) => {
                 this.discountType = e.target.value;
                 this.updateTotals();
@@ -201,12 +249,28 @@ class POSSystem {
         const taxInput = document.getElementById('posTaxInput');
         const taxType = document.getElementById('posTaxType');
         if (taxInput) {
-            taxInput.addEventListener('input', (e) => {
-                this.tax = parseFloat(e.target.value) || 0;
-                this.updateTotals();
+            // Ensure field is fully interactive
+            taxInput.disabled = false;
+            taxInput.readOnly = false;
+            taxInput.style.pointerEvents = 'auto';
+            
+            // Multiple input event types for compatibility
+            ['input', 'change', 'keyup'].forEach(eventType => {
+                taxInput.addEventListener(eventType, (e) => {
+                    this.tax = parseFloat(e.target.value) || 0;
+                    this.updateTotals();
+                });
+            });
+            
+            // Ensure it can receive focus
+            taxInput.addEventListener('focus', function() {
+                this.style.pointerEvents = 'auto';
             });
         }
         if (taxType) {
+            taxType.disabled = false;
+            taxType.style.pointerEvents = 'auto';
+            
             taxType.addEventListener('change', (e) => {
                 this.taxType = e.target.value;
                 this.updateTotals();
@@ -266,6 +330,20 @@ class POSSystem {
         if (closeHeldModal) {
             closeHeldModal.addEventListener('click', () => this.closeHeldSalesModal());
         }
+
+        // Payment method buttons
+        const paymentButtons = document.querySelectorAll('.pos-payment-btn');
+        paymentButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // Remove active class from all buttons
+                paymentButtons.forEach(b => b.classList.remove('active'));
+                // Add active class to clicked button
+                btn.classList.add('active');
+                // Set payment method
+                this.paymentMethod = btn.getAttribute('data-method');
+                console.log('Payment method selected:', this.paymentMethod);
+            });
+        });
     }
 
     // Search items in inventory
@@ -795,11 +873,20 @@ class POSSystem {
             this.cart = [];
             this.discount = 0;
             this.tax = 0;
+            this.paymentMethod = 'cash'; // Reset to cash
             
             const discountInput = document.getElementById('posDiscountInput');
             const taxInput = document.getElementById('posTaxInput');
             if (discountInput) discountInput.value = '';
             if (taxInput) taxInput.value = '';
+            
+            // Reset payment method buttons
+            document.querySelectorAll('.pos-payment-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.getAttribute('data-method') === 'cash') {
+                    btn.classList.add('active');
+                }
+            });
             
             this.renderCart();
             this.updateTotals();
@@ -842,6 +929,14 @@ class POSSystem {
             this.showNotification('Cart is empty', 'error');
             return;
         }
+
+        // Prevent duplicate sale processing
+        if (this.isProcessingSale) {
+            console.log('⚠️ Sale already processing, ignoring duplicate request');
+            return;
+        }
+
+        this.isProcessingSale = true;
 
         const completeSaleBtn = document.getElementById('posCompleteSale');
         if (completeSaleBtn) {
@@ -892,7 +987,7 @@ class POSSystem {
                 taxValue: this.tax,
                 total: total,
                 profit: profit,
-                paymentMethod: 'cash', // Can be extended for multiple payment methods
+                paymentMethod: this.paymentMethod, // Use selected payment method
                 status: 'completed',
                 saleType: 'pos',
                 createdAt: new Date().toISOString()
@@ -901,8 +996,9 @@ class POSSystem {
             let sale = null;
             let saleCreated = false;
 
+            // ========== CRITICAL OPERATIONS (MUST COMPLETE) ==========
             try {
-                // Save sale to database
+                // 1. Save sale to database (CRITICAL)
                 console.log('💾 Saving sale to database...');
                 sale = await dataManager.createSale(saleData);
                 saleCreated = true;
@@ -912,131 +1008,109 @@ class POSSystem {
                 throw new Error(`Failed to save sale: ${saleError.message}`);
             }
 
-            // Log POS sale to audit trail
-            await auditLogger.logSale('POS', {
-                total: total,
-                items: this.cart,
-                itemCount: this.cart.length,
-                customerName: 'Walk-in',
-                discount: discountAmount,
-                tax: taxAmount
-            });
-
-            // Update inventory stock (non-critical - sale already saved)
-            try {
-                console.log('📦 Updating inventory stock...');
-                for (const item of this.cart) {
-                    if (item.isManual) continue; // Skip manual entries (not in inventory)
+            // 2. Update inventory stock in parallel (CRITICAL)
+            const inventoryUpdatePromises = [];
+            console.log('📦 Updating inventory stock...');
+            
+            for (const item of this.cart) {
+                if (item.isManual) continue; // Skip manual entries
+                
+                const inventoryItem = this.inventory.find(i => i.id === item.id);
+                if (inventoryItem) {
+                    const currentStock = inventoryItem.quantity || inventoryItem.stock || 0;
+                    const newStock = Math.max(0, currentStock - item.quantity);
                     
-                    const inventoryItem = this.inventory.find(i => i.id === item.id);
-                    if (inventoryItem) {
-                        // Use quantity or stock field (matches the structure from add-item.js)
-                        const currentStock = inventoryItem.quantity || inventoryItem.stock || 0;
-                        const newStock = Math.max(0, currentStock - item.quantity); // Prevent negative stock
-                        
-                        console.log(`📊 Updating ${item.name}: ${currentStock} → ${newStock} (sold: ${item.quantity})`);
-                        
-                        // Update using 'quantity' field to match add-item.js structure
-                        await dataManager.updateInventoryItem(item.id, { 
+                    console.log(`📊 Updating ${item.name}: ${currentStock} → ${newStock}`);
+                    
+                    // Queue update (run in parallel)
+                    inventoryUpdatePromises.push(
+                        dataManager.updateInventoryItem(item.id, { 
                             quantity: newStock,
-                            stock: newStock // Update both for compatibility
-                        });
-                        
-                        // Update local cache
-                        if ('quantity' in inventoryItem) {
-                            inventoryItem.quantity = newStock;
-                        }
-                        if ('stock' in inventoryItem) {
-                            inventoryItem.stock = newStock;
-                        }
-                    }
+                            stock: newStock 
+                        }).then(() => {
+                            // Update local cache
+                            if ('quantity' in inventoryItem) inventoryItem.quantity = newStock;
+                            if ('stock' in inventoryItem) inventoryItem.stock = newStock;
+                        }).catch(err => {
+                            console.error(`⚠️ Error updating ${item.name}:`, err);
+                        })
+                    );
                 }
-                console.log('✅ Inventory updated successfully');
-            } catch (inventoryError) {
-                console.error('⚠️ Error updating inventory (sale was saved):', inventoryError);
-                // Don't throw - sale is already saved
             }
+            
+            // Wait for all inventory updates to complete
+            await Promise.all(inventoryUpdatePromises);
+            console.log('✅ Inventory updated successfully');
 
-            // Clear cart and reset UI
+            // 3. Clear cart and reset UI (INSTANT)
             this.cart = [];
             this.discount = 0;
             this.tax = 0;
+            this.paymentMethod = 'cash'; // Reset to cash
             
             const discountInput = document.getElementById('posDiscountInput');
             const taxInput = document.getElementById('posTaxInput');
             if (discountInput) discountInput.value = '';
             if (taxInput) taxInput.value = '';
 
+            // Reset payment method buttons to cash
+            document.querySelectorAll('.pos-payment-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.getAttribute('data-method') === 'cash') {
+                    btn.classList.add('active');
+                }
+            });
+
             this.renderCart();
             this.updateTotals();
 
-            // Reload stats (non-critical)
-            try {
-                console.log('📊 Reloading stats...');
-                await this.loadTodayStats();
-                this.renderStats();
-                console.log('✅ Stats reloaded');
-            } catch (statsError) {
-                console.error('⚠️ Error reloading stats:', statsError);
-                // Don't throw - sale is already saved
-            }
+            // 4. Show success message IMMEDIATELY
+            this.showNotification(`✅ Sale completed! Total: KES ${this.formatCurrency(total)}`, 'success');
             
-            // Refresh dashboard stats if available (non-critical)
-            if (typeof window.refreshDashboardStats === 'function') {
-                try {
-                    console.log('📊 Refreshing dashboard stats...');
-                    await window.refreshDashboardStats();
-                    console.log('✅ Dashboard stats refreshed');
-                } catch (dashError) {
-                    console.error('⚠️ Error refreshing dashboard:', dashError);
-                    // Don't throw - sale is already saved
-                }
-            }
+            // 5. Show receipt dialog IMMEDIATELY
+            this.showReceiptDialog(sale);
 
-            // Refresh reports if initialized (non-critical)
-            if (window.reportsManager && window.reportsManager.initialized) {
-                try {
-                    console.log('📊 Refreshing reports...');
-                    await window.reportsManager.loadAllData();
-                    console.log('✅ Reports refreshed');
-                } catch (reportsError) {
-                    console.error('⚠️ Error refreshing reports:', reportsError);
-                }
-            }
-            
-            // Reload POS inventory (non-critical)
-            try {
-                console.log('🔄 Reloading POS inventory...');
-                await this.loadInventory();
-                console.log('✅ POS inventory reloaded');
-            } catch (loadError) {
-                console.error('⚠️ Error reloading POS inventory:', loadError);
-                // Don't throw - sale is already saved
-            }
-            
-            // Refresh inventory page if active (non-critical)
-            if (window.inventoryManager && typeof window.inventoryManager.refresh === 'function') {
-                try {
-                    console.log('🔄 Refreshing inventory manager...');
-                    await window.inventoryManager.refresh();
-                    console.log('✅ Inventory manager refreshed');
-                } catch (refreshError) {
-                    console.error('⚠️ Error refreshing inventory manager:', refreshError);
-                    // Don't throw - sale is already saved
-                }
-            }
-
-            // Show success message (always show if sale was saved)
-            this.showNotification(`Sale completed! Total: KES ${this.formatCurrency(total)}`, 'success');
-            
-            // Show receipt dialog (non-critical)
-            try {
-                console.log('🧾 Showing receipt...');
-                this.showReceiptDialog(sale);
-            } catch (receiptError) {
-                console.error('⚠️ Error showing receipt:', receiptError);
-                // Don't throw - sale is already saved, just log it
-            }
+            // ========== BACKGROUND OPERATIONS (NON-BLOCKING) ==========
+            // Run all non-critical updates in the background without waiting
+            Promise.all([
+                // Audit logging
+                auditLogger.logSale('POS', {
+                    total: total,
+                    items: this.cart,
+                    itemCount: saleData.items.length,
+                    customerName: 'Walk-in',
+                    discount: discountAmount,
+                    tax: taxAmount
+                }).catch(err => console.error('⚠️ Audit log error:', err)),
+                
+                // Reload POS stats
+                this.loadTodayStats().then(() => {
+                    this.renderStats();
+                    console.log('✅ Stats refreshed');
+                }).catch(err => console.error('⚠️ Stats refresh error:', err)),
+                
+                // Reload POS inventory cache
+                this.loadInventory().catch(err => console.error('⚠️ Inventory reload error:', err)),
+                
+                // Refresh dashboard stats
+                typeof window.refreshDashboardStats === 'function' 
+                    ? window.refreshDashboardStats().catch(err => console.error('⚠️ Dashboard refresh error:', err))
+                    : Promise.resolve(),
+                
+                // Refresh reports
+                window.reportsManager?.initialized 
+                    ? window.reportsManager.loadAllData().catch(err => console.error('⚠️ Reports refresh error:', err))
+                    : Promise.resolve(),
+                
+                // Refresh inventory manager
+                window.inventoryManager?.refresh 
+                    ? window.inventoryManager.refresh().catch(err => console.error('⚠️ Inventory manager refresh error:', err))
+                    : Promise.resolve()
+            ]).then(() => {
+                console.log('✅ All background updates completed');
+            }).catch(err => {
+                console.error('⚠️ Some background updates failed:', err);
+            });
 
         } catch (error) {
             console.error('❌ Error completing sale:', error);
@@ -1052,6 +1126,9 @@ class POSSystem {
                 this.showNotification('Sale may have been saved. Check All Sales page.', 'info');
             }
         } finally {
+            // Reset processing flag
+            this.isProcessingSale = false;
+            
             if (completeSaleBtn) {
                 completeSaleBtn.disabled = false;
                 completeSaleBtn.innerHTML = `
@@ -1822,6 +1899,7 @@ class POSSystem {
                             <h2>Vendify POS</h2>
                             <p>Receipt #${sale.id.substring(0, 8).toUpperCase()}</p>
                             <p>${new Date().toLocaleString()}</p>
+                            <p><strong>Payment:</strong> ${this.formatPaymentMethod(sale.paymentMethod)}</p>
                         </div>
                         <table class="receipt-table">
                             <thead>
@@ -1857,6 +1935,10 @@ class POSSystem {
                                 <span>Total:</span>
                                 <span>KES ${this.formatCurrency(sale.total)}</span>
                             </div>
+                            <div class="receipt-row receipt-payment">
+                                <span>Payment Method:</span>
+                                <span>${this.formatPaymentMethod(sale.paymentMethod)}</span>
+                            </div>
                         </div>
                         <div class="receipt-footer">
                             <p>Thank you for your purchase!</p>
@@ -1882,6 +1964,16 @@ class POSSystem {
     // Format currency
     formatCurrency(amount) {
         return parseFloat(amount).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+
+    // Format payment method for display
+    formatPaymentMethod(method) {
+        const methods = {
+            'cash': 'Cash',
+            'mpesa': 'M-Pesa',
+            'card': 'Card'
+        };
+        return methods[method] || 'Cash';
     }
 
     // Show notification

@@ -7,10 +7,11 @@ class SalesManager {
         this.sales = [];
         this.filteredSales = [];
         this.filters = {
-            dateRange: 'today',
+            dateRange: 'all',
             startDate: null,
             endDate: null,
-            search: ''
+            search: '',
+            paymentMethod: 'all'
         };
         // Pagination settings
         this.pagination = {
@@ -23,6 +24,20 @@ class SalesManager {
 
     async init() {
         console.log('📊 Initializing Sales Manager...');
+        
+        // Set filters to 'all' by default
+        const paymentMethodSelect = document.getElementById('salesPaymentMethod');
+        if (paymentMethodSelect) {
+            paymentMethodSelect.value = 'all';
+            this.filters.paymentMethod = 'all';
+        }
+        
+        const dateRangeSelect = document.getElementById('salesDateRange');
+        if (dateRangeSelect) {
+            dateRangeSelect.value = 'all';
+            this.filters.dateRange = 'all';
+        }
+        
         await this.loadSales();
         this.renderSales();
         this.attachEventListeners();
@@ -77,7 +92,8 @@ class SalesManager {
                 return dateB - dateA; // Descending order (newest first)
             });
             
-            this.filteredSales = [...this.sales];
+            // Apply payment method filter
+            this.applyFilters();
             
             // Reset pagination when data changes
             this.updatePagination();
@@ -88,6 +104,19 @@ class SalesManager {
             this.sales = [];
             this.filteredSales = [];
             this.updatePagination();
+        }
+    }
+
+    // Apply filters to sales
+    applyFilters() {
+        this.filteredSales = [...this.sales];
+        
+        // Filter by payment method
+        if (this.filters.paymentMethod && this.filters.paymentMethod !== 'all') {
+            this.filteredSales = this.filteredSales.filter(sale => {
+                const salePaymentMethod = sale.paymentMethod || 'cash';
+                return salePaymentMethod === this.filters.paymentMethod;
+            });
         }
     }
 
@@ -178,6 +207,7 @@ class SalesManager {
                                 <th>Sale ID</th>
                                 <th>Date & Time</th>
                                 <th>Items</th>
+                                <th>Payment</th>
                                 <th>Subtotal</th>
                                 <th>Discount</th>
                                 <th>Tax</th>
@@ -367,6 +397,8 @@ class SalesManager {
 
         const itemCount = sale.items ? sale.items.length : 0;
         const statusClass = sale.status === 'completed' ? 'status-completed' : 'status-pending';
+        const paymentMethod = this.formatPaymentMethod(sale.paymentMethod || 'cash');
+        const paymentClass = this.getPaymentClass(sale.paymentMethod || 'cash');
 
         return `
             <tr>
@@ -378,6 +410,7 @@ class SalesManager {
                     </div>
                 </td>
                 <td>${itemCount} item${itemCount !== 1 ? 's' : ''}</td>
+                <td><span class="payment-badge ${paymentClass}">${paymentMethod}</span></td>
                 <td>KES ${this.formatCurrency(sale.subtotal || 0)}</td>
                 <td>${sale.discount ? '-KES ' + this.formatCurrency(sale.discount) : '-'}</td>
                 <td>${sale.tax ? '+KES ' + this.formatCurrency(sale.tax) : '-'}</td>
@@ -438,6 +471,10 @@ class SalesManager {
                         <div class="info-row">
                             <span class="info-label">Date:</span>
                             <span>${new Date(sale.createdAt).toLocaleString()}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Payment Method:</span>
+                            <span class="payment-badge ${this.getPaymentClass(sale.paymentMethod || 'cash')}">${this.formatPaymentMethod(sale.paymentMethod || 'cash')}</span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">Status:</span>
@@ -540,6 +577,17 @@ class SalesManager {
 
     // Attach event listeners
     attachEventListeners() {
+        // Payment method filter
+        const paymentMethodSelect = document.getElementById('salesPaymentMethod');
+        if (paymentMethodSelect) {
+            paymentMethodSelect.addEventListener('change', async (e) => {
+                this.filters.paymentMethod = e.target.value;
+                this.applyFilters();
+                this.updatePagination();
+                this.renderSales();
+            });
+        }
+
         // Date range filter
         const dateRangeSelect = document.getElementById('salesDateRange');
         if (dateRangeSelect) {
@@ -830,6 +878,26 @@ class SalesManager {
     // Format currency
     formatCurrency(amount) {
         return parseFloat(amount || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+
+    // Format payment method for display
+    formatPaymentMethod(method) {
+        const methods = {
+            'cash': 'Cash',
+            'mpesa': 'M-Pesa',
+            'card': 'Card'
+        };
+        return methods[method] || 'Cash';
+    }
+
+    // Get payment method badge class
+    getPaymentClass(method) {
+        const classes = {
+            'cash': 'payment-cash',
+            'mpesa': 'payment-mpesa',
+            'card': 'payment-card'
+        };
+        return classes[method] || 'payment-cash';
     }
 
     // Show notification

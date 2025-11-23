@@ -1101,6 +1101,38 @@ body::-webkit-scrollbar-thumb:hover {
     color: var(--primary-purple);
 }
 
+/* Payment Method Badges */
+.payment-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.payment-badge.payment-cash {
+    background-color: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.payment-badge.payment-mpesa {
+    background-color: rgba(34, 139, 34, 0.1);
+    color: #228B22;
+    border: 1px solid rgba(34, 139, 34, 0.2);
+}
+
+.payment-badge.payment-card {
+    background-color: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
 .status-indicator {
     width: 6px;
     height: 6px;
@@ -2616,7 +2648,7 @@ textarea.form-input {
     max-height: 400px;
     overflow-y: auto;
     box-shadow: var(--shadow-lg);
-    z-index: 100;
+    z-index: 50;
     display: none;
 }
 
@@ -2681,6 +2713,8 @@ textarea.form-input {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    position: relative;
+    z-index: 1;
 }
 
 .pos-cart-header {
@@ -2763,6 +2797,9 @@ textarea.form-input {
     padding: 14px;
     margin-bottom: 12px;
     transition: all 0.3s ease;
+    position: relative;
+    z-index: 2;
+    pointer-events: auto;
 }
 
 .pos-cart-item:hover {
@@ -2872,176 +2909,314 @@ textarea.form-input {
 .pos-summary-card {
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 20px;
+    border-radius: 16px;
+    padding: 24px;
     height: 100%;
     display: flex;
     flex-direction: column;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    position: relative;
+    overflow: visible;
+}
+
+.pos-summary-card * {
+    pointer-events: auto;
 }
 
 .pos-summary-title {
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 700;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
     color: var(--text-primary);
+    padding-bottom: 16px;
+    border-bottom: 2px solid var(--border-color);
+    pointer-events: none;
 }
 
+/* Summary Row */
 .pos-summary-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 0;
-    font-size: 14px;
+    padding: 16px 0;
+    font-size: 15px;
+}
+
+.pos-summary-row .pos-label {
     color: var(--text-secondary);
+    font-weight: 500;
 }
 
-.pos-editable-row {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 14px 0;
+.pos-summary-row .pos-value {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 16px;
+}
+
+/* Summary Section (Discount/Tax) - Completely Isolated */
+.pos-summary-section {
+    padding: 18px 0;
     border-top: 1px solid var(--border-color);
+    pointer-events: auto;
+    isolation: isolate;
 }
 
-.pos-editable-label {
+.pos-section-label {
     display: flex;
     align-items: center;
     gap: 8px;
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 600;
     color: var(--text-primary);
+    margin-bottom: 12px;
+    user-select: none;
 }
 
-.pos-editable-label svg {
-    color: var(--text-secondary);
+.pos-section-label svg {
+    color: var(--primary-blue);
+    flex-shrink: 0;
 }
 
-.pos-editable-input {
+.pos-input-row {
     display: flex;
-    gap: 8px;
+    gap: 10px;
+    margin-bottom: 10px;
+    pointer-events: auto;
+    position: relative;
+    z-index: 10;
 }
 
-.pos-input-small {
+.pos-input-field {
     flex: 1;
-    padding: 8px 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background: var(--bg-secondary);
+    padding: 12px 16px;
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--bg-primary);
     color: var(--text-primary);
-    font-size: 14px;
+    font-size: 16px;
+    font-weight: 600;
     font-family: 'Montserrat', sans-serif;
-    transition: all 0.3s ease;
+    transition: border-color 0.2s ease;
+    outline: none;
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 100;
+    user-select: text;
+    -webkit-user-select: text;
+    -moz-user-select: text;
 }
 
-.pos-input-small:focus {
-    outline: none;
+.pos-input-field:focus {
     border-color: var(--primary-blue);
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
-.pos-select-small {
-    padding: 8px 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background: var(--bg-secondary);
+.pos-select-field {
+    width: 90px;
+    padding: 12px 16px;
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--bg-primary);
     color: var(--text-primary);
-    font-size: 14px;
+    font-size: 16px;
+    font-weight: 700;
     font-family: 'Montserrat', sans-serif;
     cursor: pointer;
+    transition: border-color 0.2s ease;
+    outline: none;
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 100;
+    -webkit-appearance: menulist;
+    -moz-appearance: menulist;
+    appearance: menulist;
 }
 
-.pos-amount {
-    font-size: 15px;
+.pos-select-field:focus {
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.pos-result-value {
+    text-align: right;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+    padding: 6px 0;
+}
+
+/* Payment Method Section */
+.pos-payment-section {
+    padding: 20px 0;
+    border-top: 1px solid var(--border-color);
+}
+
+.pos-payment-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
     font-weight: 600;
     color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+.pos-payment-label svg {
+    color: var(--primary-blue);
+}
+
+.pos-payment-methods {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.pos-payment-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 14px 8px;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'Montserrat', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.pos-payment-btn:hover {
+    border-color: var(--primary-blue);
+    background: var(--bg-primary);
+    color: var(--primary-blue);
+    transform: translateY(-2px);
+}
+
+.pos-payment-btn.active {
+    border-color: var(--primary-blue);
+    background: var(--primary-blue);
+    color: white;
+}
+
+.pos-payment-btn svg {
+    width: 22px;
+    height: 22px;
+}
+
+/* Total Section */
+.pos-total-section {
+    padding: 24px 0;
+    text-align: center;
+    border-top: 2px solid var(--border-color);
+}
+
+.pos-total-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.pos-total-amount {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--primary-blue);
+    letter-spacing: -0.5px;
+}
+
+/* Complete Sale Button */
+.btn-pos-complete {
+    width: 100%;
+    padding: 16px 24px;
+    background: linear-gradient(135deg, var(--primary-blue) 0%, #1e40af 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: 'Montserrat', sans-serif;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+    margin-top: 20px;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.btn-pos-complete:hover {
+    background: linear-gradient(135deg, #1e40af 0%, var(--primary-blue) 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+}
+
+.btn-pos-complete:active {
+    transform: translateY(0);
+}
+
+.btn-pos-complete:disabled {
+    background: var(--text-tertiary);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Quick Actions */
+.pos-quick-actions {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+.pos-action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'Montserrat', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.pos-action-btn:hover {
+    background: var(--bg-primary);
+    border-color: var(--primary-blue);
+    color: var(--primary-blue);
+    transform: translateY(-2px);
+}
+
+.pos-action-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+.pos-action-btn span {
+    font-size: 10px;
+    font-weight: 600;
 }
 
 .pos-divider {
     height: 1px;
     background: var(--border-color);
     margin: 16px 0;
-}
-
-.pos-total-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 0;
-    font-size: 20px;
-    font-weight: 700;
-    color: var(--text-primary);
-}
-
-.pos-total-row span:last-child {
-    color: var(--primary-blue);
-}
-
-.pos-actions {
-    margin-top: auto;
-    padding-top: 20px;
-}
-
-.btn-pos-primary {
-    width: 100%;
-    padding: 16px;
-    background: var(--primary-blue);
-    color: white;
-    border: none;
-    border-radius: 10px;
-    font-size: 16px;
-    font-weight: 600;
-    font-family: 'Montserrat', sans-serif;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    transition: all 0.3s ease;
-}
-
-.btn-pos-primary:hover {
-    background: #1d4ed8;
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
-}
-
-.btn-pos-primary:active {
-    transform: translateY(0);
-}
-
-.btn-pos-primary:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
-}
-
-.pos-quick-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-top: 12px;
-}
-
-.pos-quick-btn {
-    padding: 10px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    color: var(--text-primary);
-    font-size: 13px;
-    font-weight: 500;
-    font-family: 'Montserrat', sans-serif;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    transition: all 0.3s ease;
-}
-
-.pos-quick-btn:hover {
-    background: var(--bg-tertiary);
-    border-color: var(--primary-blue);
 }
 
 /* POS Modals */
