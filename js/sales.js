@@ -159,26 +159,11 @@ class SalesManager {
         const container = document.getElementById('salesTableContainer');
         if (!container) return;
 
-        if (this.filteredSales.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                        <polyline points="14 2 14 8 20 8"></polyline>
-                        <line x1="16" y1="13" x2="8" y2="13"></line>
-                        <line x1="16" y1="17" x2="8" y2="17"></line>
-                    </svg>
-                    <h3>No Sales Found</h3>
-                    <p>No sales transactions for the selected period</p>
-                </div>
-            `;
-            return;
-        }
-
         const paginatedSales = this.getPaginatedSales();
         const startIndex = (this.pagination.currentPage - 1) * this.pagination.itemsPerPage + 1;
         const endIndex = Math.min(startIndex + paginatedSales.length - 1, this.pagination.totalItems);
 
+        // Always show the table structure
         const tableHTML = `
             <div class="sales-summary-cards">
                 <div class="summary-card">
@@ -218,16 +203,33 @@ class SalesManager {
                             </tr>
                         </thead>
                         <tbody>
-                            ${paginatedSales.map(sale => this.renderSaleRow(sale)).join('')}
+                            ${this.filteredSales.length === 0 ? `
+                                <tr>
+                                    <td colspan="11" style="text-align: center; padding: 60px 20px;">
+                                        <div style="color: var(--text-secondary);">
+                                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 16px; display: block; opacity: 0.5;">
+                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                                <polyline points="14 2 14 8 20 8"></polyline>
+                                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                            </svg>
+                                            <h3 style="font-size: 18px; margin-bottom: 8px;">No Sales Found</h3>
+                                            <p style="font-size: 14px;">No sales transactions for the selected period</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ` : paginatedSales.map(sale => this.renderSaleRow(sale)).join('')}
                         </tbody>
                     </table>
                 </div>
-                ${this.renderPagination(startIndex, endIndex)}
+                ${this.filteredSales.length > 0 ? this.renderPagination(startIndex, endIndex) : ''}
             </div>
         `;
 
         container.innerHTML = tableHTML;
-        this.attachPaginationListeners();
+        if (this.filteredSales.length > 0) {
+            this.attachPaginationListeners();
+        }
     }
 
     // Render pagination controls
