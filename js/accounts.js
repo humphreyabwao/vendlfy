@@ -127,22 +127,41 @@ const accountsManager = {
         try {
             if (!window.db) return;
 
-            const branchId = window.branchManager?.currentBranch;
-            if (!branchId) {
+            const currentBranch = window.branchManager?.getCurrentBranch();
+            if (!currentBranch) {
+                console.warn('⚠️ No branch selected, loading all sales');
+                // Load all sales if no branch selected
+                const salesRef = collection(db, 'sales');
+                const snapshot = await getDocs(salesRef);
+                
                 this.sales = [];
-                return;
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    // Filter out B2B sales
+                    if (data.type !== 'b2b' && data.saleType !== 'wholesale' && data.saleType !== 'b2b') {
+                        this.sales.push({ id: doc.id, ...data });
+                    }
+                });
+            } else {
+                const branchId = currentBranch.id;
+                const salesRef = collection(db, 'sales');
+                const q = query(salesRef, where('branchId', '==', branchId));
+                const snapshot = await getDocs(q);
+                
+                this.sales = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    // Filter out B2B sales
+                    if (data.type !== 'b2b' && data.saleType !== 'wholesale' && data.saleType !== 'b2b') {
+                        this.sales.push({ id: doc.id, ...data });
+                    }
+                });
             }
 
-            const salesRef = collection(db, 'sales');
-            const q = query(salesRef, where('branchId', '==', branchId));
-            const snapshot = await getDocs(q);
-            
-            this.sales = [];
-            snapshot.forEach(doc => {
-                this.sales.push({ id: doc.id, ...doc.data() });
-            });
-
             console.log(`✅ Loaded ${this.sales.length} POS sales`);
+            if (this.sales.length > 0) {
+                console.log('📄 Sample POS sale:', this.sales[0]);
+            }
         } catch (error) {
             console.error('Error loading sales:', error);
             this.sales = [];
@@ -153,16 +172,20 @@ const accountsManager = {
         try {
             if (!window.db) return;
 
-            const branchId = window.branchManager?.currentBranch;
-            if (!branchId) {
-                this.b2bSales = [];
-                return;
-            }
-
+            const currentBranch = window.branchManager?.getCurrentBranch();
+            
             // B2B sales are stored in the 'sales' collection with type='b2b' or saleType='wholesale'
             const salesRef = collection(db, 'sales');
-            const q = query(salesRef, where('branchId', '==', branchId));
-            const snapshot = await getDocs(q);
+            let snapshot;
+            
+            if (!currentBranch) {
+                console.warn('⚠️ No branch selected, loading all B2B sales');
+                snapshot = await getDocs(salesRef);
+            } else {
+                const branchId = currentBranch.id;
+                const q = query(salesRef, where('branchId', '==', branchId));
+                snapshot = await getDocs(q);
+            }
             
             this.b2bSales = [];
             snapshot.forEach(doc => {
@@ -184,15 +207,19 @@ const accountsManager = {
         try {
             if (!window.db) return;
 
-            const branchId = window.branchManager?.currentBranch;
-            if (!branchId) {
-                this.expenses = [];
-                return;
-            }
-
+            const currentBranch = window.branchManager?.getCurrentBranch();
+            
             const expensesRef = collection(db, 'expenses');
-            const q = query(expensesRef, where('branchId', '==', branchId));
-            const snapshot = await getDocs(q);
+            let snapshot;
+            
+            if (!currentBranch) {
+                console.warn('⚠️ No branch selected, loading all expenses');
+                snapshot = await getDocs(expensesRef);
+            } else {
+                const branchId = currentBranch.id;
+                const q = query(expensesRef, where('branchId', '==', branchId));
+                snapshot = await getDocs(q);
+            }
             
             this.expenses = [];
             snapshot.forEach(doc => {
@@ -210,15 +237,19 @@ const accountsManager = {
         try {
             if (!window.db) return;
 
-            const branchId = window.branchManager?.currentBranch;
-            if (!branchId) {
-                this.orders = [];
-                return;
-            }
-
+            const currentBranch = window.branchManager?.getCurrentBranch();
+            
             const ordersRef = collection(db, 'orders');
-            const q = query(ordersRef, where('branchId', '==', branchId));
-            const snapshot = await getDocs(q);
+            let snapshot;
+            
+            if (!currentBranch) {
+                console.warn('⚠️ No branch selected, loading all orders');
+                snapshot = await getDocs(ordersRef);
+            } else {
+                const branchId = currentBranch.id;
+                const q = query(ordersRef, where('branchId', '==', branchId));
+                snapshot = await getDocs(q);
+            }
             
             this.orders = [];
             snapshot.forEach(doc => {
@@ -236,15 +267,19 @@ const accountsManager = {
         try {
             if (!window.db) return;
 
-            const branchId = window.branchManager?.currentBranch;
-            if (!branchId) {
-                this.inventory = [];
-                return;
-            }
-
+            const currentBranch = window.branchManager?.getCurrentBranch();
+            
             const inventoryRef = collection(db, 'inventory');
-            const q = query(inventoryRef, where('branchId', '==', branchId));
-            const snapshot = await getDocs(q);
+            let snapshot;
+            
+            if (!currentBranch) {
+                console.warn('⚠️ No branch selected, loading all inventory');
+                snapshot = await getDocs(inventoryRef);
+            } else {
+                const branchId = currentBranch.id;
+                const q = query(inventoryRef, where('branchId', '==', branchId));
+                snapshot = await getDocs(q);
+            }
             
             this.inventory = [];
             snapshot.forEach(doc => {
@@ -261,48 +296,80 @@ const accountsManager = {
     calculateFinancials() {
         const timeframe = this.getTimeframeData(this.currentTimeframe);
         
+        console.log('💰 Calculating financials...', {
+            timeframe: this.currentTimeframe,
+            dateRange: { start: timeframe.startDate, end: timeframe.endDate },
+            totalSales: this.sales.length,
+            totalB2BSales: this.b2bSales.length,
+            totalExpenses: this.expenses.length,
+            totalOrders: this.orders.length
+        });
+        
         // Calculate total revenue (POS + B2B sales)
         const posSalesRevenue = this.sales
             .filter(s => this.isInTimeframe(s.createdAt, timeframe))
-            .reduce((sum, sale) => sum + (sale.total || 0), 0);
+            .reduce((sum, sale) => sum + (parseFloat(sale.total) || 0), 0);
 
         const b2bRevenue = this.b2bSales
             .filter(s => this.isInTimeframe(s.createdAt, timeframe))
-            .reduce((sum, sale) => sum + (sale.totalAmount || 0), 0);
+            .reduce((sum, sale) => sum + (parseFloat(sale.totalAmount) || 0), 0);
 
         const totalRevenue = posSalesRevenue + b2bRevenue;
+        
+        console.log('📊 Revenue breakdown:', {
+            posSalesRevenue,
+            posSalesInTimeframe: this.sales.filter(s => this.isInTimeframe(s.createdAt, timeframe)).length,
+            b2bRevenue,
+            b2bSalesInTimeframe: this.b2bSales.filter(s => this.isInTimeframe(s.createdAt, timeframe)).length,
+            totalRevenue
+        });
 
-        // Calculate total expenses
-        const totalExpenses = this.expenses
+        // Calculate expenses by category
+        const expensesByCategory = {};
+        let totalExpenses = 0;
+
+        this.expenses
             .filter(e => this.isInTimeframe(e.date || e.createdAt, timeframe))
-            .reduce((sum, expense) => sum + (expense.amount || 0), 0);
+            .forEach(expense => {
+                const category = expense.category || 'Other';
+                const amount = parseFloat(expense.amount) || 0;
+                if (!expensesByCategory[category]) {
+                    expensesByCategory[category] = 0;
+                }
+                expensesByCategory[category] += amount;
+                totalExpenses += amount;
+            });
 
         // Calculate total orders cost
         const ordersCost = this.orders
             .filter(o => this.isInTimeframe(o.createdAt, timeframe))
-            .reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+            .reduce((sum, order) => sum + (parseFloat(order.totalAmount) || 0), 0);
 
         // Net profit
         const netProfit = totalRevenue - (totalExpenses + ordersCost);
         const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue * 100) : 0;
 
-        // Cash balance (simplified - revenue - expenses - unpaid orders)
-        const unpaidOrders = this.orders
-            .filter(o => o.paymentStatus !== 'paid')
-            .reduce((sum, order) => sum + (order.totalAmount || 0), 0);
-
-        const cashBalance = totalRevenue - totalExpenses;
+        // Cash balance (simplified - revenue - expenses)
+        const cashBalance = totalRevenue - totalExpenses - ordersCost;
 
         // Accounts receivable (B2B sales not fully paid)
         const accountsReceivable = this.b2bSales
-            .filter(s => s.paymentStatus !== 'paid')
-            .reduce((sum, sale) => sum + (sale.totalAmount || sale.outstandingBalance || 0), 0);
+            .filter(s => s.paymentStatus !== 'paid' && s.paymentStatus !== 'completed')
+            .reduce((sum, sale) => sum + (parseFloat(sale.outstandingBalance) || parseFloat(sale.totalAmount) || 0), 0);
+
+        // Unpaid orders
+        const unpaidOrders = this.orders
+            .filter(o => o.paymentStatus !== 'paid' && o.paymentStatus !== 'completed')
+            .reduce((sum, order) => sum + (parseFloat(order.totalAmount) || 0), 0);
 
         return {
             totalRevenue,
             posSalesRevenue,
+            posSales: posSalesRevenue, // Alias for exports
             b2bRevenue,
+            b2bSales: b2bRevenue, // Alias for exports
             totalExpenses,
+            expensesByCategory,
             ordersCost,
             netProfit,
             profitMargin,
@@ -335,9 +402,40 @@ const accountsManager = {
     },
 
     isInTimeframe(timestamp, timeframe) {
-        if (!timestamp) return false;
-        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-        return date >= timeframe.startDate && date <= timeframe.endDate;
+        if (!timestamp) {
+            console.log('⚠️ No timestamp provided');
+            return false;
+        }
+        
+        let date;
+        try {
+            // Handle Firestore Timestamp objects
+            if (timestamp.toDate) {
+                date = timestamp.toDate();
+            } 
+            // Handle ISO string dates
+            else if (typeof timestamp === 'string') {
+                date = new Date(timestamp);
+            }
+            // Handle Date objects
+            else if (timestamp instanceof Date) {
+                date = timestamp;
+            }
+            // Handle epoch timestamps
+            else if (typeof timestamp === 'number') {
+                date = new Date(timestamp);
+            }
+            else {
+                console.warn('⚠️ Unknown timestamp format:', timestamp);
+                return false;
+            }
+            
+            const inRange = date >= timeframe.startDate && date <= timeframe.endDate;
+            return inRange;
+        } catch (error) {
+            console.error('❌ Error parsing timestamp:', timestamp, error);
+            return false;
+        }
     },
 
     renderDashboard() {
@@ -696,13 +794,13 @@ const accountsManager = {
 
         // Revenue Breakdown
         csvData.push(['Revenue Breakdown']);
-        csvData.push(['POS Sales', `KSh ${this.formatNumber(financials.posSales)}`]);
-        csvData.push(['B2B Sales', `KSh ${this.formatNumber(financials.b2bSales)}`]);
+        csvData.push(['POS Sales', `KSh ${this.formatNumber(financials.posSalesRevenue)}`]);
+        csvData.push(['B2B Sales', `KSh ${this.formatNumber(financials.b2bRevenue)}`]);
         csvData.push([]);
 
         // Expense Breakdown
         csvData.push(['Expense Breakdown']);
-        Object.entries(financials.expensesByCategory).forEach(([category, amount]) => {
+        Object.entries(financials.expensesByCategory || {}).forEach(([category, amount]) => {
             csvData.push([category, `KSh ${this.formatNumber(amount)}`]);
         });
         csvData.push(['Orders (Inventory)', `KSh ${this.formatNumber(financials.ordersCost)}`]);
@@ -772,8 +870,8 @@ const accountsManager = {
             startY: yPos,
             head: [['Source', 'Amount', 'Percentage']],
             body: [
-                ['POS Sales', `KSh ${this.formatNumber(financials.posSales)}`, `${((financials.posSales / financials.totalRevenue) * 100).toFixed(1)}%`],
-                ['B2B Sales', `KSh ${this.formatNumber(financials.b2bSales)}`, `${((financials.b2bSales / financials.totalRevenue) * 100).toFixed(1)}%`]
+                ['POS Sales', `KSh ${this.formatNumber(financials.posSalesRevenue)}`, `${financials.totalRevenue > 0 ? ((financials.posSalesRevenue / financials.totalRevenue) * 100).toFixed(1) : 0}%`],
+                ['B2B Sales', `KSh ${this.formatNumber(financials.b2bRevenue)}`, `${financials.totalRevenue > 0 ? ((financials.b2bRevenue / financials.totalRevenue) * 100).toFixed(1) : 0}%`]
             ],
             theme: 'striped',
             headStyles: { fillColor: [34, 197, 94] },
@@ -792,15 +890,16 @@ const accountsManager = {
         doc.text('Expense Breakdown', 14, yPos);
         yPos += 8;
 
-        const expenseData = Object.entries(financials.expensesByCategory).map(([category, amount]) => [
+        const totalExpensesAndOrders = financials.totalExpenses + financials.ordersCost;
+        const expenseData = Object.entries(financials.expensesByCategory || {}).map(([category, amount]) => [
             category,
             `KSh ${this.formatNumber(amount)}`,
-            `${((amount / (financials.totalExpenses + financials.ordersCost)) * 100).toFixed(1)}%`
+            `${totalExpensesAndOrders > 0 ? ((amount / totalExpensesAndOrders) * 100).toFixed(1) : 0}%`
         ]);
         expenseData.push([
             'Orders (Inventory)',
             `KSh ${this.formatNumber(financials.ordersCost)}`,
-            `${((financials.ordersCost / (financials.totalExpenses + financials.ordersCost)) * 100).toFixed(1)}%`
+            `${totalExpensesAndOrders > 0 ? ((financials.ordersCost / totalExpensesAndOrders) * 100).toFixed(1) : 0}%`
         ]);
 
         doc.autoTable({
@@ -868,8 +967,8 @@ const accountsManager = {
         const revenueData = [
             ['Revenue Breakdown'],
             ['Source', 'Amount', 'Percentage'],
-            ['POS Sales', financials.posSales, `${((financials.posSales / financials.totalRevenue) * 100).toFixed(1)}%`],
-            ['B2B Sales', financials.b2bSales, `${((financials.b2bSales / financials.totalRevenue) * 100).toFixed(1)}%`],
+            ['POS Sales', financials.posSalesRevenue, `${financials.totalRevenue > 0 ? ((financials.posSalesRevenue / financials.totalRevenue) * 100).toFixed(1) : 0}%`],
+            ['B2B Sales', financials.b2bRevenue, `${financials.totalRevenue > 0 ? ((financials.b2bRevenue / financials.totalRevenue) * 100).toFixed(1) : 0}%`],
             [],
             ['Total Revenue', financials.totalRevenue, '100%']
         ];
@@ -879,17 +978,18 @@ const accountsManager = {
 
         // Sheet 3: Expense Breakdown
         const expenseData = [['Expense Breakdown'], ['Category', 'Amount', 'Percentage']];
-        Object.entries(financials.expensesByCategory).forEach(([category, amount]) => {
+        const totalExpensesForExcel = financials.totalExpenses + financials.ordersCost;
+        Object.entries(financials.expensesByCategory || {}).forEach(([category, amount]) => {
             expenseData.push([
                 category,
                 amount,
-                `${((amount / (financials.totalExpenses + financials.ordersCost)) * 100).toFixed(1)}%`
+                `${totalExpensesForExcel > 0 ? ((amount / totalExpensesForExcel) * 100).toFixed(1) : 0}%`
             ]);
         });
         expenseData.push([
             'Orders (Inventory)',
             financials.ordersCost,
-            `${((financials.ordersCost / (financials.totalExpenses + financials.ordersCost)) * 100).toFixed(1)}%`
+            `${totalExpensesForExcel > 0 ? ((financials.ordersCost / totalExpensesForExcel) * 100).toFixed(1) : 0}%`
         ]);
         expenseData.push([]);
         expenseData.push(['Total Expenses', financials.totalExpenses + financials.ordersCost, '100%']);
@@ -994,7 +1094,39 @@ const accountsManager = {
         } else {
             console.log(`${type.toUpperCase()}: ${message}`);
         }
+    },
+
+    // Get current financials (for external access)
+    getFinancials() {
+        return this.calculateFinancials();
+    },
+
+    // Force refresh all data
+    async forceRefresh() {
+        console.log('🔄 Force refreshing accounts data...');
+        await this.loadAllFinancialData();
+        return this.calculateFinancials();
     }
+};
+
+// Global function to refresh account stats
+window.refreshAccountStats = async function() {
+    try {
+        if (window.accountsManager && window.accountsManager.initialized) {
+            await window.accountsManager.forceRefresh();
+            console.log('✅ Account stats refreshed successfully');
+        }
+    } catch (error) {
+        console.error('❌ Error refreshing account stats:', error);
+    }
+};
+
+// Global function to get current financials
+window.getAccountFinancials = function() {
+    if (window.accountsManager && window.accountsManager.initialized) {
+        return window.accountsManager.getFinancials();
+    }
+    return null;
 };
 
 export default accountsManager;

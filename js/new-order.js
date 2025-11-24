@@ -327,6 +327,11 @@ const newOrderManager = {
             if (window.ordersManager) {
                 await window.ordersManager.loadOrders();
             }
+            
+            // Refresh account stats
+            if (window.refreshAccountStats) {
+                await window.refreshAccountStats();
+            }
 
             // Reset form and redirect
             await new Promise(resolve => setTimeout(resolve, 1000));

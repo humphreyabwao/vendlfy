@@ -195,6 +195,11 @@ class B2BSalesManager {
             if (window.refreshDashboardStats) {
                 await window.refreshDashboardStats();
             }
+            
+            // Refresh account stats
+            if (window.refreshAccountStats) {
+                await window.refreshAccountStats();
+            }
         }, 30000);
     }
 
@@ -1130,6 +1135,11 @@ class B2BSalesManager {
                 await window.refreshDashboardStats();
             }
             
+            // Refresh account stats
+            if (window.refreshAccountStats) {
+                await window.refreshAccountStats();
+            }
+            
             // Close modal
             document.querySelector('.pos-modal')?.remove();
             
@@ -1206,6 +1216,11 @@ class B2BSalesManager {
                 await window.refreshDashboardStats();
             }
             
+            // Refresh account stats
+            if (window.refreshAccountStats) {
+                await window.refreshAccountStats();
+            }
+            
             // Close modal
             document.querySelector('.pos-modal')?.remove();
             
@@ -1229,6 +1244,11 @@ class B2BSalesManager {
             // Refresh dashboard stats to update pending B2B count
             if (window.refreshDashboardStats) {
                 await window.refreshDashboardStats();
+            }
+            
+            // Refresh account stats
+            if (window.refreshAccountStats) {
+                await window.refreshAccountStats();
             }
             
             this.showNotification('Order marked as completed', 'success');

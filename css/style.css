@@ -13468,3 +13468,161 @@ canvas {
     border-top: 2px solid var(--border-color);
     margin-top: 0.5rem;
 }
+
+/* ============================================
+   RESPONSIVE STYLES FOR FINANCIAL SUMMARY TABLE
+   ============================================ */
+
+/* Tablet view (768px to 1024px) */
+@media (max-width: 1024px) {
+    #financialSummaryTable th,
+    #financialSummaryTable td {
+        padding: 10px 12px;
+        font-size: 13px;
+    }
+    
+    .table-wrapper-vertical {
+        max-height: 450px;
+    }
+}
+
+/* Mobile landscape and tablet portrait (max-width: 768px) */
+@media (max-width: 768px) {
+    /* Make table header responsive */
+    .table-header {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch !important;
+    }
+    
+    .table-header h3 {
+        font-size: 18px;
+    }
+    
+    .table-header > div {
+        justify-content: flex-start !important;
+    }
+    
+    /* Financial Summary Table specific styles */
+    #financialSummaryTable {
+        font-size: 12px;
+    }
+    
+    #financialSummaryTable th,
+    #financialSummaryTable td {
+        padding: 8px 10px;
+        white-space: nowrap;
+    }
+    
+    #financialSummaryTable th:first-child,
+    #financialSummaryTable td:first-child {
+        position: sticky;
+        left: 0;
+        background: var(--bg-secondary);
+        z-index: 5;
+        font-weight: 600;
+        min-width: 60px;
+    }
+    
+    #financialSummaryTable tbody tr:hover td:first-child {
+        background: var(--bg-tertiary);
+    }
+    
+    [data-theme="dark"] #financialSummaryTable th:first-child,
+    [data-theme="dark"] #financialSummaryTable td:first-child {
+        background: #1f2937;
+    }
+    
+    [data-theme="dark"] #financialSummaryTable tbody tr:hover td:first-child {
+        background: #374151;
+    }
+    
+    .table-wrapper-vertical {
+        max-height: 400px;
+    }
+    
+    /* Make status badges smaller */
+    #financialSummaryTable .status-badge {
+        padding: 3px 8px;
+        font-size: 10px;
+    }
+}
+
+/* Mobile portrait (max-width: 480px) */
+@media (max-width: 480px) {
+    .table-header h3 {
+        font-size: 16px;
+    }
+    
+    #summaryYear {
+        width: 100% !important;
+        font-size: 14px;
+    }
+    
+    #financialSummaryTable {
+        font-size: 11px;
+    }
+    
+    #financialSummaryTable th,
+    #financialSummaryTable td {
+        padding: 6px 8px;
+    }
+    
+    #financialSummaryTable th:first-child,
+    #financialSummaryTable td:first-child {
+        min-width: 50px;
+        padding-left: 10px;
+    }
+    
+    /* Abbreviate column headers on very small screens */
+    #financialSummaryTable th {
+        font-size: 11px;
+    }
+    
+    .table-wrapper-vertical {
+        max-height: 350px;
+        border-radius: 6px;
+    }
+    
+    /* Stack table container margin */
+    .table-container {
+        margin-top: 1rem !important;
+    }
+    
+    /* Make status badges even smaller */
+    #financialSummaryTable .status-badge {
+        padding: 2px 6px;
+        font-size: 9px;
+        border-radius: 4px;
+    }
+    
+    /* Reduce monetary values font size slightly */
+    #financialSummaryTable td:nth-child(2),
+    #financialSummaryTable td:nth-child(3),
+    #financialSummaryTable td:nth-child(4) {
+        font-size: 10px;
+    }
+}
+
+/* Extra small devices (max-width: 360px) */
+@media (max-width: 360px) {
+    #financialSummaryTable {
+        font-size: 10px;
+    }
+    
+    #financialSummaryTable th,
+    #financialSummaryTable td {
+        padding: 5px 6px;
+    }
+    
+    #financialSummaryTable th:first-child,
+    #financialSummaryTable td:first-child {
+        min-width: 45px;
+        font-size: 10px;
+    }
+    
+    .table-wrapper-vertical {
+        max-height: 300px;
+    }
+}
+

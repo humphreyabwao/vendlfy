@@ -502,6 +502,11 @@ class ExpenseManager {
         if (typeof window.refreshDashboardStats === 'function') {
             await window.refreshDashboardStats();
         }
+        
+        // Refresh account stats
+        if (typeof window.refreshAccountStats === 'function') {
+            await window.refreshAccountStats();
+        }
     }
 
     // Export to PDF

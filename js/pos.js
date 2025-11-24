@@ -1105,6 +1105,11 @@ class POSSystem {
                 // Refresh inventory manager
                 window.inventoryManager?.refresh 
                     ? window.inventoryManager.refresh().catch(err => console.error('⚠️ Inventory manager refresh error:', err))
+                    : Promise.resolve(),
+                
+                // Refresh account stats
+                window.refreshAccountStats 
+                    ? window.refreshAccountStats().catch(err => console.error('⚠️ Account stats refresh error:', err))
                     : Promise.resolve()
             ]).then(() => {
                 console.log('✅ All background updates completed');

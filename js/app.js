@@ -396,6 +396,10 @@ function initNavigation() {
                 // Initialize Accounts page
                 if (pageId === 'accounts') {
                     accountsManager.init();
+                    // Refresh account stats to show real-time data
+                    if (window.refreshAccountStats) {
+                        window.refreshAccountStats();
+                    }
                 }
 
                 // Initialize Reports page
