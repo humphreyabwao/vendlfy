@@ -2,6 +2,8 @@
 import dataManager from './data-manager.js';
 import branchManager from './branch-manager.js';
 import auditLogger from './audit-logger.js';
+import brandManager from './brand-manager.js';
+import { setBtnState, friendlyError, toast } from './ui-feedback.js';
 
 class ExpenseManager {
     constructor() {
@@ -47,7 +49,7 @@ class ExpenseManager {
         if (addForm) {
             addForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                this.addExpense();
+                this.addExpense(e);
             });
         }
     }
@@ -208,15 +210,22 @@ class ExpenseManager {
     }
 
     // Add expense
-    async addExpense() {
+    async addExpense(event) {
         const form = document.getElementById('addExpenseForm');
+        const submitBtn = form?.querySelector('button[type="submit"]') || event?.submitter || null;
         const formData = new FormData(form);
+
+        const amount = parseFloat(formData.get('amount'));
+        if (!formData.get('description') || isNaN(amount) || amount <= 0) {
+            toast('Please fill in description and a valid amount', 'error');
+            return;
+        }
 
         const expense = {
             date: formData.get('date'),
             description: formData.get('description'),
             category: formData.get('category'),
-            amount: parseFloat(formData.get('amount')),
+            amount,
             vendor: formData.get('vendor'),
             reference: formData.get('reference'),
             paymentMethod: formData.get('paymentMethod'),
@@ -225,10 +234,10 @@ class ExpenseManager {
             createdAt: new Date().toISOString()
         };
 
+        setBtnState(submitBtn, 'loading', 'Saving…');
         try {
             await dataManager.createExpense(expense);
-            
-            // Log activity
+
             if (window.activityTracker) {
                 window.activityTracker.logActivity('expense', 'recorded', {
                     category: expense.category,
@@ -236,28 +245,28 @@ class ExpenseManager {
                     description: expense.description
                 });
             }
-            
-            window.showNotification('Expense added successfully', 'success');
+
+            setBtnState(submitBtn, 'success', 'Saved!');
+            toast('Expense added successfully', 'success');
             form.reset();
-            
-            // Navigate back to expenses page
-            document.querySelector('[data-page="expenses"]').click();
-            
-            // Reload expenses
+
+            // Brief delay so the user sees the success state, then navigate.
+            setTimeout(() => {
+                document.querySelector('[data-page="expenses"]')?.click();
+            }, 600);
+
             await this.refresh();
 
-            // Refresh dashboard stats
             if (window.refreshDashboardStats) {
                 await window.refreshDashboardStats();
             }
-
-            // Refresh reports if initialized
             if (window.reportsManager && window.reportsManager.initialized) {
                 await window.reportsManager.loadAllData();
             }
         } catch (error) {
             console.error('Error adding expense:', error);
-            window.showNotification('Failed to add expense', 'error');
+            setBtnState(submitBtn, 'error', 'Failed');
+            toast(friendlyError(error, 'add expense'), 'error');
         }
     }
 
@@ -478,9 +487,13 @@ class ExpenseManager {
 
     // Delete expense
     async deleteExpense(expenseId) {
-        if (!confirm('Are you sure you want to delete this expense?')) {
-            return;
-        }
+        const ok = await window.uiConfirm?.({
+            title: 'Delete expense?',
+            message: 'This expense entry will be permanently removed.',
+            tone: 'danger',
+            okLabel: 'Delete'
+        });
+        if (!ok) return;
 
         try {
             await dataManager.deleteExpense(expenseId);
@@ -639,6 +652,8 @@ class ExpenseManager {
             </head>
             <body>
                 <div class="header">
+                    ${brandManager.getLogoHTML({ maxWidth: 80, maxHeight: 80, marginBottom: 6, alt: brandManager.name() })}
+                    <div style="font-size:18px;font-weight:700;color:#1f2937;margin-bottom:4px;">${brandManager.name()}</div>
                     <h1>📊 Expense Report</h1>
                     <div class="date">Generated on ${new Date().toLocaleString()}</div>
                 </div>

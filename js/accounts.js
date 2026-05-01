@@ -1,5 +1,7 @@
 // Accounts Manager - Financial Management Module
 import { db, collection, getDocs, query, where, orderBy as firestoreOrderBy } from './firebase-config.js';
+import brandManager from './brand-manager.js';
+import cashInjectionsManager from './cash-injections.js';
 
 const accountsManager = {
     sales: [],
@@ -15,26 +17,34 @@ const accountsManager = {
         if (this.initialized) {
             console.log('Accounts Manager already initialized, refreshing data...');
             this.loadAllFinancialData();
+            cashInjectionsManager.init();
             return;
         }
         
         console.log('Initializing Accounts Manager...');
         this.initialized = true;
         
+        // Start the cash-injections real-time stream and re-render reconciliation
+        // every time it changes
+        cashInjectionsManager.init();
+        cashInjectionsManager.onChange(() => this.renderReconciliation());
+        
         this.waitForFirebase().then(() => {
             this.loadAllFinancialData();
             this.setupEventListeners();
             
-            // Clear any existing interval
-            if (this.refreshInterval) {
-                clearInterval(this.refreshInterval);
-            }
-            
-            // Auto-refresh every 30 seconds for real-time updates
+            if (this.refreshInterval) clearInterval(this.refreshInterval);
+            // Auto-refresh every 2 minutes, only when the accounts page is visible
+            // and the tab is in the foreground. Previously this polled every 30s
+            // on every page (sales + b2bSales + expenses + orders + inventory =
+            // 5 full collection reads per tick) — a major Firestore read amplifier.
             this.refreshInterval = setInterval(() => {
-                console.log('🔄 Auto-refreshing financial data...');
+                if (document.visibilityState !== 'visible') return;
+                const accountsPage = document.getElementById('accounts-page');
+                if (!accountsPage || !accountsPage.classList.contains('active')) return;
+                console.log('Auto-refreshing financial data...');
                 this.loadAllFinancialData();
-            }, 30000);
+            }, 120000);
         });
     },
 
@@ -129,39 +139,25 @@ const accountsManager = {
 
             const currentBranch = window.branchManager?.getCurrentBranch();
             if (!currentBranch) {
-                console.warn('⚠️ No branch selected, loading all sales');
-                // Load all sales if no branch selected
-                const salesRef = collection(db, 'sales');
-                const snapshot = await getDocs(salesRef);
-                
+                // Don't read the entire collection unfiltered when no branch is
+                // selected — that's a Firestore quota black hole. Just bail.
                 this.sales = [];
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    // Filter out B2B sales
-                    if (data.type !== 'b2b' && data.saleType !== 'wholesale' && data.saleType !== 'b2b') {
-                        this.sales.push({ id: doc.id, ...data });
-                    }
-                });
-            } else {
-                const branchId = currentBranch.id;
-                const salesRef = collection(db, 'sales');
-                const q = query(salesRef, where('branchId', '==', branchId));
-                const snapshot = await getDocs(q);
-                
-                this.sales = [];
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    // Filter out B2B sales
-                    if (data.type !== 'b2b' && data.saleType !== 'wholesale' && data.saleType !== 'b2b') {
-                        this.sales.push({ id: doc.id, ...data });
-                    }
-                });
+                return;
             }
+            const branchId = currentBranch.id;
+            const salesRef = collection(db, 'sales');
+            const q = query(salesRef, where('branchId', '==', branchId));
+            const snapshot = await getDocs(q);
+
+            this.sales = [];
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                if (data.type !== 'b2b' && data.saleType !== 'wholesale' && data.saleType !== 'b2b') {
+                    this.sales.push({ id: doc.id, ...data });
+                }
+            });
 
             console.log(`✅ Loaded ${this.sales.length} POS sales`);
-            if (this.sales.length > 0) {
-                console.log('📄 Sample POS sale:', this.sales[0]);
-            }
         } catch (error) {
             console.error('Error loading sales:', error);
             this.sales = [];
@@ -173,24 +169,18 @@ const accountsManager = {
             if (!window.db) return;
 
             const currentBranch = window.branchManager?.getCurrentBranch();
-            
-            // B2B sales are stored in the 'sales' collection with type='b2b' or saleType='wholesale'
-            const salesRef = collection(db, 'sales');
-            let snapshot;
-            
             if (!currentBranch) {
-                console.warn('⚠️ No branch selected, loading all B2B sales');
-                snapshot = await getDocs(salesRef);
-            } else {
-                const branchId = currentBranch.id;
-                const q = query(salesRef, where('branchId', '==', branchId));
-                snapshot = await getDocs(q);
+                this.b2bSales = [];
+                return;
             }
-            
+            const branchId = currentBranch.id;
+            const salesRef = collection(db, 'sales');
+            const q = query(salesRef, where('branchId', '==', branchId));
+            const snapshot = await getDocs(q);
+
             this.b2bSales = [];
             snapshot.forEach(doc => {
                 const data = doc.data();
-                // Filter for B2B/wholesale sales
                 if (data.type === 'b2b' || data.saleType === 'wholesale' || data.saleType === 'b2b') {
                     this.b2bSales.push({ id: doc.id, ...data });
                 }
@@ -208,19 +198,15 @@ const accountsManager = {
             if (!window.db) return;
 
             const currentBranch = window.branchManager?.getCurrentBranch();
-            
-            const expensesRef = collection(db, 'expenses');
-            let snapshot;
-            
             if (!currentBranch) {
-                console.warn('⚠️ No branch selected, loading all expenses');
-                snapshot = await getDocs(expensesRef);
-            } else {
-                const branchId = currentBranch.id;
-                const q = query(expensesRef, where('branchId', '==', branchId));
-                snapshot = await getDocs(q);
+                this.expenses = [];
+                return;
             }
-            
+            const branchId = currentBranch.id;
+            const expensesRef = collection(db, 'expenses');
+            const q = query(expensesRef, where('branchId', '==', branchId));
+            const snapshot = await getDocs(q);
+
             this.expenses = [];
             snapshot.forEach(doc => {
                 this.expenses.push({ id: doc.id, ...doc.data() });
@@ -238,19 +224,15 @@ const accountsManager = {
             if (!window.db) return;
 
             const currentBranch = window.branchManager?.getCurrentBranch();
-            
-            const ordersRef = collection(db, 'orders');
-            let snapshot;
-            
             if (!currentBranch) {
-                console.warn('⚠️ No branch selected, loading all orders');
-                snapshot = await getDocs(ordersRef);
-            } else {
-                const branchId = currentBranch.id;
-                const q = query(ordersRef, where('branchId', '==', branchId));
-                snapshot = await getDocs(q);
+                this.orders = [];
+                return;
             }
-            
+            const branchId = currentBranch.id;
+            const ordersRef = collection(db, 'orders');
+            const q = query(ordersRef, where('branchId', '==', branchId));
+            const snapshot = await getDocs(q);
+
             this.orders = [];
             snapshot.forEach(doc => {
                 this.orders.push({ id: doc.id, ...doc.data() });
@@ -268,19 +250,15 @@ const accountsManager = {
             if (!window.db) return;
 
             const currentBranch = window.branchManager?.getCurrentBranch();
-            
-            const inventoryRef = collection(db, 'inventory');
-            let snapshot;
-            
             if (!currentBranch) {
-                console.warn('⚠️ No branch selected, loading all inventory');
-                snapshot = await getDocs(inventoryRef);
-            } else {
-                const branchId = currentBranch.id;
-                const q = query(inventoryRef, where('branchId', '==', branchId));
-                snapshot = await getDocs(q);
+                this.inventory = [];
+                return;
             }
-            
+            const branchId = currentBranch.id;
+            const inventoryRef = collection(db, 'inventory');
+            const q = query(inventoryRef, where('branchId', '==', branchId));
+            const snapshot = await getDocs(q);
+
             this.inventory = [];
             snapshot.forEach(doc => {
                 this.inventory.push({ id: doc.id, ...doc.data() });
@@ -349,8 +327,11 @@ const accountsManager = {
         const netProfit = totalRevenue - (totalExpenses + ordersCost);
         const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue * 100) : 0;
 
-        // Cash balance (simplified - revenue - expenses)
-        const cashBalance = totalRevenue - totalExpenses - ordersCost;
+        // Cash injections in this same timeframe (manual money in: floats, drop-offs, capital, refunds, loans)
+        const cashInjectionsTotal = cashInjectionsManager.sumInRange(timeframe.startDate, timeframe.endDate);
+
+        // Cash balance includes manual cash inflows
+        const cashBalance = totalRevenue + cashInjectionsTotal - totalExpenses - ordersCost;
 
         // Accounts receivable (B2B sales not fully paid)
         const accountsReceivable = this.b2bSales
@@ -374,6 +355,7 @@ const accountsManager = {
             netProfit,
             profitMargin,
             cashBalance,
+            cashInjectionsTotal,
             accountsReceivable,
             unpaidOrders
         };
@@ -448,12 +430,13 @@ const accountsManager = {
             cashBalance: financials.cashBalance
         });
 
-        // Update overview stats
-        this.updateElement('totalRevenue', `KSh ${this.formatNumber(financials.totalRevenue)}`);
-        this.updateElement('totalExpenses', `KSh ${this.formatNumber(financials.totalExpenses + financials.ordersCost)}`);
-        this.updateElement('netProfit', `KSh ${this.formatNumber(financials.netProfit)}`);
-        this.updateElement('cashBalance', `KSh ${this.formatNumber(financials.cashBalance)}`);
-        this.updateElement('accountsReceivable', `KSh ${this.formatNumber(financials.accountsReceivable)} Receivable`);
+        // Update overview stats (use brand currency)
+        const cur = brandManager.getBrand().currency || 'KES';
+        this.updateElement('totalRevenue', `${cur} ${this.formatNumber(financials.totalRevenue)}`);
+        this.updateElement('totalExpenses', `${cur} ${this.formatNumber(financials.totalExpenses + financials.ordersCost)}`);
+        this.updateElement('netProfit', `${cur} ${this.formatNumber(financials.netProfit)}`);
+        this.updateElement('cashBalance', `${cur} ${this.formatNumber(financials.cashBalance)}`);
+        this.updateElement('accountsReceivable', `${cur} ${this.formatNumber(financials.accountsReceivable)} Receivable`);
         this.updateElement('profitMargin', `${financials.profitMargin.toFixed(1)}% Margin`);
 
         // Calculate growth percentages (compared to previous period)
@@ -464,7 +447,7 @@ const accountsManager = {
         this.updateElement('revenueGrowth', `${revenueGrowth >= 0 ? '+' : ''}${revenueGrowth.toFixed(1)}% from last ${this.currentTimeframe}`);
         this.updateElement('expensesChange', `${expensesChange >= 0 ? '+' : ''}${expensesChange.toFixed(1)}% from last ${this.currentTimeframe}`);
 
-        console.log('✅ Dashboard cards updated successfully');
+        console.log('Dashboard cards updated successfully');
 
         // Render breakdowns
         this.renderRevenueBreakdown();
@@ -472,6 +455,43 @@ const accountsManager = {
         this.renderOutstandingPayments();
         this.renderRecentTransactions();
         this.renderMonthlySummary();
+        this.renderReconciliation();
+    },
+
+    renderReconciliation() {
+        const cur = brandManager.getBrand().currency || 'KES';
+        const fmt = (n) => `${cur} ${this.formatNumber(n)}`;
+
+        // Today's window
+        const start = new Date(); start.setHours(0, 0, 0, 0);
+        const end   = new Date(); end.setHours(23, 59, 59, 999);
+
+        const inToday = (ts) => {
+            if (!ts) return false;
+            const t = new Date(ts).getTime();
+            return t >= start.getTime() && t <= end.getTime();
+        };
+
+        const salesToday = this.sales
+            .filter((s) => inToday(s.createdAt))
+            .reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0)
+            + this.b2bSales
+            .filter((s) => inToday(s.createdAt))
+            .reduce((sum, s) => sum + (parseFloat(s.totalAmount) || 0), 0);
+
+        const expensesToday = this.expenses
+            .filter((e) => inToday(e.date || e.createdAt))
+            .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+
+        const cashAdded = cashInjectionsManager.sumToday();
+        const cashInHand = salesToday + cashAdded - expensesToday;
+
+        this.updateElement('todaySalesTotal',     fmt(salesToday));
+        this.updateElement('todayCashInjections', fmt(cashAdded));
+        this.updateElement('todayExpensesTotal',  fmt(expensesToday));
+        this.updateElement('todayCashInHand',     fmt(cashInHand));
+
+        cashInjectionsManager.renderTodayList();
     },
 
     renderRevenueBreakdown() {
@@ -774,10 +794,11 @@ const accountsManager = {
 
     exportAsCSV() {
         const financials = this.calculateFinancials();
+        const brand = brandManager.getBrand();
         const csvData = [];
 
         // Header
-        csvData.push(['Vendify Financial Report']);
+        csvData.push([`${brand.name} - Financial Report`]);
         csvData.push(['Generated:', new Date().toLocaleString()]);
         csvData.push(['Branch:', window.branchManager?.currentBranch || 'N/A']);
         csvData.push([]);
@@ -821,13 +842,14 @@ const accountsManager = {
 
     exportAsPDF() {
         const financials = this.calculateFinancials();
+        const brand = brandManager.getBrand();
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
 
         // Title
         doc.setFontSize(20);
         doc.setTextColor(99, 102, 241);
-        doc.text('Vendify Financial Report', 14, 20);
+        doc.text(`${brand.name} - Financial Report`, 14, 20);
 
         // Metadata
         doc.setFontSize(10);
@@ -920,6 +942,7 @@ const accountsManager = {
 
     exportAsExcel() {
         const financials = this.calculateFinancials();
+        const brand = brandManager.getBrand();
         const XLSX = window.XLSX;
 
         // Create a new workbook
@@ -927,7 +950,7 @@ const accountsManager = {
 
         // Sheet 1: Overview
         const overviewData = [
-            ['Vendify Financial Report'],
+            [`${brand.name} - Financial Report`],
             ['Generated:', new Date().toLocaleString()],
             ['Branch:', window.branchManager?.currentBranch || 'N/A'],
             [],

@@ -1,6 +1,8 @@
 // Customer Management Module
 import dataManager from './data-manager.js';
 import branchManager from './branch-manager.js';
+import brandManager from './brand-manager.js';
+import { setBtnState, friendlyError, toast } from './ui-feedback.js';
 
 class CustomerManager {
     constructor() {
@@ -56,7 +58,7 @@ class CustomerManager {
         if (addForm) {
             addForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                this.addCustomer();
+                this.addCustomer(e);
             });
         }
     }
@@ -213,9 +215,15 @@ class CustomerManager {
     }
 
     // Add customer
-    async addCustomer() {
+    async addCustomer(event) {
         const form = document.getElementById('addCustomerForm');
+        const submitBtn = form?.querySelector('button[type="submit"]') || event?.submitter || null;
         const formData = new FormData(form);
+
+        if (!formData.get('name')) {
+            toast('Customer name is required', 'error');
+            return;
+        }
 
         const customer = {
             name: formData.get('name'),
@@ -230,10 +238,10 @@ class CustomerManager {
             createdAt: new Date().toISOString()
         };
 
+        setBtnState(submitBtn, 'loading', 'Saving…');
         try {
             await dataManager.createCustomer(customer);
-            
-            // Log activity
+
             if (window.activityTracker) {
                 window.activityTracker.logActivity('customer', 'added', {
                     customerName: customer.name,
@@ -241,18 +249,20 @@ class CustomerManager {
                     phone: customer.phone
                 });
             }
-            
-            window.showNotification('Customer added successfully', 'success');
+
+            setBtnState(submitBtn, 'success', 'Saved!');
+            toast('Customer added successfully', 'success');
             form.reset();
-            
-            // Navigate back to customers page
-            document.querySelector('[data-page="customers"]').click();
-            
-            // Reload customers
+
+            setTimeout(() => {
+                document.querySelector('[data-page="customers"]')?.click();
+            }, 600);
+
             await this.refresh();
         } catch (error) {
             console.error('Error adding customer:', error);
-            window.showNotification('Failed to add customer', 'error');
+            setBtnState(submitBtn, 'error', 'Failed');
+            toast(friendlyError(error, 'add customer'), 'error');
         }
     }
 
@@ -403,11 +413,11 @@ class CustomerManager {
                 </div>
                 <div class="pos-modal-footer">
                     <button class="btn-secondary" onclick="this.closest('.pos-modal').remove()">Cancel</button>
-                    <button class="btn-primary" onclick="window.customerManager.saveCustomerChanges('${customerId}')">
+                    <button class="btn btn-primary" id="saveCustomerChangesBtn" onclick="window.customerManager.saveCustomerChanges('${customerId}', this)">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="20 6 9 17 4 12"></polyline>
                         </svg>
-                        Save Changes
+                        <span>Save Changes</span>
                     </button>
                 </div>
             </div>
@@ -417,9 +427,15 @@ class CustomerManager {
     }
 
     // Save customer changes
-    async saveCustomerChanges(customerId) {
+    async saveCustomerChanges(customerId, btn) {
         const form = document.getElementById('editCustomerForm');
+        const submitBtn = btn || document.getElementById('saveCustomerChangesBtn');
         const formData = new FormData(form);
+
+        if (!formData.get('name')) {
+            toast('Customer name is required', 'error');
+            return;
+        }
 
         const updates = {
             name: formData.get('name'),
@@ -434,32 +450,38 @@ class CustomerManager {
             updatedAt: new Date().toISOString()
         };
 
+        setBtnState(submitBtn, 'loading', 'Saving…');
         try {
             await dataManager.updateCustomer(customerId, updates);
-            
-            // Update local customer
+
             const customer = this.customers.find(c => c.id === customerId);
             if (customer) {
                 Object.assign(customer, updates);
             }
-            
-            // Close modal
-            document.querySelector('.pos-modal').remove();
-            
-            // Refresh display
+
+            setBtnState(submitBtn, 'success', 'Saved!');
+            toast('Customer updated successfully', 'success');
             await this.refresh();
-            window.showNotification('Customer updated successfully', 'success');
+
+            setTimeout(() => {
+                document.querySelector('.pos-modal')?.remove();
+            }, 700);
         } catch (error) {
             console.error('Error updating customer:', error);
-            window.showNotification('Failed to update customer', 'error');
+            setBtnState(submitBtn, 'error', 'Failed');
+            toast(friendlyError(error, 'update customer'), 'error');
         }
     }
 
     // Delete customer
     async deleteCustomer(customerId) {
-        if (!confirm('Are you sure you want to delete this customer?')) {
-            return;
-        }
+        const ok = await window.uiConfirm?.({
+            title: 'Delete customer?',
+            message: 'This will remove the customer from your records. This cannot be undone.',
+            tone: 'danger',
+            okLabel: 'Delete'
+        });
+        if (!ok) return;
 
         try {
             await dataManager.deleteCustomer(customerId);
@@ -594,6 +616,8 @@ class CustomerManager {
             </head>
             <body>
                 <div class="header">
+                    ${brandManager.getLogoHTML({ maxWidth: 80, maxHeight: 80, marginBottom: 6, alt: brandManager.name() })}
+                    <div style="font-size:18px;font-weight:700;color:#1f2937;margin-bottom:4px;">${brandManager.name()}</div>
                     <h1>👥 Customer Report</h1>
                     <div class="date">Generated on ${new Date().toLocaleString()}</div>
                 </div>

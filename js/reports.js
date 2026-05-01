@@ -1,5 +1,6 @@
 // Reports Module - Comprehensive Business Reports with Real-Time Charts
 import { db, collection, getDocs, query, where, onSnapshot } from './firebase-config.js';
+import brandManager from './brand-manager.js';
 
 const reportsManager = {
     sales: [],
@@ -183,36 +184,31 @@ const reportsManager = {
             // Unsubscribe from existing listeners
             this.cleanupListeners();
 
-            // Sales Listener (POS Sales)
+            // Sales Listener — single subscription, partitioned client-side into
+            // POS vs B2B. Previously this method created TWO identical onSnapshot
+            // subscriptions on the same `where('branchId','==', branchId)` query
+            // (one tagged "POS", one tagged "B2B"), doubling Firestore reads on
+            // every sales document change.
             const salesRef = collection(db, 'sales');
             const salesQuery = query(salesRef, where('branchId', '==', branchId));
             const unsubSales = onSnapshot(salesQuery, (snapshot) => {
-                this.sales = [];
+                const pos = [];
+                const b2b = [];
                 snapshot.forEach(doc => {
                     const data = doc.data();
-                    if (data.type !== 'b2b' && data.saleType !== 'wholesale') {
-                        this.sales.push({ id: doc.id, ...data });
+                    const item = { id: doc.id, ...data };
+                    if (data.type === 'b2b' || data.saleType === 'wholesale') {
+                        b2b.push(item);
+                    } else {
+                        pos.push(item);
                     }
                 });
-                console.log(`🔄 Real-time update: ${this.sales.length} POS sales`);
+                this.sales = pos;
+                this.b2bSales = b2b;
+                console.log(`🔄 Real-time update: ${pos.length} POS sales, ${b2b.length} B2B sales`);
                 this.onDataUpdate('sales');
             });
             this.realtimeListeners.push(unsubSales);
-
-            // B2B Sales Listener
-            const b2bQuery = query(salesRef, where('branchId', '==', branchId));
-            const unsubB2B = onSnapshot(b2bQuery, (snapshot) => {
-                this.b2bSales = [];
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    if (data.type === 'b2b' || data.saleType === 'wholesale') {
-                        this.b2bSales.push({ id: doc.id, ...data });
-                    }
-                });
-                console.log(`🔄 Real-time update: ${this.b2bSales.length} B2B sales`);
-                this.onDataUpdate('b2bSales');
-            });
-            this.realtimeListeners.push(unsubB2B);
 
             // Expenses Listener
             const expensesRef = collection(db, 'expenses');
@@ -2572,6 +2568,10 @@ const reportsManager = {
                 </style>
             </head>
             <body>
+                <div style="text-align:center;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #e2e8f0;">
+                    ${brandManager.getLogoHTML({ maxWidth: 80, maxHeight: 80, marginBottom: 6, alt: brandManager.name() })}
+                    <div style="font-size:18px;font-weight:700;color:#1f2937;">${brandManager.name()}</div>
+                </div>
                 ${reportContent}
             </body>
             </html>

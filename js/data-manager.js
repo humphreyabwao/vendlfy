@@ -1,6 +1,8 @@
 // Data Management System with Branch Support
 import { db, isFirebaseConfigured, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc, getDoc, query, where, orderBy, limit } from './firebase-config.js';
 import branchManager from './branch-manager.js';
+import sessionManager from './session-manager.js';
+import { addWithFallback, updateWithFallback, deleteWithFallback, readMerged, streamDual } from './storage-adapter.js';
 
 class DataManager {
     constructor() {
@@ -9,7 +11,9 @@ class DataManager {
             inventory: [],
             customers: [],
             expenses: [],
-            orders: []
+            orders: [],
+            staff: [],
+            salaryPayments: []
         };
         this.useLocalStorage = !isFirebaseConfigured;
         
@@ -54,22 +58,74 @@ class DataManager {
         };
     }
 
-    // Create query with branch filter
+    /**
+     * Wait until role/branch RBAC is loaded before building queries.
+     * If fetches run while profile is still null, non-admins get the "__no_access__"
+     * branch filter and see no inventory or other branch data.
+     */
+    async _ensureSessionReady() {
+        if (this.useLocalStorage || !sessionManager.getAuthUser?.()) return;
+        await sessionManager.ready();
+    }
+
+    // Create query with branch filter — enforces RBAC at the data layer
     createBranchQuery(collectionName, additionalConditions = []) {
-        const currentBranch = branchManager.getCurrentBranch();
         const collectionRef = collection(db, collectionName);
-        
-        // If viewing all branches or central branch, don't filter
-        if (!currentBranch || branchManager.isViewingAllBranches()) {
-            if (additionalConditions.length > 0) {
-                return query(collectionRef, ...additionalConditions);
+        const currentBranch = branchManager.getCurrentBranch();
+
+        // Admin (or no session loaded yet) — use the branch selector's current value
+        if (sessionManager.canAccessAllBranches()) {
+            if (!currentBranch || branchManager.isViewingAllBranches()) {
+                // No filter — admin sees everything
+                if (additionalConditions.length > 0) {
+                    return query(collectionRef, ...additionalConditions);
+                }
+                return collectionRef;
             }
-            return collectionRef;
+            // Admin has a specific branch selected
+            const conditions = [where('branchId', '==', currentBranch.id), ...additionalConditions];
+            return query(collectionRef, ...conditions);
         }
-        
-        // Filter by current branch
-        const conditions = [where('branchId', '==', currentBranch.id), ...additionalConditions];
+
+        // Non-admin — always scope to their allowed branches regardless of selector
+        const allowedIds = sessionManager.getAllowedBranchIds();
+        if (!allowedIds || allowedIds.length === 0) {
+            // No branches assigned — return an impossible query (empty results)
+            const conditions = [where('branchId', '==', '__no_access__'), ...additionalConditions];
+            return query(collectionRef, ...conditions);
+        }
+
+        if (allowedIds.length === 1) {
+            // Single branch — simple equality
+            const conditions = [where('branchId', '==', allowedIds[0]), ...additionalConditions];
+            return query(collectionRef, ...conditions);
+        }
+
+        // Multiple branches — Firestore 'in' supports up to 30 values
+        const conditions = [where('branchId', 'in', allowedIds.slice(0, 30)), ...additionalConditions];
         return query(collectionRef, ...conditions);
+    }
+
+    /** Matches createBranchQuery branch scope for RTDB merge filters (readMerged / streamDual). */
+    _rtdbBranchFilter() {
+        const currentBranch = branchManager.getCurrentBranch();
+
+        if (sessionManager.canAccessAllBranches()) {
+            if (!currentBranch || branchManager.isViewingAllBranches()) {
+                return () => true;
+            }
+            const bid = currentBranch.id;
+            return (item) => item.branchId === bid;
+        }
+
+        const allowedIds = sessionManager.getAllowedBranchIds();
+        if (!allowedIds || allowedIds.length === 0) {
+            return () => false;
+        }
+        if (allowedIds.length === 1) {
+            return (item) => item.branchId === allowedIds[0];
+        }
+        return (item) => allowedIds.includes(item.branchId);
     }
 
     // SALES OPERATIONS
@@ -91,28 +147,26 @@ class DataManager {
                 return newSale;
             }
             
-            // Use Firebase - Real-time sync to Firestore
-            console.log('🔥 Saving sale to Firestore (real-time)...');
-            const salesRef = collection(db, 'sales');
+            console.log('🔥 Saving sale to Firestore (primary) with Realtime DB fallback...');
             const newSale = this.addBranchData({
                 ...saleData,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
                 syncedToCentral: false
             });
-            
-            console.log('📤 Sending sale data to Firestore:', newSale);
-            const docRef = await addDoc(salesRef, newSale);
-            console.log('✅ Sale saved to Firestore with ID:', docRef.id);
-            
+
+            console.log('📤 Sending sale data:', newSale);
+            const result = await addWithFallback('sales', newSale);
+            console.log('✅ Sale saved (id:', result.id, 'source:', result.source + ')');
+
             // Sync to central if not central branch
             try {
-                await this.syncToCentral('sales', docRef.id, newSale);
-                console.log('✅ Sale synced to central branch');
+                await this.syncToCentral('sales', result.id, newSale);
+                console.log('✅ Sale sync-to-central attempted');
             } catch (syncError) {
                 console.warn('⚠️ Could not sync to central branch:', syncError.message);
             }
-            
+
             // Log activity
             if (window.activityTracker) {
                 window.activityTracker.logActivity('sale', 'completed', {
@@ -120,8 +174,8 @@ class DataManager {
                     items: saleData.items?.length || 0
                 });
             }
-            
-            return { id: docRef.id, ...newSale };
+
+            return { id: result.id, ...newSale, _source: result.source };
         } catch (error) {
             console.error('❌ Error creating sale:', error);
             console.error('Error message:', error.message);
@@ -165,13 +219,30 @@ class DataManager {
                 conditions.push(orderBy('createdAt', 'desc'), limit(filters.limit));
             }
             
+            // Firebase: merge Firestore + RTDB (fallback rows stay visible after quota events)
+            await this._ensureSessionReady();
             const q = this.createBranchQuery('sales', conditions);
-            const snapshot = await getDocs(q);
-            
-            return snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
+            let sales = await readMerged({
+                firestoreQuery: q,
+                rtdbPath: 'sales',
+                rtdbFilter: this._rtdbBranchFilter()
+            });
+
+            if (filters.startDate) {
+                const startDate = new Date(filters.startDate);
+                sales = sales.filter((sale) => new Date(sale.createdAt) >= startDate);
+            }
+            if (filters.endDate) {
+                const endDate = new Date(filters.endDate);
+                sales = sales.filter((sale) => new Date(sale.createdAt) <= endDate);
+            }
+
+            sales.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            if (filters.limit) {
+                sales = sales.slice(0, filters.limit);
+            }
+
+            return sales;
         } catch (error) {
             console.error('Error getting sales:', error);
             return [];
@@ -190,10 +261,12 @@ class DataManager {
     async updateSale(saleId, updates) {
         try {
             const saleRef = doc(db, 'sales', saleId);
-            await updateDoc(saleRef, {
+            const snap = await getDoc(saleRef);
+            const source = snap.exists() ? 'firestore' : 'rtdb';
+            await updateWithFallback('sales', saleId, {
                 ...updates,
                 updatedAt: new Date().toISOString()
-            });
+            }, source);
             console.log('✅ Sale updated successfully:', saleId);
             return true;
         } catch (error) {
@@ -205,7 +278,9 @@ class DataManager {
     async deleteSale(saleId) {
         try {
             const saleRef = doc(db, 'sales', saleId);
-            await deleteDoc(saleRef);
+            const snap = await getDoc(saleRef);
+            const source = snap.exists() ? 'firestore' : 'rtdb';
+            await deleteWithFallback('sales', saleId, source);
             console.log('✅ Sale deleted successfully:', saleId);
             return true;
         } catch (error) {
@@ -408,23 +483,22 @@ class DataManager {
                 return newItem;
             }
             
-            // Use Firebase
-            console.log('🔥 Saving to Firestore...');
-            const inventoryRef = collection(db, 'inventory');
+            // Use Firebase — Firestore primary, Realtime Database fallback on quota / timeouts
+            console.log('🔥 Saving to Firestore (primary) with RTDB fallback...');
             const newItem = this.addBranchData({
                 ...sanitizedData,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
                 syncedToCentral: false
             });
-            
-            console.log('📤 Sending data to Firestore:', newItem);
-            const docRef = await addDoc(inventoryRef, newItem);
-            console.log('✅ Item saved to Firestore with ID:', docRef.id);
-            
-            await this.syncToCentral('inventory', docRef.id, newItem);
-            
-            const savedItem = { id: docRef.id, ...newItem };
+
+            console.log('📤 Sending data:', newItem);
+            const result = await addWithFallback('inventory', newItem);
+            console.log('✅ Item saved (id:', result.id, 'source:', result.source + ')');
+
+            await this.syncToCentral('inventory', result.id, newItem);
+
+            const savedItem = { id: result.id, ...newItem, _source: result.source };
             console.log('✅ Complete item data:', savedItem);
             return savedItem;
         } catch (error) {
@@ -474,21 +548,70 @@ class DataManager {
                 conditions.push(where('quantity', '>', 0));
             }
             
+            await this._ensureSessionReady();
             const q = this.createBranchQuery('inventory', conditions);
-            console.log('📡 Fetching fresh data from Firestore...');
-            const snapshot = await getDocs(q);
-            
-            const items = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            
-            console.log(`✅ Retrieved ${items.length} items from Firestore`);
+            console.log('📡 Fetching inventory (Firestore + RTDB merge)...');
+            let items = await readMerged({
+                firestoreQuery: q,
+                rtdbPath: 'inventory',
+                rtdbFilter: this._rtdbBranchFilter()
+            });
+
+            if (filters.status) {
+                items = items.filter((item) => item.status === filters.status);
+            }
+            if (filters.search) {
+                const searchLower = filters.search.toLowerCase();
+                items = items.filter(
+                    (item) =>
+                        item.name?.toLowerCase().includes(searchLower) ||
+                        item.sku?.toLowerCase().includes(searchLower) ||
+                        item.barcode?.toLowerCase().includes(searchLower)
+                );
+            }
+
+            console.log(`✅ Retrieved ${items.length} inventory row(s) (merged)`);
             return items;
         } catch (error) {
             console.error('Error getting inventory:', error);
             return [];
         }
+    }
+
+    /**
+     * Live merged inventory (Firestore snapshot + RTDB). Call the returned function to unsubscribe.
+     */
+    subscribeInventory({ onUpdate, onError } = {}) {
+        if (this.useLocalStorage) {
+            return () => {};
+        }
+        let cancelled = false;
+        let innerUnsub = null;
+        (async () => {
+            try {
+                await this._ensureSessionReady();
+                if (cancelled) return;
+                const fsQuery = this.createBranchQuery('inventory', []);
+                innerUnsub = streamDual({
+                    firestoreQuery: fsQuery,
+                    rtdbPath: 'inventory',
+                    rtdbFilter: this._rtdbBranchFilter(),
+                    onUpdate: (items) => onUpdate?.(items),
+                    onError: (err, source) => {
+                        console.error(`[data-manager] inventory stream (${source}):`, err?.code, err?.message);
+                        onError?.(err, source);
+                    }
+                });
+            } catch (e) {
+                console.error('subscribeInventory failed:', e);
+            }
+        })();
+        return () => {
+            cancelled = true;
+            try {
+                innerUnsub?.();
+            } catch (e) { /* ignore */ }
+        };
     }
 
     async updateInventoryItem(itemId, updates, fullItemData = null) {
@@ -528,31 +651,36 @@ class DataManager {
             
             // Use Firebase - All items should now have Firebase IDs
             const itemRef = doc(db, 'inventory', itemId);
-            
-            // Verify this is not a local ID
+
             if (itemId.startsWith('item_') || itemId.startsWith('local_')) {
                 console.error('❌ Cannot update item with local ID:', itemId);
                 throw new Error(`This item exists only locally and cannot be synced. Please delete it and reload the inventory from Firebase.`);
             }
-            
-            // Verify the document exists
-            const docSnap = await getDoc(itemRef);
-            
-            if (!docSnap.exists()) {
-                console.error('❌ Document does not exist in Firestore:', itemId);
-                throw new Error(`Item not found in Firebase. The item may have been deleted. Please refresh the inventory.`);
+
+            let source =
+                fullItemData && (fullItemData._source === 'rtdb' || fullItemData._source === 'firestore')
+                    ? fullItemData._source
+                    : null;
+            const docSnap = source !== 'rtdb' ? await getDoc(itemRef) : { exists: () => false };
+
+            if (!source) {
+                source = docSnap.exists() ? 'firestore' : 'rtdb';
             }
-            
-            // Document exists, proceed with update
-            console.log('📤 Updating document in Firestore...');
-            await updateDoc(itemRef, {
+
+            if (source === 'firestore') {
+                if (!docSnap.exists()) {
+                    console.error('❌ Document does not exist in Firestore:', itemId);
+                    throw new Error(`Item not found in Firebase. The item may have been deleted. Please refresh the inventory.`);
+                }
+            }
+
+            console.log('📤 Updating inventory via storage adapter (source:', source + ')...');
+            await updateWithFallback('inventory', itemId, {
                 ...updates,
                 updatedAt: new Date().toISOString()
-            });
-            console.log('✅ Item updated successfully in Firestore');
-            
-            await this.syncToCentral('inventory', itemId, updates);
-            
+            }, source);
+            console.log('✅ Item updated successfully');
+
             await this.syncToCentral('inventory', itemId, updates);
         } catch (error) {
             console.error('❌ Error updating inventory:', error);
@@ -585,19 +713,17 @@ class DataManager {
             
             // Use Firebase - Delete from Firestore
             const itemRef = doc(db, 'inventory', itemId);
-            
-            // Verify document exists before deleting
+
             const docSnap = await getDoc(itemRef);
-            
+            const source = docSnap.exists() ? 'firestore' : 'rtdb';
+
             if (!docSnap.exists()) {
-                console.log('⚠️ Item not found in Firestore (may have been deleted already):', itemId);
-                // Don't throw error, item is already gone which is the desired state
-                return;
+                console.log('⚠️ Item not found in Firestore (may be RTDB-only or already deleted):', itemId);
             }
-            
-            console.log('📤 Deleting document from Firestore...');
-            await deleteDoc(itemRef);
-            console.log('✅ Item successfully deleted from Firestore:', itemId);
+
+            console.log('📤 Deleting inventory via storage adapter (source:', source + ')...');
+            await deleteWithFallback('inventory', itemId, source);
+            console.log('✅ Item delete completed:', itemId);
             
         } catch (error) {
             console.error('❌ Error deleting inventory:', error);
@@ -670,6 +796,7 @@ class DataManager {
                 conditions.push(where('name', '<=', filters.search + '\uf8ff'));
             }
             
+            await this._ensureSessionReady();
             const q = this.createBranchQuery('customers', conditions);
             const snapshot = await getDocs(q);
             
@@ -824,6 +951,7 @@ class DataManager {
                 conditions.push(where('createdAt', '<=', filters.endDate));
             }
             
+            await this._ensureSessionReady();
             const q = this.createBranchQuery('expenses', conditions);
             const snapshot = await getDocs(q);
             
@@ -895,6 +1023,175 @@ class DataManager {
         }
     }
 
+    // ---------- STAFF / HR OPERATIONS ----------
+
+    async createStaff(staffData) {
+        try {
+            const newStaff = this.addBranchData({
+                ...staffData,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                status: staffData.status || 'active'
+            });
+
+            if (this.useLocalStorage) {
+                newStaff.id = this.generateLocalId();
+                this.cache.staff.push(newStaff);
+                this.saveToLocalStorage();
+                return newStaff;
+            }
+
+            const staffRef = collection(db, 'staff');
+            const docRef = await addDoc(staffRef, newStaff);
+            return { id: docRef.id, ...newStaff };
+        } catch (error) {
+            console.error('Error creating staff:', error);
+            throw error;
+        }
+    }
+
+    async getStaff(filters = {}) {
+        try {
+            if (this.useLocalStorage) {
+                let staff = [...(this.cache.staff || [])];
+                if (filters.status) staff = staff.filter(s => s.status === filters.status);
+                return staff;
+            }
+
+            const conditions = [];
+            if (filters.status) {
+                conditions.push(where('status', '==', filters.status));
+            }
+
+            await this._ensureSessionReady();
+            const q = this.createBranchQuery('staff', conditions);
+            const snapshot = await getDocs(q);
+            return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch (error) {
+            console.error('Error getting staff:', error);
+            return [];
+        }
+    }
+
+    async updateStaff(staffId, updates) {
+        try {
+            const updateData = { ...updates, updatedAt: new Date().toISOString() };
+
+            if (this.useLocalStorage) {
+                const idx = this.cache.staff.findIndex(s => s.id === staffId);
+                if (idx === -1) throw new Error('Staff not found in localStorage');
+                this.cache.staff[idx] = { ...this.cache.staff[idx], ...updateData };
+                this.saveToLocalStorage();
+                return this.cache.staff[idx];
+            }
+
+            const staffRef = doc(db, 'staff', staffId);
+            await updateDoc(staffRef, updateData);
+            return { id: staffId, ...updateData };
+        } catch (error) {
+            console.error('Error updating staff:', error);
+            throw error;
+        }
+    }
+
+    async deleteStaff(staffId) {
+        try {
+            if (this.useLocalStorage) {
+                this.cache.staff = this.cache.staff.filter(s => s.id !== staffId);
+                this.saveToLocalStorage();
+                return;
+            }
+            await deleteDoc(doc(db, 'staff', staffId));
+        } catch (error) {
+            console.error('Error deleting staff:', error);
+            throw error;
+        }
+    }
+
+    // ---------- SALARY PAYMENT OPERATIONS ----------
+
+    async createSalaryPayment(paymentData) {
+        try {
+            const newPayment = this.addBranchData({
+                ...paymentData,
+                createdAt: new Date().toISOString()
+            });
+
+            if (this.useLocalStorage) {
+                newPayment.id = this.generateLocalId();
+                this.cache.salaryPayments.push(newPayment);
+                this.saveToLocalStorage();
+                return newPayment;
+            }
+
+            const ref = collection(db, 'salaryPayments');
+            const docRef = await addDoc(ref, newPayment);
+            return { id: docRef.id, ...newPayment };
+        } catch (error) {
+            console.error('Error creating salary payment:', error);
+            throw error;
+        }
+    }
+
+    async getSalaryPayments(filters = {}) {
+        try {
+            if (this.useLocalStorage) {
+                let payments = [...(this.cache.salaryPayments || [])];
+                if (filters.staffId) payments = payments.filter(p => p.staffId === filters.staffId);
+                if (filters.startDate) payments = payments.filter(p => (p.paymentDate || p.createdAt) >= filters.startDate);
+                if (filters.endDate) payments = payments.filter(p => (p.paymentDate || p.createdAt) <= filters.endDate);
+                return payments;
+            }
+
+            const conditions = [];
+            if (filters.staffId) conditions.push(where('staffId', '==', filters.staffId));
+            if (filters.startDate) conditions.push(where('paymentDate', '>=', filters.startDate));
+            if (filters.endDate) conditions.push(where('paymentDate', '<=', filters.endDate));
+
+            await this._ensureSessionReady();
+            const q = this.createBranchQuery('salaryPayments', conditions);
+            const snapshot = await getDocs(q);
+            return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch (error) {
+            console.error('Error getting salary payments:', error);
+            return [];
+        }
+    }
+
+    async updateSalaryPayment(paymentId, updates) {
+        try {
+            const updateData = { ...updates, updatedAt: new Date().toISOString() };
+
+            if (this.useLocalStorage) {
+                const idx = this.cache.salaryPayments.findIndex(p => p.id === paymentId);
+                if (idx === -1) throw new Error('Salary payment not found');
+                this.cache.salaryPayments[idx] = { ...this.cache.salaryPayments[idx], ...updateData };
+                this.saveToLocalStorage();
+                return this.cache.salaryPayments[idx];
+            }
+
+            await updateDoc(doc(db, 'salaryPayments', paymentId), updateData);
+            return { id: paymentId, ...updateData };
+        } catch (error) {
+            console.error('Error updating salary payment:', error);
+            throw error;
+        }
+    }
+
+    async deleteSalaryPayment(paymentId) {
+        try {
+            if (this.useLocalStorage) {
+                this.cache.salaryPayments = this.cache.salaryPayments.filter(p => p.id !== paymentId);
+                this.saveToLocalStorage();
+                return;
+            }
+            await deleteDoc(doc(db, 'salaryPayments', paymentId));
+        } catch (error) {
+            console.error('Error deleting salary payment:', error);
+            throw error;
+        }
+    }
+
     // ORDER OPERATIONS
     async createOrder(orderData) {
         try {
@@ -924,6 +1221,7 @@ class DataManager {
                 conditions.push(where('status', '==', filters.status));
             }
             
+            await this._ensureSessionReady();
             const q = this.createBranchQuery('orders', conditions);
             const snapshot = await getDocs(q);
             

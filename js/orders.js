@@ -1,5 +1,8 @@
 // Orders Manager
 import { db, collection, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy as firestoreOrderBy, serverTimestamp } from './firebase-config.js';
+import brandManager from './brand-manager.js';
+import { stockHistorySubmodule } from './stock-history.js';
+import { setBtnState, friendlyError, toast } from './ui-feedback.js';
 
 const ordersManager = {
     orders: [],
@@ -17,6 +20,7 @@ const ordersManager = {
             console.log('Orders Manager already initialized, refreshing data...');
             this.loadOrders();
             this.loadSuppliers();
+            stockHistorySubmodule.init();
             return;
         }
         
@@ -29,17 +33,23 @@ const ordersManager = {
             this.setupEventListeners();
             this.renderStats();
             this.renderOrdersTable();
+            stockHistorySubmodule.init();
             
             // Clear any existing interval
             if (this.refreshInterval) {
                 clearInterval(this.refreshInterval);
             }
             
-            // Auto-refresh every 30 seconds
+            // Auto-refresh every 2 minutes, but ONLY when the orders page is visible
+            // and the tab is in the foreground. Previously polled every 30s on every
+            // page which caused massive Firestore read amplification.
             this.refreshInterval = setInterval(() => {
+                if (document.visibilityState !== 'visible') return;
+                const ordersPage = document.getElementById('orders-page');
+                if (!ordersPage || !ordersPage.classList.contains('active')) return;
                 this.loadOrders();
                 this.loadSuppliers();
-            }, 30000);
+            }, 120000);
         });
     },
 
@@ -107,32 +117,17 @@ const ordersManager = {
             console.log('Loading orders for branch:', branchId);
 
             const ordersRef = collection(db, 'orders');
-            
-            // Try loading ALL orders first to see if any exist
-            console.log('🔍 Attempting to load ALL orders from Firestore...');
-            const allSnapshot = await getDocs(ordersRef);
-            console.log(`📊 Found ${allSnapshot.size} total orders in database (all branches)`);
-            
-            if (allSnapshot.size > 0) {
-                const firstDoc = allSnapshot.docs[0].data();
-                console.log('📄 Sample order data:', {
-                    orderNumber: firstDoc.orderNumber || firstDoc.id,
-                    supplierName: firstDoc.supplierName,
-                    branchId: firstDoc.branchId,
-                    totalAmount: firstDoc.totalAmount,
-                    status: firstDoc.status
-                });
-            }
-            
-            // Now filter by branch using simple query first (no ordering)
-            console.log(`🔍 Loading orders for current branch: ${branchId}`);
+
+            // Branch-scoped query only. Previously this method also did a debug
+            // `getDocs(ordersRef)` over the ENTIRE collection (all branches) which
+            // doubled reads on every poll — removed to prevent quota blow-up.
             const simpleQuery = query(
                 ordersRef,
                 where('branchId', '==', branchId)
             );
 
             const simpleSnapshot = await getDocs(simpleQuery);
-            console.log(`📊 Found ${simpleSnapshot.size} orders for branch ${branchId} (without ordering)`);
+            console.log(`📊 Found ${simpleSnapshot.size} orders for branch ${branchId}`);
             
             this.orders = [];
             simpleSnapshot.forEach(docSnap => {
@@ -583,7 +578,13 @@ const ordersManager = {
     },
 
     async markAsDelivered(orderId) {
-        if (!confirm('Mark this order as delivered?')) return;
+        const ok = await window.uiConfirm?.({
+            title: 'Mark as delivered?',
+            message: 'This will set the order status to delivered and the payment status to paid.',
+            tone: 'success',
+            okLabel: 'Mark delivered'
+        });
+        if (!ok) return;
 
         try {
             await window.dataManager.updateOrder(orderId, {
@@ -646,6 +647,7 @@ const ordersManager = {
             return;
         }
 
+        const brand = brandManager.getBrand();
         const printWindow = window.open('', '_blank');
         const orderNumber = order.orderNumber || order.id.substring(0, 8).toUpperCase();
         const orderDate = this.formatDate(order.createdAt);
@@ -656,8 +658,8 @@ const ordersManager = {
                 <tr>
                     <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">${item.name || 'N/A'}</td>
                     <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">${item.quantity || 0}</td>
-                    <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">KSh ${this.formatNumber(item.price || 0)}</td>
-                    <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right;"><strong>KSh ${this.formatNumber((item.quantity || 0) * (item.price || 0))}</strong></td>
+                    <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">${brand.currency} ${this.formatNumber(item.price || 0)}</td>
+                    <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right;"><strong>${brand.currency} ${this.formatNumber((item.quantity || 0) * (item.price || 0))}</strong></td>
                 </tr>
             `).join('');
         }
@@ -695,7 +697,13 @@ const ordersManager = {
             </head>
             <body>
                 <div class="header">
-                    <h1>PURCHASE ORDER</h1>
+                    ${brandManager.getLogoHTML({ maxWidth: 90, maxHeight: 90, marginBottom: 8, alt: brand.name })}
+                    <h1>${brand.name}</h1>
+                    ${brand.tagline ? `<p style="font-style:italic;font-size:13px;">${brand.tagline}</p>` : ''}
+                    ${brand.address ? `<p style="font-size:12px;">${brand.address}</p>` : ''}
+                    ${brand.phone ? `<p style="font-size:12px;">Tel: ${brand.phone}${brand.email ? ' &middot; ' + brand.email : ''}</p>` : (brand.email ? `<p style="font-size:12px;">${brand.email}</p>` : '')}
+                    ${brand.taxId ? `<p style="font-size:12px;">PIN: ${brand.taxId}</p>` : ''}
+                    <h2 style="margin-top:14px;font-size:18px;letter-spacing:2px;">PURCHASE ORDER</h2>
                     <p>Order #${orderNumber}</p>
                 </div>
                 
@@ -749,7 +757,7 @@ const ordersManager = {
                 <div class="totals">
                     <div class="total-row grand-total">
                         <span class="label">TOTAL AMOUNT:</span>
-                        <span class="value">KSh ${this.formatNumber(order.totalAmount || 0)}</span>
+                        <span class="value">${brand.currency} ${this.formatNumber(order.totalAmount || 0)}</span>
                     </div>
                 </div>
 
@@ -762,7 +770,7 @@ const ordersManager = {
 
                 <div class="footer">
                     <p>Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
-                    <p style="margin-top: 5px;">Vendify POS - Order Management System</p>
+                    <p style="margin-top: 5px;">${brand.name} &middot; Order Management</p>
                 </div>
                 
                 <script>
@@ -783,9 +791,13 @@ const ordersManager = {
         }
 
         const orderNumber = order.orderNumber || order.id.substring(0, 8).toUpperCase();
-        const confirmMessage = `Are you sure you want to delete Order #${orderNumber}?\n\nThis action cannot be undone.`;
-        
-        if (!confirm(confirmMessage)) return;
+        const ok = await window.uiConfirm?.({
+            title: 'Delete order?',
+            message: `Are you sure you want to delete Order #${orderNumber}? This cannot be undone.`,
+            tone: 'danger',
+            okLabel: 'Delete'
+        });
+        if (!ok) return;
 
         try {
             const orderRef = doc(db, 'orders', orderId);
@@ -903,38 +915,44 @@ const ordersManager = {
         const form = document.getElementById('editOrderForm');
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            await this.updateOrder(orderId);
+            await this.updateOrder(orderId, e);
         });
 
         // Show modal
         setTimeout(() => modal.classList.add('active'), 10);
     },
 
-    async updateOrder(orderId) {
-        try {
-            const updateData = {
-                paymentStatus: document.getElementById('editPaymentStatus').value,
-                deliveryStatus: document.getElementById('editDeliveryStatus').value,
-                expectedDeliveryDate: document.getElementById('editExpectedDate').value,
-                notes: document.getElementById('editOrderNotes').value.trim(),
-                status: document.getElementById('editOrderStatus').value,
-                updatedAt: serverTimestamp()
-            };
+    async updateOrder(orderId, event) {
+        const form = document.getElementById('editOrderForm');
+        const submitBtn = form?.querySelector('button[type="submit"]') || event?.submitter || null;
 
+        const updateData = {
+            paymentStatus: document.getElementById('editPaymentStatus').value,
+            deliveryStatus: document.getElementById('editDeliveryStatus').value,
+            expectedDeliveryDate: document.getElementById('editExpectedDate').value,
+            notes: document.getElementById('editOrderNotes').value.trim(),
+            status: document.getElementById('editOrderStatus').value,
+            updatedAt: serverTimestamp()
+        };
+
+        setBtnState(submitBtn, 'loading', 'Updating…');
+        try {
             const orderRef = doc(db, 'orders', orderId);
             await updateDoc(orderRef, updateData);
 
             console.log('✅ Order updated successfully');
-            this.showNotification('Order updated successfully!', 'success');
-            
-            // Close modal
-            document.querySelector('.pos-modal').remove();
-            
-            // Reload orders
+            setBtnState(submitBtn, 'success', 'Updated!');
+            toast('Order updated successfully!', 'success');
+
             await this.loadOrders();
+
+            setTimeout(() => {
+                document.querySelector('.pos-modal')?.remove();
+            }, 700);
         } catch (error) {
             console.error('❌ Error updating order:', error);
-            this.showNotification('Failed to update order: ' + error.message, 'error');
+            setBtnState(submitBtn, 'error', 'Failed');
+            toast(friendlyError(error, 'update order'), 'error');
         }
     },
 
@@ -1044,11 +1062,15 @@ const ordersManager = {
                 </style>
             </head>
             <body>
+                <div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e2e8f0;">
+                    ${brandManager.getLogoHTML({ maxWidth: 80, maxHeight: 80, marginBottom: 6, alt: brandManager.name() })}
+                    <div style="font-size:18px;font-weight:700;color:#1f2937;margin-bottom:4px;">${brandManager.name()}</div>
+                </div>
                 <h1>Orders Report</h1>
                 <div class="info">
                     <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
                     <p><strong>Total Orders:</strong> ${this.filteredOrders.length}</p>
-                    <p><strong>Total Value:</strong> KSh ${this.formatNumber(this.filteredOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0))}</p>
+                    <p><strong>Total Value:</strong> ${brandManager.getBrand().currency || 'KSh'} ${this.formatNumber(this.filteredOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0))}</p>
                 </div>
                 <table>
                     <thead>

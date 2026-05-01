@@ -1,0 +1,103 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "tenants": {
+      ".read": "auth != null",
+      ".indexOn": ["branchId", "houseNumber", "name", "nameLower"],
+      "$tenantId": {
+        ".write": "auth != null",
+        ".validate": "!newData.exists() || (newData.hasChildren(['branchId', 'name', 'updatedAt']) && newData.child('branchId').isString() && newData.child('branchId').val().length > 0 && newData.child('branchId').val().length <= 128 && (!data.exists() || newData.child('branchId').val() == data.child('branchId').val()) && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 200 && newData.child('updatedAt').isString() && newData.child('updatedAt').val().length <= 64)"
+      }
+    },
+
+    "rentPayments": {
+      ".read": "auth != null",
+      ".indexOn": ["branchId", "tenantId", "paymentDate", "createdAt"],
+      "$paymentId": {
+        ".write": "auth != null",
+        ".validate": "!newData.exists() || (newData.hasChildren(['branchId', 'tenantId', 'amount', 'paymentDate', 'createdAt']) && newData.child('branchId').isString() && newData.child('branchId').val().length > 0 && newData.child('branchId').val().length <= 128 && (!data.exists() || newData.child('branchId').val() == data.child('branchId').val()) && newData.child('tenantId').isString() && newData.child('tenantId').val().length > 0 && newData.child('tenantId').val().length <= 128 && newData.child('amount').isNumber() && newData.child('amount').val() > 0 && newData.child('amount').val() < 1000000000000 && newData.child('paymentDate').isString() && newData.child('paymentDate').val().length <= 64 && newData.child('createdAt').isString() && newData.child('createdAt').val().length <= 64)"
+      }
+    },
+
+    "ventures": {
+      ".read": "auth != null",
+      ".indexOn": ["branchId", "type", "status", "name"],
+      "$ventureId": {
+        ".write": "auth != null",
+        ".validate": "!newData.exists() || (newData.hasChildren(['branchId', 'name', 'type', 'updatedAt']) && newData.child('branchId').isString() && newData.child('branchId').val().length > 0 && newData.child('branchId').val().length <= 128 && (!data.exists() || newData.child('branchId').val() == data.child('branchId').val()) && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 200 && newData.child('type').isString() && newData.child('type').val().length > 0 && newData.child('type').val().length <= 64 && newData.child('updatedAt').isString() && newData.child('updatedAt').val().length <= 64)"
+      }
+    },
+
+    "ventureEntries": {
+      ".read": "auth != null",
+      ".indexOn": ["branchId", "ventureId", "entryDate", "createdAt"],
+      "$entryId": {
+        ".write": "auth != null",
+        ".validate": "!newData.exists() || (newData.hasChildren(['branchId', 'ventureId', 'entryDate', 'income', 'expenses', 'updatedAt']) && newData.child('branchId').isString() && newData.child('branchId').val().length > 0 && newData.child('branchId').val().length <= 128 && (!data.exists() || newData.child('branchId').val() == data.child('branchId').val()) && newData.child('ventureId').isString() && newData.child('ventureId').val().length > 0 && newData.child('ventureId').val().length <= 128 && newData.child('entryDate').isString() && newData.child('entryDate').val().length <= 64 && newData.child('income').isNumber() && newData.child('income').val() >= 0 && newData.child('income').val() < 1000000000000 && newData.child('expenses').isNumber() && newData.child('expenses').val() >= 0 && newData.child('expenses').val() < 1000000000000 && newData.child('updatedAt').isString() && newData.child('updatedAt').val().length <= 64)"
+      }
+    },
+
+    "cashInjections": {
+      ".read": "auth != null",
+      ".indexOn": ["branchId", "type", "entryDate", "createdAt"],
+      "$entryId": {
+        ".write": "auth != null",
+        ".validate": "!newData.exists() || (newData.hasChildren(['branchId', 'type', 'amount', 'entryDate', 'createdAt']) && newData.child('branchId').isString() && newData.child('branchId').val().length > 0 && newData.child('branchId').val().length <= 128 && (!data.exists() || newData.child('branchId').val() == data.child('branchId').val()) && newData.child('type').isString() && newData.child('type').val().length > 0 && newData.child('type').val().length <= 64 && newData.child('amount').isNumber() && newData.child('amount').val() > 0 && newData.child('amount').val() < 1000000000000 && newData.child('entryDate').isString() && newData.child('entryDate').val().length <= 64 && newData.child('createdAt').isString() && newData.child('createdAt').val().length <= 64)"
+      }
+    },
+
+    "inventory": {
+      ".read": "auth != null",
+      ".indexOn": ["branchId", "sku", "category", "name", "quantity", "status"],
+      "$itemId": {
+        ".write": "auth != null",
+        ".validate": "!newData.exists() || (newData.hasChildren(['branchId', 'name', 'sku', 'category', 'price', 'quantity', 'updatedAt']) && newData.child('branchId').isString() && newData.child('branchId').val().length > 0 && newData.child('branchId').val().length <= 128 && (!data.exists() || newData.child('branchId').val() == data.child('branchId').val()) && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 200 && newData.child('sku').isString() && newData.child('sku').val().length > 0 && newData.child('sku').val().length <= 120 && newData.child('category').isString() && newData.child('category').val().length > 0 && newData.child('category').val().length <= 120 && newData.child('price').isNumber() && newData.child('price').val() >= 0 && newData.child('price').val() < 1000000000000 && newData.child('quantity').isNumber() && newData.child('quantity').val() >= 0 && newData.child('quantity').val() < 1000000000 && newData.child('updatedAt').isString() && newData.child('updatedAt').val().length <= 64)"
+      }
+    },
+
+    "sales": {
+      ".read": "auth != null",
+      ".indexOn": ["branchId", "createdAt", "status", "saleType", "paymentMethod"],
+      "$saleId": {
+        ".write": "auth != null",
+        ".validate": "!newData.exists() || (newData.hasChildren(['branchId', 'createdAt', 'updatedAt']) && newData.child('branchId').isString() && newData.child('branchId').val().length > 0 && newData.child('branchId').val().length <= 128 && (!data.exists() || newData.child('branchId').val() == data.child('branchId').val()) && newData.child('createdAt').isString() && newData.child('createdAt').val().length <= 64 && newData.child('updatedAt').isString() && newData.child('updatedAt').val().length <= 64 && newData.child('total').isNumber() && newData.child('total').val() >= 0 && newData.child('total').val() < 1000000000000)"
+      }
+    },
+
+    "users": {
+      ".read": "auth != null",
+      ".indexOn": ["email", "role", "status", "createdAt", "branchId"],
+      "$uid": {
+        ".write": "auth != null",
+        ".validate": "!newData.exists() || (newData.hasChildren(['uid', 'email', 'role', 'createdAt', 'updatedAt']) && newData.child('uid').isString() && newData.child('uid').val() == $uid && newData.child('email').isString() && newData.child('email').val().length > 0 && newData.child('email').val().length <= 320 && newData.child('role').isString() && newData.child('role').val().length > 0 && newData.child('role').val().length <= 64 && newData.child('createdAt').isString() && newData.child('createdAt').val().length <= 64 && newData.child('updatedAt').isString() && newData.child('updatedAt').val().length <= 64)"
+      }
+    },
+
+    "settings": {
+      ".read": "auth != null",
+      "brand": {
+        ".write": "auth != null",
+        ".validate": "!newData.exists() || (newData.hasChildren(['name', 'updatedAt']) && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 120 && newData.child('updatedAt').isString() && newData.child('updatedAt').val().length <= 64)"
+      }
+    },
+
+    "branches": {
+      ".read": "auth != null",
+      "$branchId": {
+        ".write": "auth != null",
+        ".validate": "!newData.exists() || (newData.hasChildren(['name', 'code', 'status', 'createdAt', 'updatedAt']) && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 200 && newData.child('code').isString() && newData.child('code').val().length > 0 && newData.child('code').val().length <= 40 && newData.child('status').isString() && newData.child('status').val().length > 0 && newData.child('status').val().length <= 32 && newData.child('createdAt').isString() && newData.child('createdAt').val().length <= 64 && newData.child('updatedAt').isString() && newData.child('updatedAt').val().length <= 64 && (!newData.hasChild('id') || (newData.child('id').isString() && newData.child('id').val() == $branchId)) && (!newData.hasChild('isCentral') || newData.child('isCentral').isBoolean()) && (!newData.hasChild('address') || newData.child('address').isString()) && (!newData.hasChild('phone') || newData.child('phone').isString()) && (!newData.hasChild('manager') || newData.child('manager').isString()))"
+      }
+    },
+
+    "stockHistory": {
+      ".read": "auth != null",
+      ".indexOn": ["branchId", "itemId", "createdAt"],
+      "$recordId": {
+        ".write": "auth != null",
+        ".validate": "!newData.exists() || (newData.hasChildren(['itemId', 'itemName', 'sku', 'branchId', 'quantityBefore', 'quantityAdded', 'quantityAfter', 'source', 'createdAt']) && newData.child('itemId').isString() && newData.child('itemId').val().length <= 128 && newData.child('itemName').isString() && newData.child('itemName').val().length <= 200 && newData.child('sku').isString() && newData.child('sku').val().length <= 120 && newData.child('branchId').isString() && newData.child('branchId').val().length <= 128 && newData.child('quantityBefore').isNumber() && newData.child('quantityBefore').val() >= 0 && newData.child('quantityBefore').val() < 1000000000 && newData.child('quantityAdded').isNumber() && newData.child('quantityAdded').val() >= 0 && newData.child('quantityAdded').val() < 1000000000 && newData.child('quantityAfter').isNumber() && newData.child('quantityAfter').val() >= 0 && newData.child('quantityAfter').val() < 1000000000 && newData.child('source').isString() && newData.child('source').val().length <= 64 && newData.child('createdAt').isString() && newData.child('createdAt').val().length <= 64 && (!newData.hasChild('branchName') || newData.child('branchName').val() == null || (newData.child('branchName').isString() && newData.child('branchName').val().length <= 200)) && (!newData.hasChild('recordedById') || newData.child('recordedById').val() == null || (newData.child('recordedById').isString() && newData.child('recordedById').val().length <= 128)) && (!newData.hasChild('recordedByName') || (newData.child('recordedByName').isString() && newData.child('recordedByName').val().length <= 200)))"
+      }
+    }
+  }
+}

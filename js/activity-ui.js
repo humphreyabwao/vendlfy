@@ -11,35 +11,52 @@ class ActivityUI {
         this.currentPage = 1;
         this.itemsPerPage = 20;
         this.allActivities = [];
+        this._wired = false;
+        this._streamSub = null;
     }
 
     // Initialize activity log page
     async init() {
-        console.log('🎯 Initializing Activity Log page...');
-        
-        // Set up filter buttons
-        this.setupFilters();
-        
-        // Set up search
-        this.setupSearch();
-        
-        // Set up pagination
-        this.setupPagination();
-        
-        // Set up refresh button
-        this.setupRefreshButton();
-        
-        // Set up export button
-        this.setupExportButton();
-        
-        // Load activities
+        console.log('Initializing Activity Log page');
+
+        // Make sure the underlying real-time stream is running
+        activityTracker.start();
+
+        if (!this._wired) {
+            this._wired = true;
+            this.setupFilters();
+            this.setupSearch();
+            this.setupPagination();
+            this.setupRefreshButton();
+            this.setupExportButton();
+
+            // React to every change in the activity stream
+            this._streamSub = activityTracker.onChange(() => {
+                if (this._isPageActive()) {
+                    this.loadActivities();
+                    this.updateStats();
+                } else {
+                    // Dashboard recent activity panel can also live-update
+                    this.updateDashboardActivity();
+                }
+            });
+
+            // Re-scope when the user switches branch
+            window.addEventListener('branchChanged', () => {
+                if (this._isPageActive()) {
+                    this.loadActivities();
+                    this.updateStats();
+                }
+            });
+        }
+
         await this.loadActivities();
-        
-        // Update stats
         await this.updateStats();
-        
-        // Start real-time updates
-        this.startRealtimeUpdates();
+    }
+
+    _isPageActive() {
+        const page = document.getElementById('activities-page');
+        return page && page.classList.contains('active');
     }
 
     // Setup filter buttons
@@ -290,53 +307,37 @@ class ActivityUI {
         }
     }
 
-    // Start real-time updates
-    startRealtimeUpdates() {
-        activityTracker.startRealtimeListener((newActivity) => {
-            console.log('📢 New activity received:', newActivity);
-            
-            // Check if activity page is active
-            const activitiesPage = document.getElementById('activities-page');
-            if (activitiesPage && activitiesPage.classList.contains('active')) {
-                // Reload activities if on current page
-                this.loadActivities();
-                this.updateStats();
-            }
-        });
-        
-        // Also add a listener for manual updates
-        activityTracker.addListener((newActivity) => {
-            // Update dashboard recent activity
-            this.updateDashboardActivity(newActivity);
-        });
-    }
+    // Kept for backwards compat — real-time updates are now wired in init()
+    startRealtimeUpdates() { /* no-op */ }
 
-    // Update dashboard recent activity
-    async updateDashboardActivity(newActivity) {
+    // Update dashboard recent activity panel (live)
+    async updateDashboardActivity() {
         const container = document.getElementById('recentActivityContainer');
         if (!container) return;
-        
-        // Get today's activities
-        const todayActivities = await activityTracker.getActivities({ 
-            date: 'today', 
-            limit: 10 
+
+        // Make sure stream is running so the cache is populated
+        activityTracker.start();
+
+        const todayActivities = await activityTracker.getActivities({
+            date: 'today',
+            limit: 10
         });
-        
-        const emptyState = document.getElementById('activityEmptyState');
-        
+
         if (todayActivities.length === 0) {
-            if (emptyState) {
-                emptyState.style.display = 'flex';
-            }
+            container.innerHTML = `
+                <div class="empty-state" id="activityEmptyState" style="display: flex;">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <p>No recent activity</p>
+                    <span>Actions will appear here as your team works</span>
+                </div>`;
             return;
         }
-        
-        if (emptyState) {
-            emptyState.style.display = 'none';
-        }
-        
-        // Render recent activities as table
-        const html = `
+
+        container.innerHTML = `
             <table class="activity-table">
                 <thead>
                     <tr>
@@ -360,21 +361,22 @@ class ActivityUI {
                                     </div>
                                 </td>
                                 <td class="activity-description-cell">${formatted.description}</td>
-                                <td class="activity-user-cell">${activity.userName}</td>
+                                <td class="activity-user-cell">${activity.userName || ''}</td>
                                 <td class="activity-time-cell">${formatted.timeAgo}</td>
-                            </tr>
-                        `;
+                            </tr>`;
                     }).join('')}
                 </tbody>
-            </table>
-        `;
-        
-        container.innerHTML = html + (emptyState ? emptyState.outerHTML : '');
+            </table>`;
     }
 
     // Export activities
     exportActivities() {
         try {
+            if (!this.allActivities || this.allActivities.length === 0) {
+                window.showNotification?.('No activities to export', 'info');
+                return;
+            }
+
             const data = this.allActivities.map(a => ({
                 Date: new Date(a.timestamp).toLocaleString(),
                 Type: a.type,
@@ -383,27 +385,25 @@ class ActivityUI {
                 User: a.userName,
                 Branch: a.branchName || 'N/A'
             }));
-            
-            // Convert to CSV
+
             const headers = Object.keys(data[0]);
             const csv = [
                 headers.join(','),
-                ...data.map(row => headers.map(h => `"${row[h] || ''}"`).join(','))
+                ...data.map(row => headers.map(h => `"${String(row[h] ?? '').replace(/"/g, '""')}"`).join(','))
             ].join('\n');
-            
-            // Download
-            const blob = new Blob([csv], { type: 'text/csv' });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
             a.download = `activities_${new Date().toISOString().split('T')[0]}.csv`;
             a.click();
             URL.revokeObjectURL(url);
-            
-            window.showNotification('Activities exported successfully', 'success');
+
+            window.showNotification?.('Activities exported successfully', 'success');
         } catch (error) {
             console.error('Error exporting activities:', error);
-            window.showNotification('Failed to export activities', 'error');
+            window.showNotification?.('Failed to export activities', 'error');
         }
     }
 }

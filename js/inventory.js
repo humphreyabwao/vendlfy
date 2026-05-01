@@ -2,6 +2,15 @@
 import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy } from './firebase-config.js';
 import branchManager from './branch-manager.js';
 import dataManager from './data-manager.js';
+import brandManager from './brand-manager.js';
+import { appendStockHistoryRecord } from './stock-history.js';
+
+function stockHistoryBranchFromItem(item) {
+    const branchId = item?.branchId || branchManager.getCurrentBranch?.()?.id || '';
+    const br = branchId && branchManager.getBranchById?.(branchId);
+    const branchName = br?.name ?? branchManager.getCurrentBranch?.()?.name ?? null;
+    return { branchId, branchName };
+}
 
 class InventoryManager {
     constructor() {
@@ -27,16 +36,121 @@ class InventoryManager {
             totalPages: 1
         };
         this.selectedItems = new Set();
+        this._inventoryUnsub = null;
+        this._inventoryBranchBound = false;
+        this._inventoryChangeEmitTimer = null;
+    }
+
+    _stopInventoryRealtime() {
+        try {
+            this._inventoryUnsub?.();
+        } catch (e) { /* ignore */ }
+        this._inventoryUnsub = null;
+    }
+
+    _emitInventoryChangedDebounced() {
+        clearTimeout(this._inventoryChangeEmitTimer);
+        this._inventoryChangeEmitTimer = setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('inventoryDataChanged'));
+        }, 350);
+    }
+
+    _startInventoryRealtime() {
+        this._stopInventoryRealtime();
+        if (dataManager.useLocalStorage) return;
+
+        this._inventoryUnsub = dataManager.subscribeInventory({
+            onUpdate: (items) => this._onInventoryRealtimeUpdate(items),
+            onError: () => { /* logged in data-manager */ }
+        });
+    }
+
+    _onInventoryRealtimeUpdate(items) {
+        this.items = this._normalizeInventoryList(items, { notifyLocalRemoved: false });
+        const page = this.pagination.currentPage;
+        this.applyFilters();
+        this.pagination.currentPage = Math.min(page, Math.max(1, this.pagination.totalPages));
+        this.calculateStats();
+        this.updateStatsUI();
+        this.renderTable();
+        this._emitInventoryChangedDebounced();
+    }
+
+    /**
+     * Dedupe + drop unsyncable local ids. Optionally show one-time toast for local rows (initial load).
+     */
+    _normalizeInventoryList(items, { notifyLocalRemoved = false } = {}) {
+        const localItems = items.filter(
+            (item) => item.id && (item.id.startsWith('item_') || item.id.startsWith('local_'))
+        );
+        if (notifyLocalRemoved && localItems.length > 0) {
+            console.warn(`⚠️ Found ${localItems.length} local items that cannot sync with Firebase`);
+            window.showNotification(
+                `Removed ${localItems.length} local item(s) that cannot sync with Firebase. All items are now from Firebase.`,
+                'info'
+            );
+        }
+
+        let filteredItems = items.filter(
+            (item) => !item.id || (!item.id.startsWith('item_') && !item.id.startsWith('local_'))
+        );
+
+        const uniqueItems = [];
+        const seenIds = new Set();
+        const seenSKUs = new Set();
+        const seenNames = new Set();
+
+        filteredItems.forEach((item) => {
+            const itemSKU = (item.sku || '').toLowerCase().trim();
+            const itemName = (item.name || '').toLowerCase().trim();
+
+            if (item.id && seenIds.has(item.id)) return;
+            if (itemSKU && seenSKUs.has(itemSKU)) return;
+            if (itemName && seenNames.has(itemName)) return;
+
+            if (item.id) seenIds.add(item.id);
+            if (itemSKU) seenSKUs.add(itemSKU);
+            if (itemName) seenNames.add(itemName);
+
+            uniqueItems.push(item);
+        });
+
+        return uniqueItems;
+    }
+
+    _ensureBranchChangeListener() {
+        if (this._inventoryBranchBound) return;
+        this._inventoryBranchBound = true;
+        window.addEventListener('branchChanged', () => {
+            this._onInventoryBranchChanged().catch((e) => console.error('inventory branch change:', e));
+        });
+    }
+
+    async _onInventoryBranchChanged() {
+        this._stopInventoryRealtime();
+        this.showLoading(true);
+        try {
+            await this.loadInventory();
+            this.applyFilters();
+            this.updateStatsUI();
+            this.renderTable();
+        } finally {
+            this.showLoading(false);
+        }
+        this._startInventoryRealtime();
     }
 
     // Initialize inventory when page loads
     async init() {
         this.showLoading(true);
-        
-        // Clean up any local items from localStorage
+        this._ensureBranchChangeListener();
+
         this.cleanupLocalStorage();
-        
+
+        this._stopInventoryRealtime();
         await this.loadInventory();
+        this._startInventoryRealtime();
+
         this.applyFilters();
         this.updateStatsUI();
         this.renderTable();
@@ -71,75 +185,13 @@ class InventoryManager {
         }
     }
 
-    // Load inventory items
+    // Load inventory items (one-shot; live updates come from _startInventoryRealtime)
     async loadInventory() {
         try {
             console.log('📥 Loading inventory from database...');
             const items = await dataManager.getInventory();
-            console.log(`✅ Loaded ${items.length} items from database`);
-            
-            // Filter out any local items (items with local IDs)
-            const localItems = items.filter(item => 
-                item.id && (item.id.startsWith('item_') || item.id.startsWith('local_'))
-            );
-            
-            if (localItems.length > 0) {
-                console.warn(`⚠️ Found ${localItems.length} local items that cannot sync with Firebase`);
-                console.log('🗑️ Filtering out local items:', localItems.map(i => i.name));
-                
-                // Show notification about filtered items
-                window.showNotification(
-                    `Removed ${localItems.length} local item(s) that cannot sync with Firebase. All items are now from Firebase.`,
-                    'info'
-                );
-            }
-            
-            // Only keep Firebase items (items without local IDs)
-            let filteredItems = items.filter(item => 
-                !item.id || (!item.id.startsWith('item_') && !item.id.startsWith('local_'))
-            );
-            
-            // Remove duplicates based on multiple criteria - keep only the first occurrence
-            const uniqueItems = [];
-            const seenIds = new Set();
-            const seenSKUs = new Set();
-            const seenNames = new Set();
-            
-            filteredItems.forEach(item => {
-                const itemSKU = (item.sku || '').toLowerCase().trim();
-                const itemName = (item.name || '').toLowerCase().trim();
-                
-                // Skip if we've seen this ID, SKU, or exact name before
-                if (item.id && seenIds.has(item.id)) {
-                    console.warn(`⚠️ Duplicate ID detected: ${item.id} - ${item.name}`);
-                    return;
-                }
-                
-                if (itemSKU && seenSKUs.has(itemSKU)) {
-                    console.warn(`⚠️ Duplicate SKU detected: ${item.sku} - ${item.name}`);
-                    return;
-                }
-                
-                if (itemName && seenNames.has(itemName)) {
-                    console.warn(`⚠️ Duplicate name detected: ${item.name}`);
-                    return;
-                }
-                
-                // Add to tracking sets
-                if (item.id) seenIds.add(item.id);
-                if (itemSKU) seenSKUs.add(itemSKU);
-                if (itemName) seenNames.add(itemName);
-                
-                uniqueItems.push(item);
-            });
-            
-            const duplicateCount = filteredItems.length - uniqueItems.length;
-            if (duplicateCount > 0) {
-                console.warn(`⚠️ Removed ${duplicateCount} duplicate items`);
-            }
-            
-            this.items = uniqueItems;
-            console.log(`✅ Using ${this.items.length} unique Firebase-synced items`);
+            this.items = this._normalizeInventoryList(items, { notifyLocalRemoved: true });
+            console.log(`✅ Using ${this.items.length} unique synced items`);
             this.calculateStats();
         } catch (error) {
             console.error('Error loading inventory:', error);
@@ -161,7 +213,7 @@ class InventoryManager {
         const today = new Date();
         
         this.items.forEach(item => {
-            const quantity = Math.max(0, parseInt(item.quantity) || 0); // Ensure non-negative
+            const quantity = Math.max(0, parseInt(item.quantity, 10) || parseInt(item.stock, 10) || 0); // Ensure non-negative
             const price = parseFloat(item.price) || 0;
             const reorderLevel = parseInt(item.reorderLevel) || 5;
             
@@ -221,7 +273,7 @@ class InventoryManager {
         if (this.filters.status) {
             const today = new Date();
             filtered = filtered.filter(item => {
-                const quantity = item.quantity || 0;
+                const quantity = Math.max(0, parseInt(item.quantity, 10) || parseInt(item.stock, 10) || 0);
                 const reorderLevel = item.reorderLevel || 5;
                 
                 switch (this.filters.status) {
@@ -254,12 +306,12 @@ class InventoryManager {
                     compareB = (b.name || '').toLowerCase();
                     break;
                 case 'quantity':
-                    compareA = a.quantity || 0;
-                    compareB = b.quantity || 0;
+                    compareA = Math.max(0, parseInt(a.quantity, 10) || parseInt(a.stock, 10) || 0);
+                    compareB = Math.max(0, parseInt(b.quantity, 10) || parseInt(b.stock, 10) || 0);
                     break;
                 case 'value':
-                    compareA = (a.quantity || 0) * (a.price || 0);
-                    compareB = (b.quantity || 0) * (b.price || 0);
+                    compareA = (Math.max(0, parseInt(a.quantity, 10) || parseInt(a.stock, 10) || 0)) * (a.price || 0);
+                    compareB = (Math.max(0, parseInt(b.quantity, 10) || parseInt(b.stock, 10) || 0)) * (b.price || 0);
                     break;
                 default:
                     return 0;
@@ -339,7 +391,7 @@ class InventoryManager {
     // Create table row
     createTableRow(item) {
         const row = document.createElement('tr');
-        const quantity = Math.max(0, parseInt(item.quantity) || 0); // Ensure non-negative
+        const quantity = Math.max(0, parseInt(item.quantity, 10) || parseInt(item.stock, 10) || 0); // Ensure non-negative
         const price = parseFloat(item.price) || 0;
         const reorderLevel = parseInt(item.reorderLevel) || 5;
         const value = quantity * price;
@@ -410,6 +462,11 @@ class InventoryManager {
             </td>
             <td>
                 <div class="action-buttons">
+                    <button type="button" class="action-btn add-stock" onclick="window.inventoryManager.addStock('${itemId}')" title="Add stock">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                            <path d="M12 5v14M5 12h14"></path>
+                        </svg>
+                    </button>
                     <button class="action-btn view" onclick="window.inventoryManager.viewItem('${itemId}')" title="View Details">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
@@ -838,8 +895,13 @@ class InventoryManager {
 
     // Export to Excel
     exportToExcel(items) {
-        const headers = ['Item Name', 'SKU', 'Category', 'Quantity', 'Price (KSh)', 'Total Value (KSh)', 'Reorder Level', 'Status', 'Branch'];
-        
+        const brand = brandManager.getBrand();
+        const currency = brand.currency || 'KSh';
+        const currentBranch = branchManager.getCurrentBranch();
+        const branchName = currentBranch ? currentBranch.name : 'All Branches';
+
+        const headers = ['Item Name', 'SKU', 'Category', 'Quantity', `Price (${currency})`, `Total Value (${currency})`, 'Reorder Level', 'Status', 'Branch'];
+
         const rows = items.map(item => {
             const quantity = item.quantity || 0;
             const price = item.price || 0;
@@ -870,29 +932,65 @@ class InventoryManager {
             ];
         });
 
-        // Add summary row
         const totalValue = items.reduce((sum, item) => sum + ((item.quantity || 0) * (item.price || 0)), 0);
         const totalItems = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
-        
+
+        // Brand-stamped header rows (above the table)
+        const headerRows = [
+            [brand.name || 'Vendify'],
+            brand.tagline ? [brand.tagline] : null,
+            brand.address ? [brand.address] : null,
+            brand.phone || brand.email ? [[brand.phone ? `Tel: ${brand.phone}` : '', brand.email || ''].filter(Boolean).join(' | ')] : null,
+            ['Inventory Report'],
+            [`Branch: ${branchName}`],
+            [`Generated: ${window.formatDateTime(new Date())}`],
+            [`Total Items: ${items.length}`],
+            []
+        ].filter(Boolean);
+
         rows.push([]);
         rows.push(['SUMMARY', '', '', '', '', '', '', '', '']);
         rows.push(['Total Items:', totalItems, '', '', '', '', '', '', '']);
         rows.push(['Total Value:', '', '', '', '', totalValue.toFixed(2), '', '', '']);
 
+        const escapeCell = (cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`;
         const csvContent = [
-            headers.join(','),
-            ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+            ...headerRows.map(row => row.map(escapeCell).join(',')),
+            headers.map(escapeCell).join(','),
+            ...rows.map(row => row.map(escapeCell).join(','))
         ].join('\n');
 
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `inventory-export-${window.formatDate(new Date())}.csv`;
+        const safeBrand = (brand.name || 'Vendify').replace(/[^a-z0-9]+/gi, '_');
+        a.download = `${safeBrand}_Inventory_${window.formatDate(new Date())}.csv`;
         a.click();
         window.URL.revokeObjectURL(url);
 
         window.showNotification('Inventory exported to Excel successfully', 'success');
+    }
+
+    // Load the brand logo as an Image element so jsPDF can embed it.
+    // Returns { img, format } where format is 'JPEG' | 'PNG' (jsPDF tags) or null on failure.
+    async _loadBrandLogo() {
+        const url = brandManager.getLogoUrl();
+        if (!url) return null;
+
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                const lower = url.toLowerCase();
+                let format = 'JPEG';
+                if (lower.includes('.png')) format = 'PNG';
+                else if (lower.includes('.webp')) format = 'WEBP';
+                resolve({ img, format });
+            };
+            img.onerror = () => resolve(null);
+            img.src = url;
+        });
     }
 
     // Export to PDF using jsPDF
@@ -905,31 +1003,81 @@ class InventoryManager {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
 
+        const brand = brandManager.getBrand();
+        const currency = brand.currency || 'KSh';
         const currentBranch = branchManager.getCurrentBranch();
         const branchName = currentBranch ? currentBranch.name : 'All Branches';
-        
-        // Add title
-        doc.setFontSize(18);
-        doc.text('Inventory Report', 14, 22);
-        
-        doc.setFontSize(11);
-        doc.text(`Branch: ${branchName}`, 14, 32);
-        doc.text(`Generated: ${window.formatDateTime(new Date())}`, 14, 38);
-        doc.text(`Total Items: ${items.length}`, 14, 44);
 
-        // Add summary stats
+        // ----- Brand header (logo + company info) -----
+        const logo = await this._loadBrandLogo();
+        let headerTextX = 14;
+
+        if (logo) {
+            try {
+                // 22mm square logo, anchored top-left
+                doc.addImage(logo.img, logo.format, 14, 10, 22, 22);
+                headerTextX = 40;
+            } catch (e) {
+                // If addImage fails (CORS or unsupported format), fall back to text-only header
+                headerTextX = 14;
+            }
+        }
+
+        // Company name
+        doc.setFontSize(18);
+        doc.setFont(undefined, 'bold');
+        doc.text(brand.name || 'Vendify', headerTextX, 18);
+
+        // Tagline / address line
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(10);
+        const subLines = [];
+        if (brand.tagline) subLines.push(brand.tagline);
+        if (brand.address) subLines.push(brand.address);
+        const contactBits = [];
+        if (brand.phone) contactBits.push(`Tel: ${brand.phone}`);
+        if (brand.email) contactBits.push(brand.email);
+        if (contactBits.length) subLines.push(contactBits.join(' · '));
+        if (brand.taxId) subLines.push(`PIN: ${brand.taxId}`);
+
+        let yCursor = 24;
+        subLines.slice(0, 3).forEach((line) => {
+            doc.text(String(line), headerTextX, yCursor);
+            yCursor += 5;
+        });
+
+        // Header divider line
+        const dividerY = Math.max(yCursor + 1, logo ? 36 : 30);
+        doc.setDrawColor(37, 99, 235);
+        doc.setLineWidth(0.6);
+        doc.line(14, dividerY, 196, dividerY);
+
+        // ----- Report meta -----
+        let metaY = dividerY + 8;
+        doc.setFontSize(14);
+        doc.setFont(undefined, 'bold');
+        doc.text('Inventory Report', 14, metaY);
+        metaY += 7;
+
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(10);
+        doc.text(`Branch: ${branchName}`, 14, metaY);     metaY += 5;
+        doc.text(`Generated: ${window.formatDateTime(new Date())}`, 14, metaY); metaY += 5;
+        doc.text(`Total Items: ${items.length}`, 14, metaY); metaY += 5;
+
+        // Summary stats
         const totalValue = items.reduce((sum, item) => sum + ((item.quantity || 0) * (item.price || 0)), 0);
         const totalQty = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
-        
-        doc.text(`Total Stock Value: ${window.formatCurrency(totalValue)}`, 14, 50);
-        doc.text(`Total Quantity: ${totalQty} items`, 14, 56);
 
-        // Prepare table data
+        doc.text(`Total Stock Value: ${currency} ${totalValue.toFixed(2)}`, 14, metaY); metaY += 5;
+        doc.text(`Total Quantity: ${totalQty} items`, 14, metaY); metaY += 6;
+
+        // ----- Table -----
         const tableData = items.map(item => {
             const quantity = item.quantity || 0;
             const price = item.price || 0;
             const reorderLevel = item.reorderLevel || 5;
-            
+
             let status = 'In Stock';
             if (quantity === 0) {
                 status = 'Out of Stock';
@@ -941,23 +1089,41 @@ class InventoryManager {
                 item.name || '',
                 item.sku || '',
                 quantity,
-                `KSh ${price.toFixed(2)}`,
-                `KSh ${(quantity * price).toFixed(2)}`,
+                `${currency} ${price.toFixed(2)}`,
+                `${currency} ${(quantity * price).toFixed(2)}`,
                 status
             ];
         });
 
-        // Add table
         doc.autoTable({
             head: [['Item Name', 'SKU', 'Qty', 'Price', 'Value', 'Status']],
             body: tableData,
-            startY: 65,
+            startY: metaY + 2,
             styles: { fontSize: 9 },
             headStyles: { fillColor: [37, 99, 235] },
+            // Footer with brand name on every page
+            didDrawPage: (data) => {
+                const pageCount = doc.internal.getNumberOfPages();
+                const pageSize = doc.internal.pageSize;
+                const pageWidth = pageSize.getWidth ? pageSize.getWidth() : pageSize.width;
+                const pageHeight = pageSize.getHeight ? pageSize.getHeight() : pageSize.height;
+
+                doc.setFontSize(8);
+                doc.setTextColor(120);
+                doc.text(`${brand.name || 'Vendify'}${brand.website ? ' · ' + brand.website : ''}`, 14, pageHeight - 8);
+                doc.text(
+                    `Page ${data.pageNumber} of ${pageCount}`,
+                    pageWidth - 14,
+                    pageHeight - 8,
+                    { align: 'right' }
+                );
+                doc.setTextColor(0);
+            }
         });
 
-        // Save PDF
-        doc.save(`inventory-report-${window.formatDate(new Date())}.pdf`);
+        // Save PDF — branded filename
+        const safeBrand = (brand.name || 'Vendify').replace(/[^a-z0-9]+/gi, '_');
+        doc.save(`${safeBrand}_Inventory_${window.formatDate(new Date())}.pdf`);
 
         window.showNotification('Inventory exported to PDF successfully', 'success');
     }
@@ -1159,6 +1325,74 @@ class InventoryManager {
         document.body.appendChild(modal);
     }
 
+    async addStock(itemId) {
+        const item = this.items.find((i) => i.id === itemId);
+        if (!item) {
+            window.showNotification('Item not found', 'error');
+            return;
+        }
+        if (!itemId || itemId.startsWith('item_') || itemId.startsWith('local_')) {
+            window.showNotification('This item cannot be synced. Remove local-only items and refresh inventory.', 'error');
+            return;
+        }
+
+        const current = Math.max(0, parseInt(item.quantity, 10) || parseInt(item.stock, 10) || 0);
+        const label = String(item.name || 'Item').slice(0, 80);
+
+        const addStr = await window.uiPrompt?.({
+            title: 'Add stock',
+            message: `${label}\nCurrent quantity: ${current}\n\nHow many units are you adding?`,
+            placeholder: 'e.g. 10',
+            okLabel: 'Add to stock'
+        });
+        if (addStr == null) return;
+
+        const toAdd = parseInt(String(addStr).trim(), 10);
+        if (!Number.isFinite(toAdd) || toAdd <= 0) {
+            window.showNotification('Enter a positive whole number of units to add.', 'error');
+            return;
+        }
+
+        const newQty = current + toAdd;
+        try {
+            await dataManager.updateInventoryItem(itemId, { quantity: newQty, stock: newQty }, item);
+            Object.assign(item, { quantity: newQty, stock: newQty });
+            const filteredItem = this.filteredItems.find((i) => i.id === itemId);
+            if (filteredItem) Object.assign(filteredItem, { quantity: newQty, stock: newQty });
+
+            const page = this.pagination.currentPage;
+            this.applyFilters();
+            this.pagination.currentPage = Math.min(page, Math.max(1, this.pagination.totalPages));
+            this.calculateStats();
+            this.updateStatsUI();
+            this.renderTable();
+
+            window.dispatchEvent(new CustomEvent('inventoryDataChanged'));
+            window.showNotification(`Stock updated: ${current} → ${newQty} (+${toAdd})`, 'success');
+            window.activityTracker?.logActivity?.('inventory', 'stock-added', {
+                itemName: item.name,
+                itemId,
+                added: toAdd,
+                newQuantity: newQty
+            });
+            const { branchId, branchName } = stockHistoryBranchFromItem(item);
+            void appendStockHistoryRecord({
+                itemId,
+                itemName: item.name,
+                sku: item.sku,
+                branchId,
+                branchName,
+                quantityBefore: current,
+                quantityAdded: toAdd,
+                quantityAfter: newQty,
+                source: 'add_stock'
+            });
+        } catch (e) {
+            console.error('addStock failed:', e);
+            window.showNotification(e?.message || 'Failed to update stock', 'error');
+        }
+    }
+
     // Edit item
     editItem(itemId) {
         const item = this.items.find(i => i.id === itemId);
@@ -1321,7 +1555,8 @@ class InventoryManager {
             
             // Get the full item data to pass along in case we need to create it in Firebase
             const fullItem = this.items.find(i => i.id === itemId);
-            
+            const oldQty = Math.max(0, parseInt(fullItem?.quantity, 10) || parseInt(fullItem?.stock, 10) || 0);
+
             // Update in Firebase database FIRST to ensure real-time data consistency
             // Pass full item data so it can be created if it doesn't exist in Firebase
             await dataManager.updateInventoryItem(itemId, updates, fullItem);
@@ -1348,7 +1583,24 @@ class InventoryManager {
                     changes: Object.keys(updates).join(', ')
                 });
             }
-            
+
+            const newQty = updates.quantity;
+            const cloudId = itemId && !itemId.startsWith('item_') && !itemId.startsWith('local_');
+            if (cloudId && newQty > oldQty) {
+                const { branchId, branchName } = stockHistoryBranchFromItem(fullItem);
+                void appendStockHistoryRecord({
+                    itemId,
+                    itemName: updates.name,
+                    sku: fullItem?.sku || '',
+                    branchId,
+                    branchName,
+                    quantityBefore: oldQty,
+                    quantityAdded: newQty - oldQty,
+                    quantityAfter: newQty,
+                    source: 'edit_increase'
+                });
+            }
+
             // Recalculate stats with new values
             this.calculateStats();
             
@@ -1371,11 +1623,12 @@ class InventoryManager {
                 const modal = document.querySelector('.pos-modal');
                 if (modal) modal.remove();
                 
-                const confirmed = confirm(
-                    'This item was created locally and cannot be synced to Firebase.\n\n' +
-                    'Click OK to delete this local item and reload the inventory from Firebase.\n\n' +
-                    'All items should now be created directly in Firebase to avoid this issue.'
-                );
+                const confirmed = await window.uiConfirm?.({
+                    title: 'Local-only item',
+                    message: 'This item was created locally and cannot be synced to Firebase. Remove it locally and reload the inventory from the cloud?',
+                    tone: 'warning',
+                    okLabel: 'Remove & reload'
+                });
                 
                 if (confirmed) {
                     // Remove local item
@@ -1419,7 +1672,12 @@ class InventoryManager {
             return;
         }
 
-        const confirmed = confirm(`Are you sure you want to delete "${item.name}"?\n\nThis action cannot be undone.`);
+        const confirmed = await window.uiConfirm?.({
+            title: 'Delete inventory item?',
+            message: `Are you sure you want to delete "${item.name}"? This cannot be undone.`,
+            tone: 'danger',
+            okLabel: 'Delete'
+        });
         if (!confirmed) return;
 
         console.log('🗑️ Starting delete process for item:', itemId, item.name);
@@ -1468,18 +1726,16 @@ class InventoryManager {
     async refresh() {
         console.log('🔄 Starting refresh process...');
         this.showLoading(true);
-        
-        // Clear selected items
         this.selectedItems.clear();
-        
-        // Reload fresh data from Firestore
+
+        this._stopInventoryRealtime();
         await this.loadInventory();
-        
-        // Reapply filters and update display
+        this._startInventoryRealtime();
+
         this.applyFilters();
         this.updateStatsUI();
         this.renderTable();
-        
+
         this.showLoading(false);
         console.log('✅ Refresh complete');
     }

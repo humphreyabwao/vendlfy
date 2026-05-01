@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vendify POS</title>
+    <link rel="icon" type="image/jpeg" href="images/logo/logo_page-0001.jpg">
+    <link rel="apple-touch-icon" href="images/logo/logo_page-0001.jpg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -91,7 +93,7 @@
                         </svg>
                         Settings
                     </a>
-                    <a href="#" class="profile-menu-item">
+                    <a href="#" class="profile-menu-item" id="dashboardLogoutBtn" role="menuitem">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                             <polyline points="16 17 21 12 16 7"></polyline>
@@ -108,7 +110,7 @@
     <aside class="sidebar" id="sidebar">
         <nav class="sidebar-nav">
             <ul class="nav-list">
-                <li class="nav-item">
+                <li class="nav-item" data-nav-page="dashboard">
                     <a href="#dashboard" class="nav-link active" data-page="dashboard">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="3" y="3" width="7" height="7"></rect>
@@ -119,7 +121,7 @@
                         <span>Dashboard</span>
                     </a>
                 </li>
-                <li class="nav-item has-submenu">
+                <li class="nav-item has-submenu" data-nav-page="inventory">
                     <a href="#inventory" class="nav-link" data-page="inventory">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
@@ -132,10 +134,10 @@
                         </svg>
                     </a>
                     <ul class="submenu">
-                        <li><a href="#add-item" data-page="add-item">Add Item</a></li>
+                        <li data-nav-page="add-item"><a href="#add-item" data-page="add-item">Add Item</a></li>
                     </ul>
                 </li>
-                <li class="nav-item has-submenu">
+                <li class="nav-item has-submenu" data-nav-page="pos">
                     <a href="#pos" class="nav-link" data-page="pos">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="9" cy="21" r="1"></circle>
@@ -148,11 +150,11 @@
                         </svg>
                     </a>
                     <ul class="submenu">
-                        <li><a href="#pos" data-page="pos">New Sale</a></li>
-                        <li><a href="#all-sales" data-page="all-sales">All Sales</a></li>
+                        <li data-nav-page="pos"><a href="#pos" data-page="pos">New Sale</a></li>
+                        <li data-nav-page="all-sales"><a href="#all-sales" data-page="all-sales">All Sales</a></li>
                     </ul>
                 </li>
-                <li class="nav-item has-submenu">
+                <li class="nav-item has-submenu" data-nav-page="b2b-sales">
                     <a href="#b2b-sales" class="nav-link" data-page="b2b-sales">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -166,10 +168,10 @@
                         </svg>
                     </a>
                     <ul class="submenu">
-                        <li><a href="#new-b2b-sale" data-page="new-b2b-sale">New B2B Sale</a></li>
+                        <li data-nav-page="new-b2b-sale"><a href="#new-b2b-sale" data-page="new-b2b-sale">New B2B Sale</a></li>
                     </ul>
                 </li>
-                <li class="nav-item has-submenu">
+                <li class="nav-item has-submenu" data-nav-page="orders">
                     <a href="#orders" class="nav-link" data-page="orders">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
@@ -181,11 +183,11 @@
                         </svg>
                     </a>
                     <ul class="submenu">
-                        <li><a href="#new-order" data-page="new-order">New Order</a></li>
-                        <li><a href="#add-supplier" data-page="add-supplier">Add Supplier</a></li>
+                        <li data-nav-page="new-order"><a href="#new-order" data-page="new-order">New Order</a></li>
+                        <li data-nav-page="add-supplier"><a href="#add-supplier" data-page="add-supplier">Add Supplier</a></li>
                     </ul>
                 </li>
-                <li class="nav-item has-submenu">
+                <li class="nav-item has-submenu" data-nav-page="customers">
                     <a href="#customers" class="nav-link" data-page="customers">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
@@ -197,10 +199,43 @@
                         </svg>
                     </a>
                     <ul class="submenu">
-                        <li><a href="#add-customer" data-page="add-customer">Add Customer</a></li>
+                        <li data-nav-page="add-customer"><a href="#add-customer" data-page="add-customer">Add Customer</a></li>
                     </ul>
                 </li>
-                <li class="nav-item has-submenu">
+                <li class="nav-item has-submenu" data-nav-page="tenants">
+                    <a href="#tenants" class="nav-link" data-page="tenants">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                        </svg>
+                        <span>Tenants & Rent</span>
+                        <svg class="submenu-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </a>
+                    <ul class="submenu">
+                        <li data-nav-page="tenants"><a href="#tenants" data-page="tenants">All Tenants</a></li>
+                        <li data-nav-page="tenants"><a href="#tenants" data-page="tenants" data-action="add-tenant">Add Tenant</a></li>
+                        <li data-nav-page="tenants"><a href="#tenants" data-page="tenants" data-action="rent-payments">Rent Payments</a></li>
+                    </ul>
+                </li>
+                <li class="nav-item has-submenu" data-nav-page="ventures">
+                    <a href="#ventures" class="nav-link" data-page="ventures">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+                            <polyline points="16 7 22 7 22 13"></polyline>
+                        </svg>
+                        <span>Ventures</span>
+                        <svg class="submenu-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </a>
+                    <ul class="submenu">
+                        <li data-nav-page="ventures"><a href="#ventures" data-page="ventures">All Ventures</a></li>
+                        <li data-nav-page="ventures"><a href="#ventures" data-page="ventures" data-action="create-venture">Create Venture</a></li>
+                    </ul>
+                </li>
+                <li class="nav-item has-submenu" data-nav-page="expenses">
                     <a href="#expenses" class="nav-link" data-page="expenses">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <line x1="12" y1="1" x2="12" y2="23"></line>
@@ -212,10 +247,30 @@
                         </svg>
                     </a>
                     <ul class="submenu">
-                        <li><a href="#add-expense" data-page="add-expense">Add Expense</a></li>
+                        <li data-nav-page="add-expense"><a href="#add-expense" data-page="add-expense">Add Expense</a></li>
                     </ul>
                 </li>
-                <li class="nav-item">
+                <li class="nav-item has-submenu" data-nav-page="hr-staff">
+                    <a href="#hr-staff" class="nav-link" data-page="hr-staff">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        <span>Staff &amp; HR</span>
+                        <svg class="submenu-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </a>
+                    <ul class="submenu">
+                        <li data-nav-page="hr-staff"><a href="#hr-staff" data-page="hr-staff">All Staff</a></li>
+                        <li data-nav-page="add-staff"><a href="#add-staff" data-page="add-staff">Add Staff</a></li>
+                        <li data-nav-page="pay-staff"><a href="#pay-staff" data-page="pay-staff">Record Payment</a></li>
+                        <li data-nav-page="salary-history"><a href="#salary-history" data-page="salary-history">Payment History</a></li>
+                    </ul>
+                </li>
+                <li class="nav-item" data-nav-page="accounts">
                     <a href="#accounts" class="nav-link" data-page="accounts">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
@@ -224,7 +279,7 @@
                         <span>Accounts</span>
                     </a>
                 </li>
-                <li class="nav-item">
+                <li class="nav-item" data-nav-page="reports">
                     <a href="#reports" class="nav-link" data-page="reports">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M3 3v18h18"></path>
@@ -235,7 +290,7 @@
                         <span>Reports</span>
                     </a>
                 </li>
-                <li class="nav-item">
+                <li class="nav-item" data-nav-page="activities">
                     <a href="#activities" class="nav-link" data-page="activities">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
@@ -243,7 +298,7 @@
                         <span>Activity Log</span>
                     </a>
                 </li>
-                <li class="nav-item has-submenu">
+                <li class="nav-item has-submenu" data-nav-page="admin">
                     <a href="#admin" class="nav-link" data-page="admin">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="3"></circle>
@@ -258,8 +313,21 @@
                         </svg>
                     </a>
                     <ul class="submenu">
-                        <li><a href="#new-user" data-page="new-user">New User</a></li>
+                        <li data-nav-page="new-user"><a href="#new-user" data-page="new-user">New User</a></li>
                     </ul>
+                </li>
+            </ul>
+
+            <!-- Bottom-pinned nav -->
+            <ul class="nav-list nav-list-bottom">
+                <li class="nav-item" data-nav-page="system-settings">
+                    <a href="#system-settings" class="nav-link" data-page="system-settings">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                        <span>Settings</span>
+                    </a>
                 </li>
             </ul>
         </nav>
@@ -394,75 +462,71 @@
                     <h3>Quick Actions</h3>
                 </div>
                 <div class="quick-actions-grid">
-                    <button class="action-card" data-page="pos">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="9" cy="21" r="1"></circle>
-                            <circle cx="20" cy="21" r="1"></circle>
-                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-                        </svg>
-                        <div class="action-content">
-                            <h4>New Sale</h4>
-                            <p>Create a new transaction</p>
+                    <button class="action-card action-card-blue" data-page="pos">
+                        <div class="action-card-icon">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="9" cy="21" r="1"></circle>
+                                <circle cx="20" cy="21" r="1"></circle>
+                                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                            </svg>
                         </div>
+                        <span class="action-card-label">New Sale</span>
                     </button>
 
-                    <button class="action-card" data-page="add-item">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-                            <polyline points="12 12 12 22"></polyline>
-                            <path d="M12 2v10"></path>
-                        </svg>
-                        <div class="action-content">
-                            <h4>Add Product / Stock In</h4>
-                            <p>Add new items to inventory</p>
+                    <button class="action-card action-card-green" data-page="add-item">
+                        <div class="action-card-icon">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                            </svg>
                         </div>
+                        <span class="action-card-label">Add Product</span>
                     </button>
 
-                    <button class="action-card" data-page="add-expense">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="12" y1="1" x2="12" y2="23"></line>
-                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                        </svg>
-                        <div class="action-content">
-                            <h4>Record Expense</h4>
-                            <p>Log business expenses</p>
+                    <button class="action-card action-card-orange" data-page="add-expense">
+                        <div class="action-card-icon">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="1" x2="12" y2="23"></line>
+                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                            </svg>
                         </div>
+                        <span class="action-card-label">Record Expense</span>
                     </button>
 
-                    <button class="action-card" data-page="add-customer">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="12" cy="7" r="4"></circle>
-                        </svg>
-                        <div class="action-content">
-                            <h4>Add Customer</h4>
-                            <p>Register new customer</p>
+                    <button class="action-card action-card-purple" data-page="add-customer">
+                        <div class="action-card-icon">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                                <line x1="19" y1="8" x2="19" y2="14"></line>
+                                <line x1="22" y1="11" x2="16" y2="11"></line>
+                            </svg>
                         </div>
+                        <span class="action-card-label">Add Customer</span>
                     </button>
 
-                    <button class="action-card" data-page="reports">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M3 3v18h18"></path>
-                            <path d="M18 17V9"></path>
-                            <path d="M13 17V5"></path>
-                            <path d="M8 17v-3"></path>
-                        </svg>
-                        <div class="action-content">
-                            <h4>View Reports / Summary</h4>
-                            <p>Access business analytics</p>
+                    <button class="action-card action-card-teal" data-page="reports">
+                        <div class="action-card-icon">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 3v18h18"></path>
+                                <path d="M18 17V9"></path>
+                                <path d="M13 17V5"></path>
+                                <path d="M8 17v-3"></path>
+                            </svg>
                         </div>
+                        <span class="action-card-label">Reports</span>
                     </button>
 
-                    <button class="action-card" onclick="window.print()">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="6 9 6 2 18 2 18 9"></polyline>
-                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-                            <rect x="6" y="14" width="12" height="8"></rect>
-                        </svg>
-                        <div class="action-content">
-                            <h4>Print Daily Report</h4>
-                            <p>Generate and print report</p>
+                    <button class="action-card action-card-slate" onclick="window.print()">
+                        <div class="action-card-icon">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                                <rect x="6" y="14" width="12" height="8"></rect>
+                            </svg>
                         </div>
+                        <span class="action-card-label">Print Report</span>
                     </button>
                 </div>
 
@@ -682,7 +746,7 @@
                                         <th>Supplier</th>
                                         <th>Status</th>
                                         <th>Date Added</th>
-                                        <th>Actions</th>
+                                        <th style="min-width: 200px;">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="inventoryTableBody">
@@ -1866,7 +1930,7 @@
                             </svg>
                             Export
                         </button>
-                        <button class="btn btn-secondary" id="addSupplierBtn" onclick="document.querySelector('[data-page=\'add-supplier\']').click()">
+                        <button class="btn btn-secondary" id="addSupplierBtn" data-page="add-supplier" onclick="document.querySelector('[data-page=\'add-supplier\']').click()">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                                 <circle cx="12" cy="7" r="4"></circle>
@@ -1875,7 +1939,7 @@
                             </svg>
                             Add Supplier
                         </button>
-                        <button class="btn btn-primary" id="createOrderBtn" onclick="document.querySelector('[data-page=\'new-order\']').click()">
+                        <button class="btn btn-primary" id="createOrderBtn" data-page="new-order" onclick="document.querySelector('[data-page=\'new-order\']').click()">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <line x1="12" y1="5" x2="12" y2="19"></line>
                                 <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -1885,6 +1949,11 @@
                     </div>
                 </div>
                 <div class="page-content">
+                    <div class="orders-submodule-tabs" style="display:flex;gap:10px;margin-bottom:1.25rem;flex-wrap:wrap;align-items:center;">
+                        <button type="button" class="b2b-filter-btn active" id="ordersSubmoduleTabOrders">Supplier orders</button>
+                        <button type="button" class="b2b-filter-btn" id="ordersSubmoduleTabStock">Stock history</button>
+                    </div>
+                    <div id="ordersSubmodulePanelOrders">
                     <!-- Stats Cards -->
                     <div class="stats-grid">
                         <div class="stat-card primary">
@@ -1998,6 +2067,42 @@
                         
                         <!-- Pagination -->
                         <div id="ordersPagination" class="pagination-container"></div>
+                    </div>
+                    </div>
+
+                    <div id="ordersSubmodulePanelStock" style="display:none;">
+                        <div class="table-container" style="margin-top:0;">
+                            <div class="table-header">
+                                <div>
+                                    <h3>Stock history</h3>
+                                    <p class="page-subtitle" style="margin:0.35rem 0 0;font-size:13px;">Updates live when stock is added in Inventory. Events are stored in Realtime Database.</p>
+                                </div>
+                            </div>
+                            <div class="table-scroll-wrapper">
+                                <table class="data-table" id="stockHistoryTable">
+                                    <thead>
+                                        <tr>
+                                            <th style="min-width:155px;">When</th>
+                                            <th style="min-width:160px;">Product</th>
+                                            <th style="min-width:100px;">SKU</th>
+                                            <th style="min-width:120px;">Branch</th>
+                                            <th style="min-width:70px;">Before</th>
+                                            <th style="min-width:70px;">Added</th>
+                                            <th style="min-width:70px;">After</th>
+                                            <th style="min-width:120px;">By</th>
+                                            <th style="min-width:110px;">Source</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="stockHistoryTableBody"></tbody>
+                                </table>
+                                <div id="stockHistoryRtdbOffline" class="empty-state-inline" style="display:none;padding:1.5rem;text-align:center;color:var(--text-secondary);">
+                                    Realtime Database is not configured — stock history will appear after RTDB is enabled in Firebase.
+                                </div>
+                                <div id="stockHistoryEmpty" class="empty-state-inline" style="display:none;padding:2rem;text-align:center;">
+                                    <p>No stock additions recorded for this branch view yet.</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2591,6 +2696,710 @@
                 </div>
             </div>
 
+            <!-- Tenants & Rent -->
+            <div class="page" id="tenants-page">
+                <div class="page-header">
+                    <div class="page-header-left">
+                        <h2>Tenants & Rent</h2>
+                        <p class="page-subtitle">Manage tenants and collect rent payments</p>
+                    </div>
+                    <div class="page-header-right">
+                        <button class="btn btn-secondary" id="tenantsViewToggleBtn" data-view="tenants">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            <span id="tenantsViewToggleLabel">View Rent Payments</span>
+                        </button>
+                        <button class="btn btn-primary" id="addTenantBtn" data-perm="tenants.add">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            Add Tenant
+                        </button>
+                    </div>
+                </div>
+
+                <div class="page-content">
+                    <!-- Stats -->
+                    <div class="stats-grid" style="margin-bottom: 1.5rem;">
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span class="stat-label">Total Tenants</span>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                </svg>
+                            </div>
+                            <div class="stat-value" id="tenantsTotalCount">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span class="stat-label">Active Tenants</span>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+                            <div class="stat-value" id="tenantsActiveCount">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span class="stat-label">Rent Collected (This Month)</span>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                </svg>
+                            </div>
+                            <div class="stat-value" id="tenantsCollectedThisMonth">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span class="stat-label">Outstanding Balance</span>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                </svg>
+                            </div>
+                            <div class="stat-value" id="tenantsOutstanding" style="color:#ef4444;">0</div>
+                        </div>
+                    </div>
+
+                    <!-- Filter Row -->
+                    <div class="filter-row" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:1rem;align-items:center;">
+                        <div class="search-filter-wrapper" style="flex:1 1 240px;min-width:240px;margin-bottom:0;">
+                            <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.35-4.35"></path>
+                            </svg>
+                            <input type="text" id="tenantsSearchInput" class="search-input" placeholder="Search by name, phone or house number...">
+                        </div>
+
+                        <select id="tenantsPlanFilter" class="form-input" style="width:auto;min-width:140px;padding:8px 12px;">
+                            <option value="all">All Plans</option>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="quarterly">Quarterly</option>
+                            <option value="yearly">Yearly</option>
+                        </select>
+
+                        <select id="tenantsStatusFilter" class="form-input" style="width:auto;min-width:140px;padding:8px 12px;">
+                            <option value="all">All Statuses</option>
+                            <option value="paid">Paid</option>
+                            <option value="due">Due Soon</option>
+                            <option value="overdue">Overdue</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+
+                        <select id="tenantsSortBy" class="form-input" style="width:auto;min-width:170px;padding:8px 12px;">
+                            <option value="name">Sort: Name (A → Z)</option>
+                            <option value="overdue">Sort: Most Overdue</option>
+                            <option value="outstanding">Sort: Highest Outstanding</option>
+                            <option value="rent">Sort: Highest Rent</option>
+                            <option value="recent">Sort: Recently Added</option>
+                            <option value="lastPayment">Sort: Recently Paid</option>
+                        </select>
+
+                        <button class="btn btn-secondary" id="tenantsClearFiltersBtn" type="button" style="white-space:nowrap;">Clear</button>
+                    </div>
+
+                    <!-- Tenants table -->
+                    <div id="tenantsListView" class="data-table-card">
+                        <div style="overflow-x:auto;">
+                            <table class="data-table" id="tenantsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Phone</th>
+                                        <th>House #</th>
+                                        <th>Plan</th>
+                                        <th>Rent Amount</th>
+                                        <th>Status</th>
+                                        <th>Last Payment</th>
+                                        <th style="text-align:right;min-width:220px;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tenantsTableBody">
+                                    <tr><td colspan="8" style="text-align:center; padding: 32px; color: var(--text-secondary);">Loading tenants...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Rent payments table -->
+                    <div id="rentPaymentsView" class="data-table-card" style="display:none;">
+                        <div style="overflow-x:auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Tenant</th>
+                                        <th>House #</th>
+                                        <th>Period</th>
+                                        <th>Plan</th>
+                                        <th>Amount</th>
+                                        <th>Method</th>
+                                        <th>Recorded By</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rentPaymentsTableBody">
+                                    <tr><td colspan="8" style="text-align:center; padding: 32px; color: var(--text-secondary);">Loading payments...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tenant Modal -->
+            <div class="modal" id="tenantModal">
+                <div class="modal-content" style="max-width: 560px;">
+                    <div class="modal-header">
+                        <h3 id="tenantModalTitle">Add Tenant</h3>
+                        <button class="modal-close" onclick="window.tenantsManager.closeTenantModal()">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                    <form id="tenantForm" onsubmit="return false;">
+                        <input type="hidden" id="tenantId">
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="tenantName">Full Name *</label>
+                                <input type="text" id="tenantName" class="form-input" required placeholder="John Doe">
+                            </div>
+                            <div class="form-group">
+                                <label for="tenantPhone">Phone *</label>
+                                <input type="tel" id="tenantPhone" class="form-input" required placeholder="+254 700 000 000">
+                            </div>
+                        </div>
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="tenantHouseNumber">House / Room # *</label>
+                                <input type="text" id="tenantHouseNumber" class="form-input" required placeholder="A-12">
+                            </div>
+                            <div class="form-group">
+                                <label for="tenantPlan">Payment Plan *</label>
+                                <select id="tenantPlan" class="form-input" required>
+                                    <option value="daily">Daily</option>
+                                    <option value="weekly">Weekly</option>
+                                    <option value="monthly" selected>Monthly</option>
+                                    <option value="quarterly">Quarterly</option>
+                                    <option value="yearly">Yearly</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="tenantRentAmount">Rent Amount *</label>
+                                <input type="number" id="tenantRentAmount" class="form-input" required min="0" step="0.01" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label for="tenantStartDate">Start Date</label>
+                                <input type="date" id="tenantStartDate" class="form-input">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="tenantBranch">Branch *</label>
+                            <select id="tenantBranch" class="form-input" required>
+                                <option value="">— Select branch —</option>
+                            </select>
+                            <small style="color:var(--text-secondary);font-size:11px;">Tenants are scoped to a single branch. This is required for cloud sync.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="tenantNotes">Notes (optional)</label>
+                            <textarea id="tenantNotes" class="form-input" rows="2" placeholder="Any extra info..." style="resize:vertical;"></textarea>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary" onclick="window.tenantsManager.closeTenantModal()">Cancel</button>
+                            <button type="button" class="btn btn-primary" onclick="window.tenantsManager.saveTenant()">Save Tenant</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Collect Rent Modal -->
+            <div class="modal" id="collectRentModal">
+                <div class="modal-content" style="max-width: 480px;">
+                    <div class="modal-header">
+                        <h3>Collect Rent</h3>
+                        <button class="modal-close" onclick="window.tenantsManager.closeCollectRentModal()">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                    <form id="collectRentForm" onsubmit="return false;">
+                        <input type="hidden" id="rentTenantId">
+                        <div id="rentTenantSummary" style="background:var(--bg-secondary);padding:12px 14px;border-radius:8px;margin-bottom:14px;font-size:13px;"></div>
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="rentAmountPaid">Amount Paid *</label>
+                                <input type="number" id="rentAmountPaid" class="form-input" required min="0" step="0.01" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label for="rentPaymentDate">Payment Date *</label>
+                                <input type="date" id="rentPaymentDate" class="form-input" required>
+                            </div>
+                        </div>
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="rentPaymentMethod">Method</label>
+                                <select id="rentPaymentMethod" class="form-input">
+                                    <option value="cash">Cash</option>
+                                    <option value="mpesa">M-Pesa</option>
+                                    <option value="bank">Bank Transfer</option>
+                                    <option value="card">Card</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="rentPeriodLabel">Period Covered</label>
+                                <input type="text" id="rentPeriodLabel" class="form-input" placeholder="e.g. May 2026">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="rentPaymentNotes">Notes (optional)</label>
+                            <textarea id="rentPaymentNotes" class="form-input" rows="2" placeholder="Reference number, etc." style="resize:vertical;"></textarea>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary" onclick="window.tenantsManager.closeCollectRentModal()">Cancel</button>
+                            <button type="button" class="btn btn-primary" onclick="window.tenantsManager.recordRentPayment()">Record Payment</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tenant Rent Reminder Modal -->
+            <div class="modal" id="tenantReminderModal">
+                <div class="modal-content" style="max-width: 520px;">
+                    <div class="modal-header">
+                        <h3>Send Rent Reminder</h3>
+                        <button class="modal-close" onclick="window.tenantsManager.closeReminderModal()">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                    <form id="tenantReminderForm" onsubmit="return false;">
+                        <input type="hidden" id="reminderTenantId">
+                        <div id="reminderTenantSummary" style="background:var(--bg-secondary);padding:12px 14px;border-radius:8px;margin-bottom:14px;font-size:13px;"></div>
+                        <div class="form-group">
+                            <label for="reminderMessage">Message</label>
+                            <textarea id="reminderMessage" class="form-input" rows="6" style="resize:vertical;font-family:inherit;"></textarea>
+                            <small style="color:var(--text-secondary);font-size:11px;">Edit the message before sending. SMS opens your phone's messaging app, WhatsApp opens in a new tab.</small>
+                        </div>
+                        <div class="modal-actions" style="flex-wrap:wrap;gap:8px;">
+                            <button type="button" class="btn btn-secondary" onclick="window.tenantsManager.closeReminderModal()">Cancel</button>
+                            <button type="button" class="btn btn-secondary" onclick="window.tenantsManager.copyReminderMessage()">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:-2px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                Copy
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="window.tenantsManager.sendReminder('sms')" style="background:#3b82f6;color:#fff;border-color:#3b82f6;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:-2px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                                SMS
+                            </button>
+                            <button type="button" class="btn btn-primary" onclick="window.tenantsManager.sendReminder('whatsapp')" style="background:#25D366;border-color:#25D366;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:-2px;"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                                WhatsApp
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tenant Payment History Modal -->
+            <div class="modal" id="tenantHistoryModal">
+                <div class="modal-content" style="max-width: 880px;">
+                    <div class="modal-header">
+                        <h3 id="tenantHistoryTitle">Rent Payment History</h3>
+                        <button class="modal-close" onclick="window.tenantsManager.closeHistoryModal()">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="tenantHistorySummary" style="background:var(--bg-secondary);padding:14px 16px;border-radius:10px;margin-bottom:14px;font-size:13px;"></div>
+
+                    <div class="stats-grid" id="tenantHistoryStats" style="grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;"></div>
+
+                    <div style="background:var(--bg-secondary);padding:14px;border-radius:10px;margin-bottom:14px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+                            <strong style="font-size:13px;">Payments Over Time</strong>
+                            <select id="tenantHistoryRange" class="form-input" style="width:auto;min-width:140px;padding:6px 10px;font-size:12px;">
+                                <option value="6">Last 6 months</option>
+                                <option value="12" selected>Last 12 months</option>
+                                <option value="24">Last 24 months</option>
+                                <option value="all">All time</option>
+                            </select>
+                        </div>
+                        <canvas id="tenantHistoryChart" width="800" height="240" style="width:100%;height:240px;display:block;"></canvas>
+                    </div>
+
+                    <div style="overflow-x:auto;max-height:280px;">
+                        <table class="data-table" style="font-size:13px;">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Period</th>
+                                    <th>Amount</th>
+                                    <th>Method</th>
+                                    <th>Recorded By</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tenantHistoryTableBody">
+                                <tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-secondary);">No payments yet.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" onclick="window.tenantsManager.closeHistoryModal()">Close</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ventures (Side Businesses) - LIST view -->
+            <div class="page" id="ventures-page">
+                <div class="page-header">
+                    <div class="page-header-left">
+                        <h2 id="venturesPageTitle">Ventures</h2>
+                        <p class="page-subtitle">Track daily finances for side businesses (gambling, aviator, betting, etc.)</p>
+                    </div>
+                    <div class="page-header-right">
+                        <button class="btn btn-primary" id="createVentureBtn" data-perm="ventures.create">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            Create Venture
+                        </button>
+                    </div>
+                </div>
+
+                <div class="page-content">
+                    <!-- Roll-up stats -->
+                    <div class="stats-grid" style="margin-bottom: 1.25rem;">
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span class="stat-label">Active Ventures</span>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                </svg>
+                            </div>
+                            <div class="stat-value" id="venturesActiveCount">0</div>
+                        </div>
+                        <div class="stat-card success">
+                            <div class="stat-header">
+                                <span class="stat-label">Today's Net</span>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                </svg>
+                            </div>
+                            <div class="stat-value" id="venturesTodayNet">0</div>
+                        </div>
+                        <div class="stat-card primary">
+                            <div class="stat-header">
+                                <span class="stat-label">This Month Net</span>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                            </div>
+                            <div class="stat-value" id="venturesMonthNet">0</div>
+                        </div>
+                        <div class="stat-card info">
+                            <div class="stat-header">
+                                <span class="stat-label">All-Time Net</span>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                                </svg>
+                            </div>
+                            <div class="stat-value" id="venturesLifetimeNet">0</div>
+                        </div>
+                    </div>
+
+                    <!-- Filter Row -->
+                    <div class="filter-row" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:1rem;align-items:center;">
+                        <div class="search-filter-wrapper" style="flex:1 1 240px;min-width:240px;margin-bottom:0;">
+                            <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.35-4.35"></path>
+                            </svg>
+                            <input type="text" id="venturesSearchInput" class="search-input" placeholder="Search by name or description...">
+                        </div>
+
+                        <select id="venturesCategoryFilter" class="form-input" style="width:auto;min-width:160px;padding:8px 12px;">
+                            <option value="all">All Categories</option>
+                            <option value="gambling">Gambling / Betting</option>
+                            <option value="aviator">Aviator</option>
+                            <option value="lottery">Lottery</option>
+                            <option value="kanyonde">Kanyonde</option>
+                            <option value="mpesa">M-Pesa Agent</option>
+                            <option value="cyber">Cyber Café</option>
+                            <option value="rental">Rental</option>
+                            <option value="farm">Farm / Agriculture</option>
+                            <option value="transport">Transport</option>
+                            <option value="kiosk">Kiosk</option>
+                            <option value="services">Services</option>
+                            <option value="other">Other</option>
+                        </select>
+
+                        <select id="venturesStatusFilter" class="form-input" style="width:auto;min-width:140px;padding:8px 12px;">
+                            <option value="all">All Statuses</option>
+                            <option value="active">Active</option>
+                            <option value="paused">Paused</option>
+                            <option value="closed">Closed</option>
+                        </select>
+
+                        <select id="venturesSortBy" class="form-input" style="width:auto;min-width:170px;padding:8px 12px;">
+                            <option value="name">Sort: Name (A → Z)</option>
+                            <option value="today">Sort: Best Today</option>
+                            <option value="month">Sort: Best This Month</option>
+                            <option value="balance">Sort: Highest Balance</option>
+                            <option value="recent">Sort: Most Recent Entry</option>
+                            <option value="created">Sort: Recently Created</option>
+                        </select>
+
+                        <button class="btn btn-secondary" id="venturesClearFiltersBtn" type="button" style="white-space:nowrap;">Clear</button>
+                    </div>
+
+                    <!-- Ventures list (cards) -->
+                    <div class="ventures-grid" id="venturesGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">
+                        <div class="empty-state" style="grid-column: 1 / -1; text-align:center; padding:48px 16px;">
+                            <p style="color: var(--text-secondary);">Loading ventures…</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ventures - DETAIL view -->
+            <div class="page" id="venture-detail-page">
+                <div class="page-header">
+                    <div class="page-header-left" style="display:flex;align-items:center;gap:12px;">
+                        <button class="btn-icon" onclick="window.venturesManager.backToList()" title="Back to Ventures">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="19" y1="12" x2="5" y2="12"></line>
+                                <polyline points="12 19 5 12 12 5"></polyline>
+                            </svg>
+                        </button>
+                        <div>
+                            <h2 id="ventureDetailName">Venture</h2>
+                            <p class="page-subtitle" id="ventureDetailSubtitle">Daily finances</p>
+                        </div>
+                    </div>
+                    <div class="page-header-right">
+                        <button class="btn btn-secondary" id="editVentureBtn" data-perm="ventures.edit" onclick="window.venturesManager.openEditVenture()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                            Edit
+                        </button>
+                        <button class="btn btn-primary" id="addVentureEntryBtn" data-perm="ventures.entry" onclick="window.venturesManager.openEntryModal()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            Update Daily Finances
+                        </button>
+                    </div>
+                </div>
+
+                <div class="page-content">
+                    <!-- Detail stats -->
+                    <div class="stats-grid" style="margin-bottom: 1.25rem;">
+                        <div class="stat-card success">
+                            <div class="stat-header">
+                                <span class="stat-label">Today</span>
+                            </div>
+                            <div class="stat-value" id="ventureStatToday">0</div>
+                            <div class="stat-subtitle" id="ventureStatTodayDetail" style="font-size:11px;color:var(--text-tertiary);"></div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-header"><span class="stat-label">This Week</span></div>
+                            <div class="stat-value" id="ventureStatWeek">0</div>
+                        </div>
+                        <div class="stat-card primary">
+                            <div class="stat-header"><span class="stat-label">This Month</span></div>
+                            <div class="stat-value" id="ventureStatMonth">0</div>
+                        </div>
+                        <div class="stat-card info">
+                            <div class="stat-header"><span class="stat-label">All-Time Net</span></div>
+                            <div class="stat-value" id="ventureStatAllTime">0</div>
+                            <div class="stat-subtitle" id="ventureStatAllTimeDetail" style="font-size:11px;color:var(--text-tertiary);"></div>
+                        </div>
+                    </div>
+
+                    <!-- Filter range -->
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom: 0.75rem;flex-wrap:wrap;">
+                        <h3 style="font-size:15px;font-weight:600;">Daily Finance History</h3>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                            <button class="activity-filter-btn active" data-venture-range="all">All</button>
+                            <button class="activity-filter-btn" data-venture-range="month">This Month</button>
+                            <button class="activity-filter-btn" data-venture-range="week">This Week</button>
+                            <button class="activity-filter-btn" data-venture-range="today">Today</button>
+                        </div>
+                    </div>
+
+                    <!-- Entries table -->
+                    <div class="data-table-card">
+                        <div class="table-scroll-wrapper">
+                            <div class="table-wrapper-horizontal">
+                                <table class="data-table" id="ventureEntriesTable" style="table-layout:fixed;width:100%;">
+                                <thead>
+                                    <tr>
+                                        <th style="min-width:108px;width:11%;vertical-align:middle;">Date</th>
+                                        <th style="min-width:100px;width:12%;text-align:right;vertical-align:middle;font-variant-numeric:tabular-nums;">Income</th>
+                                        <th style="min-width:100px;width:12%;text-align:right;vertical-align:middle;font-variant-numeric:tabular-nums;">Expenses</th>
+                                        <th style="min-width:100px;width:12%;text-align:right;vertical-align:middle;font-variant-numeric:tabular-nums;">Net</th>
+                                        <th style="min-width:160px;width:26%;vertical-align:middle;">Notes</th>
+                                        <th style="min-width:120px;width:15%;vertical-align:middle;">Recorded By</th>
+                                        <th class="sticky-action-cell" style="text-align:right;vertical-align:middle;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ventureEntriesTableBody">
+                                    <tr><td colspan="7" style="text-align:center; padding:32px; color:var(--text-secondary);">Loading entries...</td></tr>
+                                </tbody>
+                            </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Create / Edit Venture Modal -->
+            <div class="modal" id="ventureModal">
+                <div class="modal-content" style="max-width: 520px;">
+                    <div class="modal-header">
+                        <h3 id="ventureModalTitle">Create Venture</h3>
+                        <button class="modal-close" onclick="window.venturesManager.closeVentureModal()">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                    <form id="ventureForm" onsubmit="return false;">
+                        <input type="hidden" id="ventureId">
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="ventureName">Venture Name *</label>
+                                <input type="text" id="ventureName" class="form-input" required maxlength="60" placeholder="e.g. Aviator Shop">
+                            </div>
+                            <div class="form-group">
+                                <label for="ventureType">Category *</label>
+                                <select id="ventureType" class="form-input" required>
+                                    <option value="gambling">Gambling / Betting</option>
+                                    <option value="aviator">Aviator</option>
+                                    <option value="lottery">Lottery</option>
+                                    <option value="kanyonde">Kanyonde</option>
+                                    <option value="mpesa">M-Pesa Agent</option>
+                                    <option value="cyber">Cyber Café</option>
+                                    <option value="rental">Rental</option>
+                                    <option value="farm">Farm / Agriculture</option>
+                                    <option value="transport">Transport</option>
+                                    <option value="kiosk">Kiosk</option>
+                                    <option value="services">Services</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="ventureOpeningBalance">Opening Balance</label>
+                                <input type="number" id="ventureOpeningBalance" class="form-input" step="0.01" placeholder="0.00">
+                                <small style="font-size:11px;color:var(--text-tertiary);">Starting capital injected into this venture</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="ventureStatus">Status</label>
+                                <select id="ventureStatus" class="form-input">
+                                    <option value="active">Active</option>
+                                    <option value="paused">Paused</option>
+                                    <option value="closed">Closed</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="ventureBranch">Assign Branch (optional)</label>
+                            <select id="ventureBranch" class="form-input">
+                                <option value="">— No specific branch —</option>
+                            </select>
+                            <small style="font-size:11px;color:var(--text-tertiary);">Leave blank to use the currently selected branch.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="ventureDescription">Description (optional)</label>
+                            <textarea id="ventureDescription" class="form-input" rows="2" placeholder="Short description, location, partners…" style="resize:vertical;"></textarea>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary" onclick="window.venturesManager.closeVentureModal()">Cancel</button>
+                            <button type="button" class="btn btn-primary" onclick="window.venturesManager.saveVenture()">Save Venture</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Daily Finance Entry Modal -->
+            <div class="modal" id="ventureEntryModal">
+                <div class="modal-content" style="max-width: 520px;">
+                    <div class="modal-header">
+                        <h3 id="ventureEntryModalTitle">Update Daily Finances</h3>
+                        <button class="modal-close" onclick="window.venturesManager.closeEntryModal()">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                    <form id="ventureEntryForm" onsubmit="return false;">
+                        <input type="hidden" id="ventureEntryId">
+                        <input type="hidden" id="ventureEntryVentureId">
+                        <div id="ventureEntrySummary" style="background:var(--bg-secondary);padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:13px;"></div>
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="ventureEntryDate">Date *</label>
+                                <input type="date" id="ventureEntryDate" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="ventureEntryNet" style="opacity:0.6;">Net (auto)</label>
+                                <input type="text" id="ventureEntryNet" class="form-input" readonly style="background:var(--bg-secondary);" placeholder="0.00">
+                            </div>
+                        </div>
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="ventureEntryIncome">Income / Sales *</label>
+                                <input type="number" id="ventureEntryIncome" class="form-input" required min="0" step="0.01" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label for="ventureEntryExpenses">Expenses / Payouts *</label>
+                                <input type="number" id="ventureEntryExpenses" class="form-input" required min="0" step="0.01" placeholder="0.00">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="ventureEntryNotes">Notes (optional)</label>
+                            <textarea id="ventureEntryNotes" class="form-input" rows="2" placeholder="Customers, big wins/losses, deposits, etc." style="resize:vertical;"></textarea>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary" onclick="window.venturesManager.closeEntryModal()">Cancel</button>
+                            <button type="button" class="btn btn-primary" onclick="window.venturesManager.saveEntry()">Save Entry</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             <!-- Expenses -->
             <div class="page" id="expenses-page">
                 <div class="page-header">
@@ -2857,6 +3666,432 @@
                 </div>
             </div>
 
+            <!-- Staff & HR Module -->
+            <div class="page" id="hr-staff-page">
+                <div class="page-header">
+                    <h2>Staff &amp; HR</h2>
+                    <div class="page-header-actions">
+                        <button class="btn-hr btn-hr-pay" onclick="document.querySelector('[data-page=\'pay-staff\']').click()" data-perm="hr.pay">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="1" x2="12" y2="23"></line>
+                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                            </svg>
+                            Record Payment
+                        </button>
+                        <button class="btn-hr" onclick="document.querySelector('[data-page=\'add-staff\']').click()" data-perm="hr.add">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            Add Staff
+                        </button>
+                    </div>
+                </div>
+                <div class="page-content">
+                    <div class="stats-grid" style="margin-bottom: 2rem;">
+                        <div class="expense-stat-card">
+                            <div class="stat-icon-clean">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                </svg>
+                            </div>
+                            <div class="stat-details">
+                                <span class="stat-value-expense stat-green" id="staffActiveCount">0</span>
+                                <span class="stat-label">Active Staff</span>
+                            </div>
+                        </div>
+                        <div class="expense-stat-card">
+                            <div class="stat-icon-clean">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                </svg>
+                            </div>
+                            <div class="stat-details">
+                                <span class="stat-value-expense stat-orange" id="staffMonthlyPayroll">KSh 0</span>
+                                <span class="stat-label">Est. Monthly Payroll</span>
+                            </div>
+                        </div>
+                        <div class="expense-stat-card">
+                            <div class="stat-icon-clean">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+                            <div class="stat-details">
+                                <span class="stat-value-expense stat-blue" id="staffPaidThisMonth">KSh 0</span>
+                                <span class="stat-label">Paid This Month</span>
+                            </div>
+                        </div>
+                        <div class="expense-stat-card">
+                            <div class="stat-icon-clean">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                            </div>
+                            <div class="stat-details">
+                                <span class="stat-value-expense stat-yellow" id="staffUpcomingPay">0</span>
+                                <span class="stat-label">Pay Due (7 days)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="search-filter-container">
+                        <div class="search-box">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.35-4.35"></path>
+                            </svg>
+                            <input type="text" id="staffSearch" placeholder="Search staff by name, position, phone…">
+                        </div>
+                        <div class="filter-buttons">
+                            <button class="staff-filter-btn active" data-filter="all">All</button>
+                            <button class="staff-filter-btn" data-filter="active">Active</button>
+                            <button class="staff-filter-btn" data-filter="on-leave">On Leave</button>
+                            <button class="staff-filter-btn" data-filter="terminated">Terminated</button>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Position</th>
+                                    <th>Phone</th>
+                                    <th>Salary Type</th>
+                                    <th>Salary</th>
+                                    <th>Next Pay</th>
+                                    <th>Last Payment</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="staffTableBody">
+                                <tr>
+                                    <td colspan="9" style="text-align:center;padding:3rem;color:var(--text-secondary);">
+                                        Loading staff…
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Staff -->
+            <div class="page" id="add-staff-page">
+                <div class="page-header">
+                    <h2 id="addStaffHeader">Add Staff</h2>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">Create a new staff member with salary and pay-cycle information.</p>
+                </div>
+                <div class="page-content">
+                    <div class="expense-form-wrapper">
+                        <form id="addStaffForm" class="expense-form-enhanced">
+                            <div class="form-section">
+                                <h3 class="form-section-title">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="12" cy="7" r="4"></circle>
+                                    </svg>
+                                    Personal Information
+                                </h3>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Full Name <span class="required">*</span></label>
+                                        <input type="text" name="name" class="form-input" placeholder="e.g. Jane Mwangi" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Position / Role</label>
+                                        <input type="text" name="position" class="form-input" placeholder="e.g. Sales Associate, Cashier">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Phone</label>
+                                        <input type="tel" name="phone" class="form-input" placeholder="e.g. +254 7…">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Email</label>
+                                        <input type="email" name="email" class="form-input" placeholder="staff@example.com">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Hire Date</label>
+                                        <input type="date" name="hireDate" class="form-input">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Status</label>
+                                        <select name="status" class="form-input">
+                                            <option value="active">✅ Active</option>
+                                            <option value="on-leave">🏖️ On Leave</option>
+                                            <option value="terminated">❌ Terminated</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-section">
+                                <h3 class="form-section-title">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="12" y1="1" x2="12" y2="23"></line>
+                                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                    </svg>
+                                    Compensation
+                                </h3>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Salary Type <span class="required">*</span></label>
+                                        <select name="salaryType" id="staffSalaryType" class="form-input" required>
+                                            <option value="fixed">💰 Fixed Salary</option>
+                                            <option value="commission">📈 Commission Only</option>
+                                            <option value="hybrid">🔀 Base + Commission</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group" id="staffBaseSalaryGroup">
+                                        <label>Base Salary <span class="required">*</span></label>
+                                        <div class="input-with-icon">
+                                            <span class="input-icon">KSh</span>
+                                            <input type="number" name="baseSalary" class="form-input input-with-prefix" step="0.01" min="0" placeholder="0.00">
+                                        </div>
+                                    </div>
+                                    <div class="form-group" id="staffCommissionGroup" style="display:none;">
+                                        <label>Commission Rate (%)</label>
+                                        <input type="number" name="commissionRate" class="form-input" step="0.01" min="0" max="100" placeholder="e.g. 5">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Pay Cycle</label>
+                                        <select name="payCycle" class="form-input">
+                                            <option value="monthly">📅 Monthly</option>
+                                            <option value="biweekly">📆 Biweekly</option>
+                                            <option value="weekly">🗓️ Weekly</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Pay Day (1–31)</label>
+                                        <input type="number" name="payDay" class="form-input" min="1" max="31" value="1" placeholder="e.g. 30">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-section">
+                                <h3 class="form-section-title">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                    </svg>
+                                    Notes
+                                </h3>
+                                <div class="form-row">
+                                    <div class="form-group form-group-full">
+                                        <label>Notes</label>
+                                        <textarea name="notes" class="form-input" rows="3" placeholder="Optional internal notes about this staff member…"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-actions-enhanced">
+                                <button type="button" class="btn-cancel" onclick="document.querySelector('[data-page=\'hr-staff\']').click()">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                    Cancel
+                                </button>
+                                <button type="submit" class="btn-submit">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                    <span> Add Staff</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Record Salary Payment -->
+            <div class="page" id="pay-staff-page">
+                <div class="page-header">
+                    <h2>Record Salary Payment</h2>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">Pay a staff member. A matching expense entry will be created so accounts stay reconciled.</p>
+                </div>
+                <div class="page-content">
+                    <div class="expense-form-wrapper">
+                        <form id="paySalaryForm" class="expense-form-enhanced">
+                            <div class="form-section">
+                                <h3 class="form-section-title">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="7" r="4"></circle>
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    </svg>
+                                    Staff &amp; Period
+                                </h3>
+                                <div class="form-row">
+                                    <div class="form-group form-group-full">
+                                        <label>Staff Member <span class="required">*</span></label>
+                                        <select name="staffId" id="paySalaryStaff" class="form-input" required>
+                                            <option value="">Select Staff…</option>
+                                        </select>
+                                        <small id="paySalaryStaffInfo" style="color: var(--text-secondary); display:block; margin-top: 0.5rem;"></small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Period Start</label>
+                                        <input type="date" name="periodStart" id="paySalaryPeriodStart" class="form-input">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Period End</label>
+                                        <input type="date" name="periodEnd" id="paySalaryPeriodEnd" class="form-input">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Payment Date <span class="required">*</span></label>
+                                        <input type="date" name="paymentDate" id="paySalaryDate" class="form-input" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-section">
+                                <h3 class="form-section-title">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="12" y1="1" x2="12" y2="23"></line>
+                                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                    </svg>
+                                    Amounts
+                                </h3>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Base Salary</label>
+                                        <div class="input-with-icon">
+                                            <span class="input-icon">KSh</span>
+                                            <input type="number" name="baseAmount" id="paySalaryBase" class="form-input input-with-prefix" step="0.01" min="0" value="0">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Commission</label>
+                                        <div class="input-with-icon">
+                                            <span class="input-icon">KSh</span>
+                                            <input type="number" name="commissionAmount" id="paySalaryCommission" class="form-input input-with-prefix" step="0.01" min="0" value="0">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Bonus</label>
+                                        <div class="input-with-icon">
+                                            <span class="input-icon">KSh</span>
+                                            <input type="number" name="bonus" id="paySalaryBonus" class="form-input input-with-prefix" step="0.01" min="0" value="0">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Deductions</label>
+                                        <div class="input-with-icon">
+                                            <span class="input-icon">KSh</span>
+                                            <input type="number" name="deductions" id="paySalaryDeductions" class="form-input input-with-prefix" step="0.01" min="0" value="0">
+                                        </div>
+                                    </div>
+                                    <div class="hr-net-card">
+                                        <div class="hr-net-label">
+                                            <strong>Net Pay</strong>
+                                            <small>Base + Commission + Bonus &minus; Deductions</small>
+                                        </div>
+                                        <span class="hr-net-amount" id="paySalaryNetTotal">KSh 0</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-section">
+                                <h3 class="form-section-title">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                    </svg>
+                                    Payment Details
+                                </h3>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Payment Method</label>
+                                        <select name="paymentMethod" class="form-input">
+                                            <option value="Cash">💵 Cash</option>
+                                            <option value="M-Pesa">📱 M-Pesa</option>
+                                            <option value="Bank Transfer">🏦 Bank Transfer</option>
+                                            <option value="Cheque">📝 Cheque</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Reference</label>
+                                        <input type="text" name="reference" class="form-input" placeholder="Transaction ID, slip #, etc.">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Auto-record as Expense?</label>
+                                        <select name="createExpense" class="form-input">
+                                            <option value="yes">✅ Yes (recommended)</option>
+                                            <option value="no">No, just log the payment</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group form-group-full">
+                                        <label>Notes</label>
+                                        <textarea name="notes" class="form-input" rows="3" placeholder="Optional notes about this payment…"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-actions-enhanced">
+                                <button type="button" class="btn-cancel" onclick="document.querySelector('[data-page=\'hr-staff\']').click()">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                    Cancel
+                                </button>
+                                <button type="submit" class="btn-submit">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                    Record Payment
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Salary Payment History -->
+            <div class="page" id="salary-history-page">
+                <div class="page-header">
+                    <h2>Salary Payment History</h2>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">Full audit trail of all salary payments across staff.</p>
+                </div>
+                <div class="page-content">
+                    <div class="hr-filter-row">
+                        <label for="historyStaffFilter">Filter by staff:</label>
+                        <select id="historyStaffFilter">
+                            <option value="">All Staff</option>
+                        </select>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="data-table" id="salaryHistoryTable">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Staff</th>
+                                    <th>Period</th>
+                                    <th data-numeric>Base</th>
+                                    <th data-numeric>Commission</th>
+                                    <th data-numeric>Bonus</th>
+                                    <th data-numeric>Deduct.</th>
+                                    <th data-numeric>Net</th>
+                                </tr>
+                            </thead>
+                            <tbody id="salaryHistoryTableBody">
+                                <tr>
+                                    <td colspan="8" style="text-align:center;padding:3rem;color:var(--text-secondary);">
+                                        Loading history…
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- Accounts Module -->
             <div class="page" id="accounts-page">
                 <div class="page-header">
@@ -2865,6 +4100,13 @@
                         <p class="page-subtitle">Comprehensive financial management and reporting</p>
                     </div>
                     <div class="page-header-right">
+                        <button class="btn btn-success" id="addCashInjectionBtn" data-perm="accounts.cashin" title="Record cash float, capital injection or money received outside of sales">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            Add Cash
+                        </button>
                         <button class="btn btn-secondary" id="exportFinancialReportBtn">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -2939,6 +4181,44 @@
                                 <div class="stat-label">Cash Balance</div>
                                 <div class="stat-value" id="cashBalance">KSh 0</div>
                                 <div class="stat-subtitle" id="accountsReceivable">KSh 0 Receivable</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Today's Cash Reconciliation -->
+                    <div class="financial-card" style="margin-top: 1.5rem;">
+                        <div class="card-header">
+                            <div>
+                                <h3>Today's Cash Reconciliation</h3>
+                                <p class="card-subtitle" style="margin: 4px 0 0; font-size: 12px; color: var(--text-secondary);">
+                                    Today's sales + manual cash inflows &minus; expenses = total cash in hand for the day
+                                </p>
+                            </div>
+                            <button class="btn-link" id="viewAllCashInjectionsBtn" type="button">View All Entries</button>
+                        </div>
+                        <div class="card-body">
+                            <div class="reconciliation-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px;">
+                                <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:14px;">
+                                    <div style="font-size:11px;color:#047857;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Sales Today</div>
+                                    <div id="todaySalesTotal" style="font-size:20px;font-weight:700;color:#065f46;margin-top:4px;">0</div>
+                                </div>
+                                <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;">
+                                    <div style="font-size:11px;color:#1d4ed8;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Cash Added Today</div>
+                                    <div id="todayCashInjections" style="font-size:20px;font-weight:700;color:#1e3a8a;margin-top:4px;">0</div>
+                                </div>
+                                <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:14px;">
+                                    <div style="font-size:11px;color:#b91c1c;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Expenses Today</div>
+                                    <div id="todayExpensesTotal" style="font-size:20px;font-weight:700;color:#991b1b;margin-top:4px;">0</div>
+                                </div>
+                                <div style="background:#1e293b;border-radius:10px;padding:14px;color:#fff;">
+                                    <div style="font-size:11px;color:#cbd5e1;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Total Cash In Hand</div>
+                                    <div id="todayCashInHand" style="font-size:22px;font-weight:700;margin-top:4px;">0</div>
+                                </div>
+                            </div>
+
+                            <!-- Today's manual cash entries -->
+                            <div id="todayCashInjectionsList" style="border-top:1px dashed var(--border-color);padding-top:12px;">
+                                <p style="text-align:center;color:var(--text-tertiary);font-size:13px;padding:14px 0;">No cash entries recorded today.</p>
                             </div>
                         </div>
                     </div>
@@ -3064,6 +4344,138 @@
                                     <tr>
                                         <td colspan="6" style="text-align: center; padding: 2rem;">Loading financial data...</td>
                                     </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cash Injection Modal -->
+            <div class="modal" id="cashInjectionModal">
+                <div class="modal-content" style="max-width: 520px;">
+                    <div class="modal-header">
+                        <h3>Add Cash Entry</h3>
+                        <button class="modal-close" onclick="window.cashInjectionsManager.closeModal()">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                    <form id="cashInjectionForm" onsubmit="return false;">
+                        <p style="font-size:12px;color:var(--text-secondary);margin-bottom:14px;">
+                            Use this for cash that comes in <strong>outside of sales</strong> &mdash; cash floats left for staff, owner top-ups, refunds received, loans, etc.
+                        </p>
+
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="cashInjectionAmount">Amount *</label>
+                                <input type="number" id="cashInjectionAmount" class="form-input" required min="0.01" step="0.01" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label for="cashInjectionType">Entry Type *</label>
+                                <select id="cashInjectionType" class="form-input" required>
+                                    <option value="float">Cash Float (start of day)</option>
+                                    <option value="capital">Capital Injection (owner)</option>
+                                    <option value="company">Company Drop-off</option>
+                                    <option value="refund">Refund Received</option>
+                                    <option value="loan">Loan / Advance</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="cashInjectionDate">Date *</label>
+                                <input type="date" id="cashInjectionDate" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="cashInjectionSource">From / Source</label>
+                                <input type="text" id="cashInjectionSource" class="form-input" placeholder="e.g. ABC Co. or Owner">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="cashInjectionNotes">Notes (optional)</label>
+                            <textarea id="cashInjectionNotes" class="form-input" rows="2" placeholder="Reference number, reason, etc." style="resize:vertical;"></textarea>
+                        </div>
+
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary" onclick="window.cashInjectionsManager.closeModal()">Cancel</button>
+                            <button type="button" class="btn btn-primary" onclick="window.cashInjectionsManager.saveEntry()">Save Entry</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- All Cash Injections Modal -->
+            <div class="modal" id="allCashInjectionsModal">
+                <div class="modal-content" style="max-width: 720px;">
+                    <div class="modal-header">
+                        <h3>Cash Entries</h3>
+                        <button class="modal-close" onclick="window.cashInjectionsManager.closeAllEntriesModal()">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                    <div style="padding: 0 22px 22px;">
+                        <!-- Filter row -->
+                        <div class="filter-row" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:center;">
+                            <div class="search-filter-wrapper" style="flex:1 1 200px;min-width:180px;margin-bottom:0;">
+                                <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <path d="m21 21-4.35-4.35"></path>
+                                </svg>
+                                <input type="text" id="cashInjectionsSearchInput" class="search-input" placeholder="Search source / notes...">
+                            </div>
+
+                            <select id="cashInjectionsTypeFilter" class="form-input" style="width:auto;min-width:140px;padding:8px 12px;">
+                                <option value="all">All Types</option>
+                                <option value="float">Cash Float</option>
+                                <option value="capital">Capital Injection</option>
+                                <option value="company_drop">Company Drop-off</option>
+                                <option value="bank_withdrawal">Bank Withdrawal</option>
+                                <option value="loan">Loan / Borrowing</option>
+                                <option value="reimbursement">Reimbursement</option>
+                                <option value="other">Other</option>
+                            </select>
+
+                            <select id="cashInjectionsRangeFilter" class="form-input" style="width:auto;min-width:130px;padding:8px 12px;">
+                                <option value="all">All Time</option>
+                                <option value="today">Today</option>
+                                <option value="week">This Week</option>
+                                <option value="month">This Month</option>
+                                <option value="custom">Custom...</option>
+                            </select>
+
+                            <input type="date" id="cashInjectionsDateFrom" class="form-input" style="width:auto;padding:8px 12px;display:none;" placeholder="From">
+                            <input type="date" id="cashInjectionsDateTo"   class="form-input" style="width:auto;padding:8px 12px;display:none;" placeholder="To">
+
+                            <button class="btn btn-secondary" id="cashInjectionsClearFiltersBtn" type="button" style="white-space:nowrap;">Clear</button>
+                        </div>
+
+                        <!-- Result summary -->
+                        <div id="cashInjectionsResultSummary" style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;"></div>
+
+                        <div style="overflow-x:auto;max-height:60vh;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Type</th>
+                                        <th>Source</th>
+                                        <th>Notes</th>
+                                        <th style="text-align:right;">Amount</th>
+                                        <th>Recorded By</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="allCashInjectionsTableBody">
+                                    <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text-secondary);">Loading...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -3817,6 +5229,68 @@
                                             </div>
                                         </div>
 
+                                        <!-- Tenants Module -->
+                                        <div class="permission-module">
+                                            <div class="module-header">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                                                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                                                </svg>
+                                                <span class="module-name">Tenants & Rent</span>
+                                            </div>
+                                            <div class="permission-items">
+                                                <label class="permission-item editable" data-module="tenants" data-action="view">
+                                                    <input type="checkbox" name="permissions[]" value="tenants.view">
+                                                    <span>View Tenants</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="tenants" data-action="add">
+                                                    <input type="checkbox" name="permissions[]" value="tenants.add">
+                                                    <span>Add Tenants</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="tenants" data-action="edit">
+                                                    <input type="checkbox" name="permissions[]" value="tenants.edit">
+                                                    <span>Edit Tenants</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="tenants" data-action="collect">
+                                                    <input type="checkbox" name="permissions[]" value="tenants.collect">
+                                                    <span>Collect Rent</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="tenants" data-action="delete">
+                                                    <input type="checkbox" name="permissions[]" value="tenants.delete">
+                                                    <span>Delete Tenants</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Ventures Module -->
+                                        <div class="permission-module">
+                                            <div class="module-header">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+                                                    <polyline points="16 7 22 7 22 13"></polyline>
+                                                </svg>
+                                                <span class="module-name">Ventures</span>
+                                            </div>
+                                            <div class="permission-items">
+                                                <label class="permission-item editable" data-module="ventures" data-action="view">
+                                                    <input type="checkbox" name="permissions[]" value="ventures.view">
+                                                    <span>View Ventures</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="ventures" data-action="create">
+                                                    <input type="checkbox" name="permissions[]" value="ventures.create">
+                                                    <span>Create Ventures</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="ventures" data-action="edit">
+                                                    <input type="checkbox" name="permissions[]" value="ventures.edit">
+                                                    <span>Edit Ventures</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="ventures" data-action="entry">
+                                                    <input type="checkbox" name="permissions[]" value="ventures.entry">
+                                                    <span>Record Daily Finances</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
                                         <!-- Expenses Module -->
                                         <div class="permission-module">
                                             <div class="module-header">
@@ -3842,6 +5316,41 @@
                                                 <label class="permission-item editable" data-module="expenses" data-action="delete">
                                                     <input type="checkbox" name="permissions[]" value="expenses.delete">
                                                     <span>Delete Expenses</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Staff & HR Module -->
+                                        <div class="permission-module">
+                                            <div class="module-header">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                                    <circle cx="9" cy="7" r="4"></circle>
+                                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                                </svg>
+                                                <span class="module-name">Staff &amp; HR</span>
+                                            </div>
+                                            <div class="permission-items">
+                                                <label class="permission-item editable" data-module="hr" data-action="view">
+                                                    <input type="checkbox" name="permissions[]" value="hr.view">
+                                                    <span>View Staff</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="hr" data-action="add">
+                                                    <input type="checkbox" name="permissions[]" value="hr.add">
+                                                    <span>Add Staff</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="hr" data-action="edit">
+                                                    <input type="checkbox" name="permissions[]" value="hr.edit">
+                                                    <span>Edit Staff</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="hr" data-action="pay">
+                                                    <input type="checkbox" name="permissions[]" value="hr.pay">
+                                                    <span>Record Salary Payments</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="hr" data-action="delete">
+                                                    <input type="checkbox" name="permissions[]" value="hr.delete">
+                                                    <span>Delete Staff</span>
                                                 </label>
                                             </div>
                                         </div>
@@ -3945,6 +5454,10 @@
                                                 <label class="permission-item editable" data-module="accounts" data-action="export">
                                                     <input type="checkbox" name="permissions[]" value="accounts.export">
                                                     <span>Export Financial Data</span>
+                                                </label>
+                                                <label class="permission-item editable" data-module="accounts" data-action="cashin">
+                                                    <input type="checkbox" name="permissions[]" value="accounts.cashin">
+                                                    <span>Add Cash Inflows (floats, drop-offs)</span>
                                                 </label>
                                             </div>
                                         </div>
@@ -4153,6 +5666,41 @@
                                             </div>
                                         </div>
 
+                                        <!-- Staff & HR Module -->
+                                        <div class="permission-module">
+                                            <div class="module-header">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                                    <circle cx="9" cy="7" r="4"></circle>
+                                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                                </svg>
+                                                <span class="module-name">Staff &amp; HR</span>
+                                            </div>
+                                            <div class="permission-items">
+                                                <label class="permission-item" data-module="hr" data-action="view">
+                                                    <input type="checkbox" disabled>
+                                                    <span>View Staff</span>
+                                                </label>
+                                                <label class="permission-item" data-module="hr" data-action="add">
+                                                    <input type="checkbox" disabled>
+                                                    <span>Add Staff</span>
+                                                </label>
+                                                <label class="permission-item" data-module="hr" data-action="edit">
+                                                    <input type="checkbox" disabled>
+                                                    <span>Edit Staff</span>
+                                                </label>
+                                                <label class="permission-item" data-module="hr" data-action="pay">
+                                                    <input type="checkbox" disabled>
+                                                    <span>Record Salary Payments</span>
+                                                </label>
+                                                <label class="permission-item" data-module="hr" data-action="delete">
+                                                    <input type="checkbox" disabled>
+                                                    <span>Delete Staff</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
                                         <!-- Orders Module -->
                                         <div class="permission-module">
                                             <div class="module-header">
@@ -4297,18 +5845,17 @@
                                 
                                 <div class="form-grid-wide">
                                     <div class="form-group-wide">
-                                        <label for="newUserBranch" class="form-label-enhanced">
+                                        <label class="form-label-enhanced">
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                                                 <circle cx="12" cy="10" r="3"></circle>
                                             </svg>
-                                            Assigned Branch
+                                            Assigned Branch(es)
                                         </label>
-                                        <select id="newUserBranch" name="branchId" class="form-select-enhanced">
-                                            <option value="">🏢 All Branches (Central Access)</option>
-                                            <!-- Branches will be populated dynamically -->
-                                        </select>
-                                        <small class="form-helper-enhanced">Assign user to a specific branch or leave for central access</small>
+                                        <div id="newUserBranchContainer" style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:8px;padding:12px 16px;max-height:180px;overflow-y:auto;">
+                                            <!-- Branch checkboxes populated by populateNewUserBranchSelect() -->
+                                        </div>
+                                        <small class="form-helper-enhanced">Select one or more branches. Leave all unchecked ("All Branches") for central/admin access.</small>
                                     </div>
                                     
                                     <div class="form-group-wide">
@@ -4402,6 +5949,13 @@
                                 <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
                             </svg>
                             Notifications
+                        </button>
+                        <button class="settings-tab" data-tab="brand" data-perm="admin.settings">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                                <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                            </svg>
+                            Brand
                         </button>
                     </div>
 
@@ -4717,6 +6271,102 @@
                             </form>
                         </div>
                     </div>
+
+                    <!-- Brand Settings Tab -->
+                    <div class="settings-content" id="brand-tab">
+                        <div class="settings-section">
+                            <h3 class="section-title">Business Brand & Receipts</h3>
+                            <p style="color: var(--text-secondary); font-size: 13px; margin-top: -4px; margin-bottom: 20px;">
+                                These details appear on every receipt, invoice, quotation and exported report. Changes propagate in real time to all signed-in users.
+                            </p>
+
+                            <form id="brandForm" class="settings-form" onsubmit="return false;">
+                                <div class="form-grid-2">
+                                    <div class="form-group">
+                                        <label for="brandName">Business Name *</label>
+                                        <input type="text" id="brandName" class="form-input" required maxlength="60" placeholder="e.g. ACME Stores Ltd">
+                                        <small style="font-size: 11px; color: var(--text-tertiary);">Shown at the top of every receipt and invoice.</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="brandTagline">Tagline</label>
+                                        <input type="text" id="brandTagline" class="form-input" maxlength="80" placeholder="e.g. Quality you can trust">
+                                    </div>
+                                </div>
+
+                                <div class="form-grid-2">
+                                    <div class="form-group">
+                                        <label for="brandPhone">Business Phone</label>
+                                        <input type="tel" id="brandPhone" class="form-input" placeholder="+254 700 000 000">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="brandEmail">Business Email</label>
+                                        <input type="email" id="brandEmail" class="form-input" placeholder="info@yourbusiness.com">
+                                    </div>
+                                </div>
+
+                                <div class="form-grid-2">
+                                    <div class="form-group">
+                                        <label for="brandWebsite">Website</label>
+                                        <input type="url" id="brandWebsite" class="form-input" placeholder="https://yourbusiness.com">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="brandTaxId">Tax / VAT ID (PIN)</label>
+                                        <input type="text" id="brandTaxId" class="form-input" placeholder="e.g. P051234567A">
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="brandAddress">Business Address</label>
+                                    <textarea id="brandAddress" class="form-input" rows="2" placeholder="Street, City, Country" style="resize: vertical;"></textarea>
+                                </div>
+
+                                <div class="form-grid-2">
+                                    <div class="form-group">
+                                        <label for="brandCurrency">Currency Code</label>
+                                        <input type="text" id="brandCurrency" class="form-input" maxlength="6" placeholder="KES" style="text-transform: uppercase;">
+                                        <small style="font-size: 11px; color: var(--text-tertiary);">Used as a prefix on amounts (KES, USD, EUR…).</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="brandLogoUrl">Logo URL (optional)</label>
+                                        <input type="text" id="brandLogoUrl" class="form-input" placeholder="images/logo/logo_page-0001.jpg or https://...logo.png">
+                                        <small style="font-size:11px;color:var(--text-tertiary);">Leave blank to use the default logo bundled at <code>images/logo/logo_page-0001.jpg</code>. Accepts a relative path or an https:// URL.</small>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="brandReceiptHeader">Receipt Header Note</label>
+                                    <textarea id="brandReceiptHeader" class="form-input" rows="2" placeholder="Optional message shown above each receipt (e.g. 'Welcome!')" style="resize: vertical;"></textarea>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="brandReceiptFooter">Receipt Footer Note</label>
+                                    <textarea id="brandReceiptFooter" class="form-input" rows="2" placeholder="Thank you message printed at the bottom of every receipt" style="resize: vertical;"></textarea>
+                                </div>
+
+                                <!-- Live preview -->
+                                <div class="settings-section" style="background: var(--bg-secondary); border: 1px dashed var(--border-color); border-radius: 10px; padding: 18px; margin-top: 8px;">
+                                    <h4 style="font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">Live Receipt Preview</h4>
+                                    <div id="brandReceiptPreview" style="background: #fff; color: #111; max-width: 320px; margin: 0 auto; padding: 16px; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.5; border: 1px solid #e5e7eb;">
+                                        <!-- Preview rendered by brand-ui.js -->
+                                    </div>
+                                </div>
+
+                                <div class="form-actions">
+                                    <button type="button" class="btn btn-secondary" onclick="brandUI.resetBrandForm()">
+                                        Reset to Saved
+                                    </button>
+                                    <button type="button" class="btn btn-primary" onclick="brandUI.saveBrandForm()">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                            <polyline points="7 3 7 8 15 8"></polyline>
+                                        </svg>
+                                        Save Brand Settings
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -4781,7 +6431,7 @@
 
     <!-- User Modal -->
     <div class="modal" id="userModal">
-        <div class="modal-content">
+        <div class="modal-content modal-lg">
             <div class="modal-header">
                 <h3 id="userModalTitle">Add New User</h3>
                 <button class="modal-close" onclick="closeUserModal()">
@@ -4812,18 +6462,30 @@
                 
                 <div class="form-group">
                     <label for="userRole">Role *</label>
-                    <select id="userRole" name="role" required>
+                    <select id="userRole" name="role" required onchange="updateUserModalRolePermissions()">
                         <option value="">Select Role</option>
-                        <option value="admin">Admin</option>
-                        <option value="manager">Manager</option>
-                        <option value="cashier">Cashier</option>
-                        <option value="viewer">Viewer</option>
+                        <option value="admin">Admin — full access</option>
+                        <option value="manager">Manager — branch operations</option>
+                        <option value="cashier">Cashier — POS &amp; sales</option>
+                        <option value="viewer">Viewer — read-only</option>
+                        <option value="custom">Custom — edit permissions below</option>
                     </select>
+                    <div id="userModalRoleHelp" style="font-size:12px;color:var(--text-secondary);margin-top:6px;display:none;"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>Permissions</label>
+                    <p style="font-size:12px;color:var(--text-secondary);margin:0 0 8px;">Pick a role template above, then add or remove checks. Changes switch the role to <strong>Custom</strong> unless it still matches a template exactly.</p>
+                    <div id="userModalPermissionsWrap" style="max-height:280px;overflow-y:auto;border:1px solid var(--border-color);border-radius:8px;padding:10px;background:var(--bg-secondary);"></div>
                 </div>
                 
                 <div class="form-group">
-                    <label for="userBranch">Branch</label>
-                    <select id="userBranch" name="branchId">
+                    <label>Branch(es)</label>
+                    <div id="userModalBranchContainer" style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:6px;padding:10px 14px;max-height:160px;overflow-y:auto;">
+                        <!-- Branch checkboxes populated dynamically -->
+                    </div>
+                    <!-- Hidden legacy select kept so older code that reads [name="branchId"] still works -->
+                    <select id="userBranch" name="branchId" style="display:none;">
                         <option value="">All Branches</option>
                     </select>
                 </div>
@@ -5028,108 +6690,160 @@
 
     <!-- Firebase SDK -->
     <script type="module" src="js/firebase-config.js"></script>
-    
-    <!-- Auth Guard - Check authentication status -->
+    <script type="module" src="js/ui-modal.js"></script>
+
+    <!-- Session + Auth guard (must load first) -->
     <script type="module">
-        import { auth, onAuthStateChanged } from './js/firebase-config.js';
-        import userManager from './js/user-manager.js';
+        import sessionManager from './js/session-manager.js';
+        import permissionGuard from './js/permission-guard.js';
         import auditLogger from './js/audit-logger.js';
-        
-        // Authentication state handler
-        onAuthStateChanged(auth, (user) => {
-            if (!user) {
-                // User is not signed in, redirect to login
-                console.log('❌ User not authenticated, redirecting to login...');
-                window.location.href = 'index.html';
-            } else {
-                // User is signed in
-                console.log('✅ User authenticated:', user.email);
-                
-                // Extract user name
-                const userName = user.displayName || user.email.split('@')[0] || 'User';
-                
-                // Store user info in localStorage for quick access
-                const userInfo = {
-                    id: user.uid,
-                    email: user.email,
-                    name: userName,
-                    displayName: user.displayName || userName
-                };
-                localStorage.setItem('currentUser', JSON.stringify(userInfo));
-                
-                // Initialize audit logger
-                auditLogger.initialize(userInfo);
-                
-                // Log login activity
-                auditLogger.logLogin(user.email, userName);
-                
-                // Update UI with user info
-                const profileName = document.querySelector('.profile-btn span');
-                if (profileName) {
-                    profileName.textContent = userName;
-                }
-                
-                // Update greeting with user name
-                const greetingElement = document.getElementById('greetingText');
-                if (greetingElement) {
-                    const hour = new Date().getHours();
-                    let greeting = 'Good Evening';
-                    if (hour < 12) {
-                        greeting = 'Good Morning';
-                    } else if (hour < 18) {
-                        greeting = 'Good Afternoon';
-                    }
-                    const capitalizedName = userName.charAt(0).toUpperCase() + userName.slice(1);
-                    greetingElement.textContent = `${greeting}, ${capitalizedName}`;
-                }
-                
-                // Initialize user activity tracking
-                const updateActivity = async () => {
-                    try {
-                        // Find user by email in Firestore
-                        const users = await userManager.loadUsers();
-                        const currentUser = users.find(u => u.email === user.email);
-                        
-                        if (currentUser) {
-                            await userManager.updateUserActivity(currentUser.id);
-                            console.log('🟢 User activity updated');
-                        }
-                    } catch (error) {
-                        console.error('❌ Error updating user activity:', error);
-                    }
-                };
-                
-                // Update activity immediately on login
-                updateActivity();
-                
-                // Update activity every 2 minutes
-                setInterval(updateActivity, 2 * 60 * 1000);
-                
-                // Add logout functionality
-                const logoutLink = document.querySelector('.profile-menu-item:last-child');
-                if (logoutLink) {
-                    logoutLink.addEventListener('click', async (e) => {
-                        e.preventDefault();
-                        try {
-                            // Log logout activity before signing out
-                            await auditLogger.logLogout(user.email, userName);
-                            
-                            const { signOut } = await import('./js/firebase-config.js');
-                            await signOut(auth);
-                            console.log('✅ User signed out');
-                            window.location.href = 'index.html';
-                        } catch (error) {
-                            console.error('❌ Error signing out:', error);
-                        }
-                    });
-                }
+        import userManager from './js/user-manager.js';
+        import { auth, signOut } from './js/firebase-config.js';
+
+        // Show a loading overlay while we resolve who the user is
+        const _overlay = document.createElement('div');
+        _overlay.id = 'authOverlay';
+        _overlay.style.cssText = `
+            position:fixed;inset:0;background:var(--bg-primary,#fff);
+            display:flex;flex-direction:column;align-items:center;justify-content:center;
+            z-index:99999;font-family:'Montserrat',sans-serif;`;
+        _overlay.innerHTML = `
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2">
+                <circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle>
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+            </svg>
+            <p style="margin-top:16px;font-size:16px;font-weight:600;color:#2563eb;">Vendify</p>
+            <p style="margin-top:6px;font-size:13px;color:#64748b;">Loading your session...</p>`;
+        document.body.appendChild(_overlay);
+
+        // Bootstrap overlay: shown when we detect no Firestore profile exists yet
+        const _bootstrapOverlay = document.createElement('div');
+        _bootstrapOverlay.id = 'bootstrapOverlay';
+        _bootstrapOverlay.style.cssText = `
+            position:fixed;inset:0;background:rgba(0,0,0,.6);
+            display:none;flex-direction:column;align-items:center;justify-content:center;
+            z-index:99999;font-family:'Montserrat',sans-serif;`;
+        _bootstrapOverlay.innerHTML = `
+            <div style="background:#fff;border-radius:16px;padding:36px;max-width:440px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" style="margin-bottom:12px;">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+                <h2 style="font-size:20px;font-weight:700;color:#1e293b;margin-bottom:8px;">First Admin Setup</h2>
+                <p style="font-size:13px;color:#64748b;margin-bottom:24px;">
+                    No admin account exists yet. Click below to claim this account as the first administrator.
+                </p>
+                <input id="bootstrapName" type="text" placeholder="Your full name"
+                    style="width:100%;padding:12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;font-family:'Montserrat',sans-serif;margin-bottom:12px;box-sizing:border-box;">
+                <button id="bootstrapBtn"
+                    style="width:100%;padding:14px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;font-family:'Montserrat',sans-serif;">
+                    Make Me Admin
+                </button>
+                <div id="bootstrapError" style="margin-top:12px;color:#ef4444;font-size:13px;"></div>
+            </div>`;
+        document.body.appendChild(_bootstrapOverlay);
+
+        document.getElementById('bootstrapBtn').addEventListener('click', async () => {
+            const name = document.getElementById('bootstrapName').value.trim();
+            const errEl = document.getElementById('bootstrapError');
+            errEl.textContent = '';
+            document.getElementById('bootstrapBtn').disabled = true;
+            document.getElementById('bootstrapBtn').textContent = 'Setting up...';
+            try {
+                await sessionManager.bootstrapFirstAdmin({ fullName: name });
+                _bootstrapOverlay.style.display = 'none';
+                // Session listener will fire and pick up the new profile
+            } catch (e) {
+                errEl.textContent = e.message;
+                document.getElementById('bootstrapBtn').disabled = false;
+                document.getElementById('bootstrapBtn').textContent = 'Make Me Admin';
             }
         });
+
+        // ---- Session listener ----
+        sessionManager.onChange(async (profile) => {
+            if (!sessionManager.isSignedIn()) {
+                // Not signed in – redirect (with short delay to avoid flicker)
+                setTimeout(() => { window.location.href = 'index.html'; }, 100);
+                return;
+            }
+
+            // Auth user exists but no Firestore profile – check if first-time setup
+            if (sessionManager.isProfileMissing()) {
+                const { db, doc, getDoc } = await import('./js/firebase-config.js');
+                let systemDoc;
+                try { systemDoc = await getDoc(doc(db, 'system', 'config')); } catch (e) { systemDoc = null; }
+                if (!systemDoc || !systemDoc.exists()) {
+                    // First ever user → show bootstrap flow
+                    document.getElementById('authOverlay').style.display = 'none';
+                    _bootstrapOverlay.style.display = 'flex';
+                } else {
+                    // System exists but no profile – account not provisioned yet
+                    await window.uiAlert?.({
+                        title: 'Account not provisioned',
+                        message: 'Your account has not been set up in this system. Please contact your administrator.',
+                        tone: 'warning'
+                    });
+                    try { await signOut(auth); } catch (e) {}
+                    window.location.href = 'index.html';
+                }
+                return;
+            }
+
+            // Profile loaded – apply gating
+            _overlay.style.display = 'none';
+            _bootstrapOverlay.style.display = 'none';
+
+            const user = sessionManager.getAuthUser();
+            const userName = profile.fullName || user.displayName || (user.email || '').split('@')[0];
+
+            // Sync to localStorage for legacy code
+            localStorage.setItem('currentUser', JSON.stringify({
+                id: user.uid, uid: user.uid, email: profile.email || user.email,
+                name: userName, displayName: userName,
+                role: profile.role || 'viewer',
+                branchIds: Array.isArray(profile.branchIds) ? profile.branchIds : (profile.branchId ? [profile.branchId] : []),
+                permissions: Array.isArray(profile.permissions) ? profile.permissions : []
+            }));
+
+            // Update header name
+            const profileNameEl = document.querySelector('.profile-btn span');
+            if (profileNameEl) profileNameEl.textContent = userName;
+
+            // Init audit logger
+            if (auditLogger?.initialize) auditLogger.initialize({ id: user.uid, uid: user.uid, email: user.email, name: userName });
+
+            // Apply permission-based UI gating
+            permissionGuard.applyToUI();
+
+            // Constrain branch selector to allowed branches
+            if (typeof window.populateBranchSelector === 'function') window.populateBranchSelector();
+
+            // Activity tracking
+            const updateActivity = async () => {
+                try {
+                    const userId = profile.id || profile.uid || user.uid;
+                    if (userId) await userManager.updateUserActivity(userId);
+                } catch (e) {}
+            };
+            updateActivity();
+            setInterval(updateActivity, 2 * 60 * 1000);
+        });
+
+        // Start the session manager
+        sessionManager.init();
+
+        // Header logout is wired in js/app.js (initProfileDropdown) so it always binds reliably.
     </script>
-    
+
     <script type="module" src="js/branch-manager.js"></script>
     <script type="module" src="js/data-manager.js"></script>
     <script type="module" src="js/branch-ui.js"></script>
+    <script type="module" src="js/brand-manager.js"></script>
+    <script type="module" src="js/brand-ui.js"></script>
+    <script type="module" src="js/tenants.js"></script>
+    <script type="module" src="js/cash-injections.js"></script>
+    <script type="module" src="js/ventures.js"></script>
+    <script type="module" src="js/hr.js"></script>
     <script type="module" src="js/user-ui.js"></script>
     <script type="module" src="js/audit-ui.js"></script>
     <script type="module" src="js/activity-tracker.js"></script>

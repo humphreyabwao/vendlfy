@@ -2,9 +2,292 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow all reads and writes for testing
+
+    // ---------- Helper functions ----------
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Read the caller's Firestore profile (at /users/{auth.uid})
+    function callerProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Safely fetch profile; returns null if not exists or error
+    function callerProfileSafe() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? callerProfile()
+        : null;
+    }
+
+    function isActive() {
+      let p = callerProfileSafe();
+      return signedIn() && p != null && p.status == 'active';
+    }
+
+    function isAdmin() {
+      let p = callerProfileSafe();
+      return signedIn() && p != null && p.role == 'admin' && p.status == 'active';
+    }
+
+    // Check if the caller is allowed to access a specific branchId.
+    // Admins can access any branch. Others must have the branchId in their branchIds array.
+    // An empty/missing branchIds array means the user has NO branch assigned (deny, not allow-all).
+    function canAccessBranch(branchId) {
+      let p = callerProfileSafe();
+      return p != null
+        && (
+          p.role == 'admin'
+          || (
+            branchId != null
+            && p.branchIds is list
+            && (branchId in p.branchIds)
+          )
+        );
+    }
+
+    // Check if the caller holds a specific permission key
+    function hasPerm(perm) {
+      let p = callerProfileSafe();
+      return p != null
+        && (
+          p.role == 'admin'
+          || (p.permissions is list && (perm in p.permissions))
+        );
+    }
+
+    // ---------- System config (bootstrap marker) ----------
+    // Anyone signed in may read; only admin may write (or no profile = first-time setup)
+    match /system/{docId} {
+      allow read: if signedIn();
+      allow write: if isAdmin()
+        || !exists(/databases/$(database)/documents/system/config);
+    }
+
+    // ---------- Users ----------
+    // Document ID MUST equal the auth UID (enforced by createUser using setDoc(doc(db,'users',uid)))
+    match /users/{uid} {
+      // Admin: full access
+      allow read, list: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin()
+        // Users may update their own non-sensitive fields (e.g. lastActive, profilePictureUrl)
+        || (signedIn() && request.auth.uid == uid
+            && !('role' in request.resource.data.diff(resource.data).affectedKeys())
+            && !('permissions' in request.resource.data.diff(resource.data).affectedKeys())
+            && !('branchIds' in request.resource.data.diff(resource.data).affectedKeys())
+            && !('status' in request.resource.data.diff(resource.data).affectedKeys()));
+      allow delete: if isAdmin();
+
+      // A user may always read their own document (needed by session-manager to load profile)
+      allow get: if signedIn() && request.auth.uid == uid;
+    }
+
+    // ---------- Branches ----------
+    match /branches/{branchId} {
+      allow read, list: if isActive();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ---------- Inventory ----------
+    match /inventory/{itemId} {
+      allow read, list: if isActive() && canAccessBranch(resource.data.branchId);
+      allow create: if isActive()
+        && canAccessBranch(request.resource.data.branchId)
+        && hasPerm('inventory.add');
+      allow update: if isActive()
+        && canAccessBranch(resource.data.branchId)
+        && hasPerm('inventory.edit');
+      allow delete: if isActive()
+        && canAccessBranch(resource.data.branchId)
+        && hasPerm('inventory.delete');
+    }
+
+    // ---------- Sales ----------
+    match /sales/{saleId} {
+      allow read, list: if isActive() && canAccessBranch(resource.data.branchId);
+      allow create: if isActive()
+        && canAccessBranch(request.resource.data.branchId)
+        && hasPerm('pos.create');
+      allow update: if isActive()
+        && canAccessBranch(resource.data.branchId)
+        && (hasPerm('sales.delete') || hasPerm('pos.create'));
+      allow delete: if isActive()
+        && canAccessBranch(resource.data.branchId)
+        && hasPerm('sales.delete');
+    }
+
+    // ---------- B2B Sales ----------
+    match /b2bSales/{id} {
+      allow read, list: if isActive() && canAccessBranch(resource.data.branchId);
+      allow create: if isActive()
+        && canAccessBranch(request.resource.data.branchId)
+        && hasPerm('b2b.create');
+      allow update: if isActive()
+        && canAccessBranch(resource.data.branchId)
+        && hasPerm('b2b.edit');
+      allow delete: if isAdmin();
+    }
+
+    // ---------- Customers ----------
+    match /customers/{customerId} {
+      allow read, list: if isActive() && canAccessBranch(resource.data.branchId);
+      allow create: if isActive()
+        && canAccessBranch(request.resource.data.branchId)
+        && hasPerm('customers.add');
+      allow update: if isActive()
+        && canAccessBranch(resource.data.branchId)
+        && hasPerm('customers.edit');
+      allow delete: if isActive()
+        && canAccessBranch(resource.data.branchId)
+        && hasPerm('customers.delete');
+    }
+
+    // ---------- Expenses ----------
+    match /expenses/{expenseId} {
+      allow read, list: if isActive() && canAccessBranch(resource.data.branchId);
+      allow create: if isActive()
+        && canAccessBranch(request.resource.data.branchId)
+        && hasPerm('expenses.add');
+      allow update: if isActive()
+        && canAccessBranch(resource.data.branchId)
+        && hasPerm('expenses.edit');
+      allow delete: if isActive()
+        && canAccessBranch(resource.data.branchId)
+        && hasPerm('expenses.delete');
+    }
+
+    // ---------- Orders ----------
+    match /orders/{orderId} {
+      allow read, list: if isActive() && canAccessBranch(resource.data.branchId);
+      allow create: if isActive()
+        && canAccessBranch(request.resource.data.branchId)
+        && hasPerm('orders.create');
+      allow update: if isActive()
+        && canAccessBranch(resource.data.branchId)
+        && hasPerm('orders.edit');
+      allow delete: if isAdmin();
+    }
+
+    // ---------- Suppliers ----------
+    match /suppliers/{supplierId} {
+      allow read, list: if isActive() && canAccessBranch(resource.data.branchId);
+      allow create: if isActive()
+        && canAccessBranch(request.resource.data.branchId)
+        && hasPerm('suppliers.add');
+      allow update: if isActive()
+        && canAccessBranch(resource.data.branchId)
+        && hasPerm('suppliers.edit');
+      allow delete: if isActive()
+        && canAccessBranch(resource.data.branchId)
+        && hasPerm('suppliers.delete');
+    }
+
+    // ---------- Accounts ----------
+    match /accounts/{accountId} {
+      allow read, list: if isActive() && canAccessBranch(resource.data.branchId);
+      allow create, update: if isActive()
+        && canAccessBranch(request.resource.data.branchId)
+        && hasPerm('accounts.view');
+      allow delete: if isAdmin();
+    }
+
+    // ---------- Tenants ----------
+    match /tenants/{tenantId} {
+      allow read, list: if isActive() && canAccessBranch(resource.data.branchId);
+      allow create: if isActive()
+        && canAccessBranch(request.resource.data.branchId)
+        && hasPerm('tenants.add');
+      allow update: if isActive()
+        && canAccessBranch(resource.data.branchId)
+        && (hasPerm('tenants.edit') || hasPerm('tenants.collect'));
+      allow delete: if isActive()
+        && canAccessBranch(resource.data.branchId)
+        && hasPerm('tenants.delete');
+    }
+
+    // ---------- Rent payments ----------
+    match /rentPayments/{paymentId} {
+      allow read, list: if isActive() && canAccessBranch(resource.data.branchId);
+      allow create: if isActive()
+        && canAccessBranch(request.resource.data.branchId)
+        && hasPerm('tenants.collect');
+      allow update, delete: if isAdmin();
+    }
+
+    // ---------- Manual cash inflows (floats, drop-offs, capital injections) ----------
+    match /cashInjections/{entryId} {
+      allow read, list: if isActive() && canAccessBranch(resource.data.branchId);
+      allow create: if isActive()
+        && canAccessBranch(request.resource.data.branchId)
+        && hasPerm('accounts.cashin');
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ---------- Ventures (side businesses: gambling, aviator, etc.) ----------
+    match /ventures/{ventureId} {
+      allow read, list: if isActive() && canAccessBranch(resource.data.branchId);
+      allow create: if isActive()
+        && canAccessBranch(request.resource.data.branchId)
+        && hasPerm('ventures.create');
+      allow update: if isActive()
+        && canAccessBranch(resource.data.branchId)
+        && (hasPerm('ventures.edit') || hasPerm('ventures.create'));
+      allow delete: if isAdmin();
+    }
+
+    match /ventureEntries/{entryId} {
+      allow read, list: if isActive() && canAccessBranch(resource.data.branchId);
+      allow create: if isActive()
+        && canAccessBranch(request.resource.data.branchId)
+        && hasPerm('ventures.entry');
+      allow update: if isActive()
+        && canAccessBranch(resource.data.branchId)
+        && (hasPerm('ventures.entry') || hasPerm('ventures.edit'));
+      allow delete: if isAdmin();
+    }
+
+    // ---------- Staff (HR) ----------
+    match /staff/{staffId} {
+      allow read, list: if isActive() && canAccessBranch(resource.data.branchId);
+      allow create: if isActive()
+        && canAccessBranch(request.resource.data.branchId)
+        && hasPerm('hr.add');
+      allow update: if isActive()
+        && canAccessBranch(resource.data.branchId)
+        && (hasPerm('hr.edit') || hasPerm('hr.pay'));
+      allow delete: if isActive()
+        && canAccessBranch(resource.data.branchId)
+        && hasPerm('hr.delete');
+    }
+
+    // ---------- Salary payments ----------
+    match /salaryPayments/{paymentId} {
+      allow read, list: if isActive() && canAccessBranch(resource.data.branchId);
+      allow create: if isActive()
+        && canAccessBranch(request.resource.data.branchId)
+        && hasPerm('hr.pay');
+      allow update, delete: if isAdmin();
+    }
+
+    // ---------- Activity & Audit logs ----------
+    match /activities/{activityId} {
+      allow read, list: if isActive();
+      allow create: if isActive();
+      allow update, delete: if isAdmin();
+    }
+
+    match /auditLogs/{logId} {
+      allow read, list: if isAdmin();
+      allow create: if isActive();
+      allow update, delete: if isAdmin();
+    }
+
+    // ---------- Catch-all: deny everything else ----------
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }

@@ -2,6 +2,8 @@
 import dataManager from './data-manager.js';
 import branchManager from './branch-manager.js';
 import auditLogger from './audit-logger.js';
+import brandManager from './brand-manager.js';
+import { setBtnState, friendlyError } from './ui-feedback.js';
 
 class NewB2BSaleManager {
     constructor() {
@@ -526,15 +528,21 @@ class NewB2BSaleManager {
     }
 
     // Clear cart
-    clearCart() {
+    async clearCart() {
         if (this.cart.length === 0) return;
-        
-        if (confirm('Are you sure you want to clear the entire cart?')) {
-            this.cart = [];
-            this.renderCart();
-            this.updateTotals();
-            this.showNotification('Cart cleared', 'info');
-        }
+
+        const ok = await window.uiConfirm?.({
+            title: 'Clear the cart?',
+            message: 'All items in the cart will be removed.',
+            tone: 'warning',
+            okLabel: 'Clear cart'
+        });
+        if (!ok) return;
+
+        this.cart = [];
+        this.renderCart();
+        this.updateTotals();
+        this.showNotification('Cart cleared', 'info');
     }
 
     // Update discount
@@ -587,31 +595,11 @@ class NewB2BSaleManager {
             return;
         }
 
-        // Show loading state on both buttons
+        // Drive both Complete-Sale buttons through loading → success/error.
         const completeBtnTop = document.getElementById('completeB2BSale');
         const completeBtnBottom = document.getElementById('completeB2BSaleBottom');
-        
-        if (completeBtnTop) {
-            completeBtnTop.disabled = true;
-            completeBtnTop.classList.add('loading');
-            completeBtnTop.innerHTML = `
-                <svg class="spinner" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"></circle>
-                </svg>
-                Processing...
-            `;
-        }
-        
-        if (completeBtnBottom) {
-            completeBtnBottom.disabled = true;
-            completeBtnBottom.classList.add('loading');
-            completeBtnBottom.innerHTML = `
-                <svg class="spinner" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"></circle>
-                </svg>
-                Processing...
-            `;
-        }
+        setBtnState(completeBtnTop, 'loading', 'Processing…');
+        setBtnState(completeBtnBottom, 'loading', 'Processing…');
 
         const subtotal = this.cart.reduce((sum, item) => sum + item.total, 0);
         let discountAmount = 0;
@@ -718,35 +706,14 @@ class NewB2BSaleManager {
             this.renderCart();
             this.updateTotals();
 
+            // Mark buttons as success — auto-restores after the timeout.
+            setBtnState(completeBtnTop, 'success', 'Done!');
+            setBtnState(completeBtnBottom, 'success', 'Done!');
         } catch (error) {
             console.error('Error completing B2B sale:', error);
-            this.showNotification('Error completing sale. Please try again.', 'error');
-        } finally {
-            // Reset buttons to normal state
-            const completeBtnTop = document.getElementById('completeB2BSale');
-            const completeBtnBottom = document.getElementById('completeB2BSaleBottom');
-            
-            if (completeBtnTop) {
-                completeBtnTop.disabled = false;
-                completeBtnTop.classList.remove('loading');
-                completeBtnTop.innerHTML = `
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                    Complete Sale
-                `;
-            }
-            
-            if (completeBtnBottom) {
-                completeBtnBottom.disabled = false;
-                completeBtnBottom.classList.remove('loading');
-                completeBtnBottom.innerHTML = `
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                    Complete Sale
-                `;
-            }
+            setBtnState(completeBtnTop, 'error', 'Failed');
+            setBtnState(completeBtnBottom, 'error', 'Failed');
+            this.showNotification(friendlyError(error, 'complete B2B sale'), 'error');
         }
     }
 
@@ -834,6 +801,7 @@ class NewB2BSaleManager {
                 return;
             }
 
+            const brand = brandManager.getBrand();
             const printWindow = window.open('', '', 'height=900,width=800');
             const invoiceDate = new Date(sale.createdAt);
             const dueDate = this.calculateDueDate(invoiceDate, sale.creditTerm);
@@ -1053,10 +1021,17 @@ class NewB2BSaleManager {
                 </head>
                 <body>
                     <div class="invoice-header">
-                        <div class="company-info">
-                            <h1>Vendify</h1>
-                            <p>Point of Sale System</p>
-                            <p>vendly-pos.firebaseapp.com</p>
+                        <div class="company-info" style="display:flex;align-items:center;gap:16px;">
+                            ${brandManager.getLogoUrl() ? `<img src="${brandManager.getLogoUrl()}" alt="${brand.name}" style="height:64px;width:auto;max-width:120px;object-fit:contain;flex-shrink:0;" onerror="this.style.display='none'">` : ''}
+                            <div>
+                                <h1>${brand.name}</h1>
+                                ${brand.tagline ? `<p>${brand.tagline}</p>` : ''}
+                                ${brand.address ? `<p>${brand.address}</p>` : ''}
+                                ${brand.phone ? `<p>Tel: ${brand.phone}</p>` : ''}
+                                ${brand.email ? `<p>${brand.email}</p>` : ''}
+                                ${brand.website ? `<p>${brand.website}</p>` : ''}
+                                ${brand.taxId ? `<p>PIN: ${brand.taxId}</p>` : ''}
+                            </div>
                         </div>
                         <div class="invoice-meta">
                             <h2>INVOICE</h2>

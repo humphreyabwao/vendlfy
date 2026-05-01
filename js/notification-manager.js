@@ -1,6 +1,26 @@
-// Notification Manager System
+// Notification Manager — in-app alerts with local persistence (no Firestore writes here).
+// Inventory alerts (low / out / expiry) are reconciled against current stock: one row per
+// item+condition until it clears, not recreated every poll.
 import dataManager from './data-manager.js';
-import branchManager from './branch-manager.js';
+
+const INVENTORY_ALERT_TYPES = ['low_stock', 'out_of_stock', 'expired', 'expiring_soon'];
+// Poll cadence raised from 2 min → 5 min. Inventory alerts are also reconciled
+// reactively via the `inventoryDataChanged` event, so the timer is only a
+// safety net.
+const POLL_MS = 300000;
+const NOTIFY_DEDUPE_MS = 3500;
+const INVENTORY_RECONCILE_DEBOUNCE_MS = 1000;
+const MAX_NOTIFICATIONS = 50;
+
+function itemStableKey(data) {
+    if (!data || typeof data !== 'object') return '';
+    return String(data.id || data.sku || data.name || '').trim();
+}
+
+function stableInventoryAlertId(type, itemKey) {
+    const safe = String(itemKey).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 120);
+    return `invalert_${type}_${safe}`;
+}
 
 class NotificationManager {
     constructor() {
@@ -12,9 +32,11 @@ class NotificationManager {
         this.notificationBtn = null;
         this.notificationBadge = null;
         this.notificationList = null;
+        this._notifyDedupe = new Map();
+        this._inventoryDebounceTimer = null;
+        this._liveEventsBound = false;
     }
 
-    // Initialize notification system
     init() {
         this.notificationPanel = document.getElementById('notificationPanel');
         this.notificationBtn = document.getElementById('notificationBtn');
@@ -28,20 +50,33 @@ class NotificationManager {
 
         this.loadNotifications();
         this.attachEventListeners();
+        this._bindLiveInventoryTriggers();
         this.startPeriodicCheck();
-        
+
         console.log('✅ Notification system initialized');
     }
 
-    // Attach event listeners
+    _bindLiveInventoryTriggers() {
+        if (this._liveEventsBound) return;
+        this._liveEventsBound = true;
+
+        window.addEventListener('inventoryDataChanged', () => {
+            clearTimeout(this._inventoryDebounceTimer);
+            this._inventoryDebounceTimer = setTimeout(() => this.checkForNotifications(), INVENTORY_RECONCILE_DEBOUNCE_MS);
+        });
+
+        window.addEventListener('branchChanged', () => {
+            clearTimeout(this._inventoryDebounceTimer);
+            this._inventoryDebounceTimer = setTimeout(() => this.checkForNotifications(), 400);
+        });
+    }
+
     attachEventListeners() {
-        // Toggle notification panel
         this.notificationBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             this.togglePanel();
         });
 
-        // Mark all as read
         const markAllReadBtn = document.getElementById('markAllReadBtn');
         if (markAllReadBtn) {
             markAllReadBtn.addEventListener('click', () => {
@@ -49,7 +84,6 @@ class NotificationManager {
             });
         }
 
-        // View all notifications
         const viewAllBtn = document.getElementById('viewAllNotificationsBtn');
         if (viewAllBtn) {
             viewAllBtn.addEventListener('click', () => {
@@ -57,7 +91,6 @@ class NotificationManager {
             });
         }
 
-        // Close panel when clicking outside
         document.addEventListener('click', (e) => {
             const notificationDropdown = document.querySelector('.notification-dropdown');
             if (notificationDropdown && !notificationDropdown.contains(e.target)) {
@@ -66,171 +99,312 @@ class NotificationManager {
         });
     }
 
-    // Start periodic check for new notifications
     startPeriodicCheck() {
-        // Check immediately
         this.checkForNotifications();
 
-        // Then check every 30 seconds
+        if (this.checkInterval) clearInterval(this.checkInterval);
         this.checkInterval = setInterval(() => {
             this.checkForNotifications();
-        }, 30000);
+        }, POLL_MS);
     }
 
-    // Check for new notifications
+    /** Collapse duplicate inventory rows (same type + item) to a single entry. */
+    _collectInventoryAlertsMap() {
+        const m = new Map();
+        for (const n of this.notifications) {
+            if (!INVENTORY_ALERT_TYPES.includes(n.type)) continue;
+            const ik = itemStableKey(n.data);
+            if (!ik) continue;
+            const key = `${n.type}:${ik}`;
+            const prev = m.get(key);
+            if (!prev) {
+                m.set(key, n);
+                continue;
+            }
+            if (!prev.read && n.read) m.set(key, prev);
+            else if (!n.read && prev.read) m.set(key, n);
+            else if (new Date(n.timestamp) > new Date(prev.timestamp)) m.set(key, n);
+            else m.set(key, prev);
+        }
+        return m;
+    }
+
     async checkForNotifications() {
         try {
-            const [lowStockItems, outOfStockItems, expiredItems, expiringItems] = await Promise.all([
-                this.checkLowStock(),
-                this.checkOutOfStock(),
-                this.checkExpiredItems(),
-                this.checkExpiringItems()
-            ]);
+            // Skip work when the tab is in the background — every cycle here
+            // fetches the entire inventory collection.
+            if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+                return;
+            }
 
-            // Clear old notifications of these types
-            this.clearNotificationsByType(['low_stock', 'out_of_stock', 'expired', 'expiring_soon']);
+            // Fetch inventory ONCE and run all four filters against the same
+            // in-memory list. Previously each filter helper did its own
+            // `dataManager.getInventory()` round-trip = 4× full collection
+            // reads per poll cycle.
+            let items;
+            try {
+                items = await dataManager.getInventory();
+            } catch (e) {
+                console.error('Notification inventory fetch failed:', e);
+                return;
+            }
+            const [lowStockItems, outOfStockItems, expiredItems, expiringItems] = [
+                this._filterLowStock(items),
+                this._filterOutOfStock(items),
+                this._filterExpired(items),
+                this._filterExpiring(items)
+            ];
 
-            // Add new notifications
-            lowStockItems.forEach(item => this.addNotification({
+            const desired = new Map();
+
+            const putDesired = (type, items, build) => {
+                for (const item of items) {
+                    const ik = itemStableKey(item);
+                    if (!ik) continue;
+                    desired.set(`${type}:${ik}`, build(item));
+                }
+            };
+
+            putDesired('low_stock', lowStockItems, (item) => ({
                 type: 'low_stock',
-                title: 'Low Stock Alert',
+                title: 'Low stock',
                 message: `${item.name} is running low (${item.quantity} left)`,
                 priority: 'medium',
                 icon: 'warning',
                 data: item
             }));
 
-            outOfStockItems.forEach(item => this.addNotification({
+            putDesired('out_of_stock', outOfStockItems, (item) => ({
                 type: 'out_of_stock',
-                title: 'Out of Stock',
+                title: 'Out of stock',
                 message: `${item.name} is out of stock`,
                 priority: 'high',
                 icon: 'error',
                 data: item
             }));
 
-            expiredItems.forEach(item => this.addNotification({
+            putDesired('expired', expiredItems, (item) => ({
                 type: 'expired',
-                title: 'Item Expired',
+                title: 'Item expired',
                 message: `${item.name} has expired`,
                 priority: 'high',
                 icon: 'error',
                 data: item
             }));
 
-            expiringItems.forEach(item => this.addNotification({
+            putDesired('expiring_soon', expiringItems, (item) => ({
                 type: 'expiring_soon',
-                title: 'Expiring Soon',
+                title: 'Expiring soon',
                 message: `${item.name} expires in ${this.getDaysUntilExpiry(item.expiryDate)} days`,
                 priority: 'medium',
                 icon: 'warning',
                 data: item
             }));
 
-            this.saveNotifications();
-            this.updateUI();
+            const nonInventory = this.notifications.filter((n) => !INVENTORY_ALERT_TYPES.includes(n.type));
+            const prevInv = this._collectInventoryAlertsMap();
 
+            const nextInv = [];
+            let changed = false;
+
+            for (const [key, payload] of desired) {
+                const existing = prevInv.get(key);
+                if (existing) {
+                    prevInv.delete(key);
+                    const same =
+                        existing.message === payload.message &&
+                        existing.title === payload.title &&
+                        existing.priority === payload.priority &&
+                        existing.icon === payload.icon;
+
+                    existing.id = stableInventoryAlertId(payload.type, itemStableKey(payload.data));
+                    existing.title = payload.title;
+                    existing.message = payload.message;
+                    existing.priority = payload.priority;
+                    existing.icon = payload.icon;
+                    existing.data = payload.data;
+
+                    if (!same) changed = true;
+
+                    nextInv.push(existing);
+                } else {
+                    nextInv.push({
+                        id: stableInventoryAlertId(payload.type, itemStableKey(payload.data)),
+                        ...payload,
+                        timestamp: new Date().toISOString(),
+                        read: false
+                    });
+                    changed = true;
+                }
+            }
+
+            if (prevInv.size > 0) changed = true;
+
+            const combined = [...nonInventory, ...nextInv].sort(
+                (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+            );
+
+            if (combined.length > MAX_NOTIFICATIONS) {
+                this.notifications = combined.slice(0, MAX_NOTIFICATIONS);
+            } else {
+                this.notifications = combined;
+            }
+
+            this.updateUnreadCount();
+
+            if (changed) {
+                this.saveNotifications();
+                this.updateUI();
+            } else {
+                this.updateBadge();
+            }
         } catch (error) {
             console.error('Error checking notifications:', error);
         }
     }
 
-    // Check for low stock items
+    // Synchronous filters that operate on an already-fetched inventory array.
+    // `checkForNotifications()` fetches inventory once and runs all four. The
+    // async wrappers below are kept for external callers (if any).
+    _filterLowStock(items) {
+        return items.filter(
+            (item) =>
+                item.quantity > 0 && item.quantity <= (item.reorderLevel || 5)
+        );
+    }
+
+    _filterOutOfStock(items) {
+        return items.filter((item) => item.quantity <= 0);
+    }
+
+    _filterExpired(items) {
+        const now = new Date();
+        return items.filter((item) => {
+            if (!item.expiryDate) return false;
+            const expiryDate = new Date(item.expiryDate);
+            return expiryDate < now;
+        });
+    }
+
+    _filterExpiring(items) {
+        const now = new Date();
+        const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        return items.filter((item) => {
+            if (!item.expiryDate) return false;
+            const expiryDate = new Date(item.expiryDate);
+            return expiryDate > now && expiryDate <= sevenDaysFromNow;
+        });
+    }
+
     async checkLowStock() {
         try {
             const items = await dataManager.getInventory();
-            return items.filter(item => 
-                item.quantity > 0 && 
-                item.quantity <= (item.reorderLevel || 5)
-            );
+            return this._filterLowStock(items);
         } catch (error) {
             console.error('Error checking low stock:', error);
             return [];
         }
     }
 
-    // Check for out of stock items
     async checkOutOfStock() {
         try {
             const items = await dataManager.getInventory();
-            return items.filter(item => item.quantity <= 0);
+            return this._filterOutOfStock(items);
         } catch (error) {
             console.error('Error checking out of stock:', error);
             return [];
         }
     }
 
-    // Check for expired items
     async checkExpiredItems() {
         try {
             const items = await dataManager.getInventory();
-            const now = new Date();
-            return items.filter(item => {
-                if (!item.expiryDate) return false;
-                const expiryDate = new Date(item.expiryDate);
-                return expiryDate < now;
-            });
+            return this._filterExpired(items);
         } catch (error) {
             console.error('Error checking expired items:', error);
             return [];
         }
     }
 
-    // Check for items expiring soon (within 7 days)
     async checkExpiringItems() {
         try {
             const items = await dataManager.getInventory();
-            const now = new Date();
-            const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-            
-            return items.filter(item => {
-                if (!item.expiryDate) return false;
-                const expiryDate = new Date(item.expiryDate);
-                return expiryDate > now && expiryDate <= sevenDaysFromNow;
-            });
+            return this._filterExpiring(items);
         } catch (error) {
             console.error('Error checking expiring items:', error);
             return [];
         }
     }
 
-    // Get days until expiry
     getDaysUntilExpiry(expiryDate) {
         const now = new Date();
         const expiry = new Date(expiryDate);
         const diffTime = expiry - now;
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return diffDays;
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     }
 
-    // Add notification
     addNotification(notification) {
-        const newNotification = {
-            id: this.generateId(),
+        const ik = itemStableKey(notification.data);
+        let id = notification.id;
+
+        if (ik && INVENTORY_ALERT_TYPES.includes(notification.type)) {
+            id = stableInventoryAlertId(notification.type, ik);
+        } else if (!id) {
+            id = this.generateId();
+        }
+
+        const incoming = {
             ...notification,
-            timestamp: new Date().toISOString(),
-            read: false
+            id,
+            timestamp: notification.timestamp || new Date().toISOString(),
+            read: notification.read ?? false
         };
 
-        // Check if similar notification already exists
-        const exists = this.notifications.some(n => 
-            n.type === newNotification.type && 
-            n.data?.id === newNotification.data?.id
-        );
-
-        if (!exists) {
-            this.notifications.unshift(newNotification);
-            this.unreadCount++;
-            
-            // Keep only last 50 notifications
-            if (this.notifications.length > 50) {
-                this.notifications = this.notifications.slice(0, 50);
+        if (ik && INVENTORY_ALERT_TYPES.includes(incoming.type)) {
+            const j = this.notifications.findIndex(
+                (n) => n.type === incoming.type && itemStableKey(n.data) === ik
+            );
+            if (j !== -1) {
+                const n = this.notifications[j];
+                n.id = incoming.id;
+                n.title = incoming.title;
+                n.message = incoming.message;
+                n.priority = incoming.priority;
+                n.icon = incoming.icon;
+                n.data = incoming.data;
+                this.updateUnreadCount();
+                return;
             }
+        } else {
+            const dup = this.notifications.some(
+                (n) =>
+                    !INVENTORY_ALERT_TYPES.includes(n.type) &&
+                    n.type === incoming.type &&
+                    n.title === incoming.title &&
+                    n.message === incoming.message
+            );
+            if (dup) return;
         }
+
+        this.notifications.unshift(incoming);
+        if (this.notifications.length > MAX_NOTIFICATIONS) {
+            this.notifications = this.notifications.slice(0, MAX_NOTIFICATIONS);
+        }
+        this.updateUnreadCount();
     }
 
-    // Add custom notification (for manual calls)
     notify(type, title, message, priority = 'info', data = null) {
+        const sig = `${type}\x00${title}\x00${message}`;
+        const now = Date.now();
+        const last = this._notifyDedupe.get(sig);
+        if (last != null && now - last < NOTIFY_DEDUPE_MS) return;
+        this._notifyDedupe.set(sig, now);
+        if (this._notifyDedupe.size > 100) {
+            for (const [k, t] of this._notifyDedupe) {
+                if (now - t > 60000) this._notifyDedupe.delete(k);
+            }
+        }
+
         this.addNotification({
             type,
             title,
@@ -239,20 +413,26 @@ class NotificationManager {
             icon: this.getIconForType(type),
             data
         });
-        
+
         this.saveNotifications();
         this.updateUI();
     }
 
-    // Clear notifications by type
-    clearNotificationsByType(types) {
-        this.notifications = this.notifications.filter(n => !types.includes(n.type));
-        this.updateUnreadCount();
+    /** Short toast-style entry (used by user-ui / brand-ui). */
+    add(message, type = 'info') {
+        const title =
+            type === 'error' ? 'Error' :
+                type === 'success' ? 'Success' :
+                    type === 'warning' ? 'Warning' : 'Notice';
+        const priority =
+            type === 'error' ? 'high' :
+                type === 'success' ? 'medium' :
+                    type === 'warning' ? 'medium' : 'info';
+        this.notify(type, title, String(message), priority, null);
     }
 
-    // Mark notification as read
     markAsRead(notificationId) {
-        const notification = this.notifications.find(n => n.id === notificationId);
+        const notification = this.notifications.find((n) => n.id === notificationId);
         if (notification && !notification.read) {
             notification.read = true;
             this.unreadCount--;
@@ -261,17 +441,15 @@ class NotificationManager {
         }
     }
 
-    // Mark all as read
     markAllAsRead() {
-        this.notifications.forEach(n => n.read = true);
+        this.notifications.forEach((n) => (n.read = true));
         this.unreadCount = 0;
         this.saveNotifications();
         this.updateUI();
     }
 
-    // Delete notification
     deleteNotification(notificationId) {
-        const index = this.notifications.findIndex(n => n.id === notificationId);
+        const index = this.notifications.findIndex((n) => n.id === notificationId);
         if (index !== -1) {
             const notification = this.notifications[index];
             if (!notification.read) {
@@ -283,18 +461,15 @@ class NotificationManager {
         }
     }
 
-    // Update unread count
     updateUnreadCount() {
-        this.unreadCount = this.notifications.filter(n => !n.read).length;
+        this.unreadCount = this.notifications.filter((n) => !n.read).length;
     }
 
-    // Update UI
     updateUI() {
         this.updateBadge();
         this.renderNotifications();
     }
 
-    // Update badge
     updateBadge() {
         if (this.notificationBadge) {
             if (this.unreadCount > 0) {
@@ -306,7 +481,6 @@ class NotificationManager {
         }
     }
 
-    // Render notifications
     renderNotifications() {
         if (!this.notificationList) return;
 
@@ -324,13 +498,15 @@ class NotificationManager {
             return;
         }
 
-        const html = this.notifications.slice(0, 10).map(notification => {
-            const timeAgo = this.getTimeAgo(notification.timestamp);
-            const icon = this.getIconSVG(notification.icon);
-            const priorityClass = `notification-${notification.priority}`;
-            const readClass = notification.read ? 'read' : '';
+        const html = this.notifications
+            .slice(0, 10)
+            .map((notification) => {
+                const timeAgo = this.getTimeAgo(notification.timestamp);
+                const icon = this.getIconSVG(notification.icon);
+                const priorityClass = `notification-${notification.priority}`;
+                const readClass = notification.read ? 'read' : '';
 
-            return `
+                return `
                 <div class="notification-item ${priorityClass} ${readClass}" data-id="${notification.id}">
                     <div class="notification-icon">${icon}</div>
                     <div class="notification-content">
@@ -344,17 +520,16 @@ class NotificationManager {
                     </div>
                 </div>
             `;
-        }).join('');
+            })
+            .join('');
 
         this.notificationList.innerHTML = html;
         this.attachNotificationItemHandlers();
     }
 
-    // Attach handlers to notification items
     attachNotificationItemHandlers() {
-        // Mark as read buttons
         const markReadButtons = this.notificationList.querySelectorAll('.notification-mark-read');
-        markReadButtons.forEach(btn => {
+        markReadButtons.forEach((btn) => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const id = btn.getAttribute('data-id');
@@ -362,9 +537,8 @@ class NotificationManager {
             });
         });
 
-        // Delete buttons
         const deleteButtons = this.notificationList.querySelectorAll('.notification-delete');
-        deleteButtons.forEach(btn => {
+        deleteButtons.forEach((btn) => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const id = btn.getAttribute('data-id');
@@ -372,9 +546,8 @@ class NotificationManager {
             });
         });
 
-        // Click on notification item
         const items = this.notificationList.querySelectorAll('.notification-item');
-        items.forEach(item => {
+        items.forEach((item) => {
             item.addEventListener('click', () => {
                 const id = item.getAttribute('data-id');
                 this.handleNotificationClick(id);
@@ -382,64 +555,57 @@ class NotificationManager {
         });
     }
 
-    // Handle notification click
     handleNotificationClick(notificationId) {
-        const notification = this.notifications.find(n => n.id === notificationId);
+        const notification = this.notifications.find((n) => n.id === notificationId);
         if (!notification) return;
 
-        // Mark as read
         this.markAsRead(notificationId);
 
-        // Navigate based on notification type
         switch (notification.type) {
             case 'low_stock':
             case 'out_of_stock':
             case 'expired':
-            case 'expiring_soon':
-                // Navigate to inventory
+            case 'expiring_soon': {
                 const inventoryLink = document.querySelector('[data-page="inventory"]');
-                if (inventoryLink) {
-                    inventoryLink.click();
-                }
+                if (inventoryLink) inventoryLink.click();
                 break;
+            }
         }
 
         this.closePanel();
     }
 
-    // Toggle notification panel
     togglePanel() {
         if (this.notificationPanel) {
             this.notificationPanel.classList.toggle('active');
         }
     }
 
-    // Close panel
     closePanel() {
         if (this.notificationPanel) {
             this.notificationPanel.classList.remove('active');
         }
     }
 
-    // View all notifications (navigate to a dedicated page if exists)
     viewAllNotifications() {
         console.log('View all notifications');
         this.closePanel();
-        // You can add navigation to a dedicated notifications page here
     }
 
-    // Get icon SVG
     getIconSVG(icon) {
         const icons = {
-            warning: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
-            error: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>',
-            success: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>',
-            info: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>'
+            warning:
+                '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
+            error:
+                '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>',
+            success:
+                '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>',
+            info:
+                '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>'
         };
         return icons[icon] || icons.info;
     }
 
-    // Get icon for type
     getIconForType(type) {
         const typeIcons = {
             low_stock: 'warning',
@@ -453,7 +619,6 @@ class NotificationManager {
         return typeIcons[type] || 'info';
     }
 
-    // Get time ago string
     getTimeAgo(timestamp) {
         const now = new Date();
         const notificationTime = new Date(timestamp);
@@ -475,12 +640,10 @@ class NotificationManager {
         }
     }
 
-    // Generate unique ID
     generateId() {
         return 'notif_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     }
 
-    // Load notifications from localStorage
     loadNotifications() {
         try {
             const stored = localStorage.getItem('vendlfy_notifications');
@@ -494,7 +657,6 @@ class NotificationManager {
         }
     }
 
-    // Save notifications to localStorage
     saveNotifications() {
         try {
             const data = {
@@ -507,18 +669,16 @@ class NotificationManager {
         }
     }
 
-    // Cleanup
     destroy() {
         if (this.checkInterval) {
             clearInterval(this.checkInterval);
         }
+        clearTimeout(this._inventoryDebounceTimer);
     }
 }
 
-// Create singleton instance
 const notificationManager = new NotificationManager();
 
-// Make it globally available
 window.notificationManager = notificationManager;
 
 export default notificationManager;

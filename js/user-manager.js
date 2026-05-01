@@ -1,7 +1,34 @@
-// User Management System
-import { db, auth, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot, createUserWithEmailAndPassword, isFirebaseConfigured } from './firebase-config.js';
-import branchManager from './branch-manager.js';
+// User Management System — production RBAC version
+// Uses a secondary Firebase App to create Auth users without signing out the admin.
+// Stores user documents at /users/{uid} (not random ID) for clean Firestore rules.
+
+import {
+    db, auth, isFirebaseConfigured, isRtdbConfigured, firebaseConfig,
+    collection, query, orderBy,
+    createUserWithEmailAndPassword,
+    initializeApp, getAuth, getApps
+} from './firebase-config.js';
+import {
+    readMerged,
+    streamDual,
+    saveUserProfileDuplex,
+    updateUserProfileDuplex,
+    deleteUserProfileDuplex
+} from './storage-adapter.js';
 import auditLogger from './audit-logger.js';
+
+const USER_IO_TIMEOUT_MS = 15000;
+/** Create-user profile write: keep tight so the form returns quickly while FS+RTDB still race in parallel. */
+const CREATE_USER_PROFILE_TIMEOUT_MS = 8000;
+
+const CREATE_USER_SECONDARY_APP_NAME = 'vendify-create-user-secondary';
+
+function _getCreateUserSecondaryAuth() {
+    const apps = getApps();
+    const existing = apps.find((a) => a.name === CREATE_USER_SECONDARY_APP_NAME);
+    if (existing) return getAuth(existing);
+    return getAuth(initializeApp(firebaseConfig, CREATE_USER_SECONDARY_APP_NAME));
+}
 
 class UserManager {
     constructor() {
@@ -10,96 +37,77 @@ class UserManager {
         this.callbacks = [];
     }
 
-    // Check if Firebase is available
     isFirebaseAvailable() {
         return isFirebaseConfigured && db !== undefined;
     }
 
-    // Start real-time listener for users
+    // ---------- Real-time listener ----------
+
     startRealtimeListener() {
-        if (!this.isFirebaseAvailable()) {
-            console.warn('⚠️ Firebase not available, real-time updates disabled');
+        if (this.usersListener) return;
+
+        if (!this.isFirebaseAvailable() && !isRtdbConfigured) {
+            console.warn('⚠️ Firestore and Realtime Database unavailable; user list live updates disabled');
             return;
         }
 
-        if (this.usersListener) {
-            console.log('🔄 Real-time user listener already active');
-            return;
-        }
+        const q = this.isFirebaseAvailable()
+            ? query(collection(db, 'users'), orderBy('createdAt', 'desc'))
+            : null;
 
-        console.log('👂 Starting real-time user listener...');
-        const usersRef = collection(db, 'users');
-        const q = query(usersRef, orderBy('createdAt', 'desc'));
-
-        this.usersListener = onSnapshot(q, (snapshot) => {
-            console.log('🔔 User data changed, updating...');
-            
-            this.users = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-
-            console.log(`✅ Real-time update: ${this.users.length} users loaded`);
-            
-            // Notify all callbacks
-            this.callbacks.forEach(callback => {
-                try {
-                    callback(this.users);
-                } catch (error) {
-                    console.error('Error in user update callback:', error);
-                }
-            });
-
-            // Dispatch custom event
-            window.dispatchEvent(new CustomEvent('usersUpdated', { 
-                detail: { users: this.users }
-            }));
-
-        }, (error) => {
-            console.error('❌ Real-time user listener error:', error);
+        this.usersListener = streamDual({
+            firestoreQuery: q,
+            rtdbPath: isRtdbConfigured ? 'users' : null,
+            rtdbFilter: () => true,
+            onUpdate: (list) => {
+                const sorted = [...list].sort((a, b) => {
+                    const ta = new Date(a.createdAt || 0).getTime();
+                    const tb = new Date(b.createdAt || 0).getTime();
+                    return tb - ta;
+                });
+                this.users = sorted;
+                this.callbacks.forEach((cb) => {
+                    try { cb(this.users); } catch (e) { /* ignore */ }
+                });
+                window.dispatchEvent(new CustomEvent('usersUpdated', { detail: { users: this.users } }));
+            },
+            onError: (err, src) => {
+                console.error(`❌ Users stream error (${src}):`, err?.message || err);
+            }
         });
-
-        console.log('✅ Real-time user listener started');
     }
 
-    // Stop real-time listener
     stopRealtimeListener() {
-        if (this.usersListener) {
-            console.log('🔇 Stopping real-time user listener...');
-            this.usersListener();
-            this.usersListener = null;
-        }
+        if (this.usersListener) { this.usersListener(); this.usersListener = null; }
     }
 
-    // Add callback for real-time updates
-    onUsersUpdated(callback) {
-        if (typeof callback === 'function') {
-            this.callbacks.push(callback);
-            console.log('✅ Added user update callback');
-        }
+    onUsersUpdated(cb) {
+        if (typeof cb === 'function') this.callbacks.push(cb);
     }
 
-    // Load users from Firestore
+    // ---------- CRUD ----------
+
     async loadUsers() {
         try {
-            if (this.isFirebaseAvailable()) {
-                console.log('🔄 Loading users from Firestore...');
-                const usersRef = collection(db, 'users');
-                const q = query(usersRef, orderBy('createdAt', 'desc'));
-                const snapshot = await getDocs(q);
-                
-                this.users = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-                console.log(`✅ Loaded ${this.users.length} users from Firestore`);
+            if (this.isFirebaseAvailable() || isRtdbConfigured) {
+                const firestoreQuery = this.isFirebaseAvailable()
+                    ? query(collection(db, 'users'), orderBy('createdAt', 'desc'))
+                    : null;
+                const merged = await readMerged({
+                    firestoreQuery,
+                    rtdbPath: isRtdbConfigured ? 'users' : null,
+                    timeoutMs: USER_IO_TIMEOUT_MS
+                });
+                merged.sort((a, b) => {
+                    const ta = new Date(a.createdAt || 0).getTime();
+                    const tb = new Date(b.createdAt || 0).getTime();
+                    return tb - ta;
+                });
+                this.users = merged;
             } else {
-                // Fallback to localStorage
-                const localUsers = localStorage.getItem('vendify_users');
-                this.users = localUsers ? JSON.parse(localUsers) : [];
-                console.log(`📦 Loaded ${this.users.length} users from local storage`);
+                const local = localStorage.getItem('vendify_users');
+                this.users = local ? JSON.parse(local) : [];
             }
-            
             return this.users;
         } catch (error) {
             console.error('❌ Error loading users:', error);
@@ -107,109 +115,139 @@ class UserManager {
         }
     }
 
-    // Create new user
+    // Normalize branch data: accepts branchIds (array), branchId (string), or ""/"all" (no restriction).
+    _buildBranchData(userData) {
+        let branchIds = [];
+        if (Array.isArray(userData.branchIds) && userData.branchIds.length > 0) {
+            branchIds = userData.branchIds.filter(Boolean);
+        } else if (userData.branchId && userData.branchId !== 'all') {
+            branchIds = [userData.branchId];
+        }
+        return {
+            branchIds,
+            primaryBranchId: branchIds[0] || null,
+            branchId: branchIds[0] || null // legacy compat
+        };
+    }
+
     async createUser(userData) {
+        if (!this.isFirebaseAvailable()) {
+            return this._createUserLocally(userData);
+        }
+
         try {
-            console.log('👤 Creating new user...', userData.email);
+            const secondaryAuth = _getCreateUserSecondaryAuth();
 
-            // Create user in Firebase Auth first
-            if (this.isFirebaseAvailable()) {
-                const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
-                const authUser = userCredential.user;
-                
-                console.log('✅ User created in Firebase Auth:', authUser.uid);
+            const credential = await createUserWithEmailAndPassword(
+                secondaryAuth, userData.email, userData.password
+            );
+            const uid = credential.user.uid;
 
-                // Create user profile in Firestore
-                const userProfile = {
-                    uid: authUser.uid,
-                    email: userData.email,
-                    fullName: userData.fullName,
-                    role: userData.role,
-                    branchId: userData.branchId || null,
-                    phone: userData.phone || '',
-                    status: userData.status || 'active',
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                    createdBy: auth.currentUser?.uid || 'system'
-                };
+            void secondaryAuth.signOut().catch(() => {});
 
-                const usersRef = collection(db, 'users');
-                const docRef = await addDoc(usersRef, userProfile);
-                
-                console.log('✅ User profile saved to Firestore with ID:', docRef.id);
-                
-                // Log activity
-                if (window.activityTracker) {
-                    window.activityTracker.logActivity('user', 'created', {
-                        userName: userData.fullName,
-                        email: userData.email,
-                        role: userData.role
-                    });
-                }
-                
-                await this.loadUsers();
-                
-                // Log user creation to audit trail
-                await auditLogger.logUserManagement('CREATE_USER', {
-                    fullName: userProfile.fullName,
-                    email: userProfile.email,
-                    role: userProfile.role
-                });
-                
-                return { id: docRef.id, ...userProfile };
-            } else {
-                // Fallback to localStorage
-                const localUser = {
-                    id: 'local_' + Date.now(),
-                    ...userData,
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString()
-                };
+            const branchData = this._buildBranchData(userData);
+            const permissions = Array.isArray(userData.permissions) ? userData.permissions : [];
 
-                this.users.push(localUser);
-                localStorage.setItem('vendify_users', JSON.stringify(this.users));
-                console.log('📦 User saved to local storage:', localUser.id);
-                return localUser;
-            }
+            const profile = {
+                uid,
+                email: userData.email,
+                fullName: userData.fullName,
+                role: userData.role,
+                permissions,
+                ...branchData,
+                phone: userData.phone || '',
+                status: userData.status || 'active',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                createdBy: auth.currentUser?.uid || 'system'
+            };
 
+            await saveUserProfileDuplex(uid, profile, { timeoutMs: CREATE_USER_PROFILE_TIMEOUT_MS });
+
+            const result = { id: uid, ...profile };
+
+            // Audit / activity / full reload hit Firestore (and IP lookup) — defer so the UI unblocks immediately.
+            const self = this;
+            queueMicrotask(() => {
+                void (async () => {
+                    try {
+                        if (window.activityTracker) {
+                            await window.activityTracker.logActivity('user', 'created', {
+                                userName: userData.fullName,
+                                email: userData.email,
+                                role: userData.role
+                            });
+                        }
+                    } catch (e) { /* ignore */ }
+                    try {
+                        await auditLogger.logUserManagement('CREATE_USER', {
+                            fullName: profile.fullName,
+                            email: profile.email,
+                            role: profile.role
+                        });
+                    } catch (e) { /* ignore */ }
+                    try {
+                        await self.loadUsers();
+                    } catch (e) { /* ignore */ }
+                })();
+            });
+
+            return result;
         } catch (error) {
             console.error('❌ Error creating user:', error);
             throw new Error(`Failed to create user: ${error.message}`);
         }
     }
 
-    // Update user
+    _createUserLocally(userData) {
+        const local = {
+            id: 'local_' + Date.now(),
+            uid: 'local_' + Date.now(),
+            ...userData,
+            ...this._buildBranchData(userData),
+            permissions: Array.isArray(userData.permissions) ? userData.permissions : [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+        this.users.push(local);
+        localStorage.setItem('vendify_users', JSON.stringify(this.users));
+        return local;
+    }
+
     async updateUser(userId, updates) {
         try {
             updates.updatedAt = new Date().toISOString();
+            // Normalize branch data in updates
+            const branchUpdate = this._buildBranchData(updates);
+            Object.assign(updates, branchUpdate);
 
-            if (this.isFirebaseAvailable()) {
-                console.log('💾 Updating user in Firestore:', userId);
-                const userRef = doc(db, 'users', userId);
-                await updateDoc(userRef, updates);
-                console.log('✅ User updated in Firestore');
-                
-                await this.loadUsers();
-                
-                // Log user update to audit trail
-                const user = this.getUserById(userId);
-                if (user) {
-                    await auditLogger.logUserManagement('UPDATE_USER', {
-                        fullName: user.fullName,
-                        email: user.email,
-                        role: user.role
-                    });
-                }
+            if (this.isFirebaseAvailable() || isRtdbConfigured) {
+                await updateUserProfileDuplex(userId, updates, { timeoutMs: USER_IO_TIMEOUT_MS });
+                const self = this;
+                queueMicrotask(() => {
+                    void (async () => {
+                        try {
+                            await self.loadUsers();
+                        } catch (e) { /* ignore */ }
+                        try {
+                            const user = self.getUserById(userId);
+                            if (user) {
+                                await auditLogger.logUserManagement('UPDATE_USER', {
+                                    fullName: user.fullName,
+                                    email: user.email,
+                                    role: user.role
+                                });
+                            }
+                        } catch (e) { /* ignore */ }
+                    })();
+                });
             } else {
-                // Update in localStorage
-                const userIndex = this.users.findIndex(user => user.id === userId);
-                if (userIndex !== -1) {
-                    this.users[userIndex] = { ...this.users[userIndex], ...updates };
+                const idx = this.users.findIndex((u) => u.id === userId);
+                if (idx !== -1) {
+                    this.users[idx] = { ...this.users[idx], ...updates };
                     localStorage.setItem('vendify_users', JSON.stringify(this.users));
-                    console.log('📦 User updated in local storage');
                 }
             }
-
             return true;
         } catch (error) {
             console.error('❌ Error updating user:', error);
@@ -217,35 +255,21 @@ class UserManager {
         }
     }
 
-    // Delete user
     async deleteUser(userId) {
         try {
-            // Get user data before deletion for audit log
             const user = this.getUserById(userId);
-            
-            if (this.isFirebaseAvailable()) {
-                console.log('🗑️ Deleting user from Firestore:', userId);
-                const userRef = doc(db, 'users', userId);
-                await deleteDoc(userRef);
-                console.log('✅ User deleted from Firestore');
-                
+            if (this.isFirebaseAvailable() || isRtdbConfigured) {
+                await deleteUserProfileDuplex(userId, { timeoutMs: USER_IO_TIMEOUT_MS });
                 await this.loadUsers();
             } else {
-                // Delete from localStorage
-                this.users = this.users.filter(user => user.id !== userId);
+                this.users = this.users.filter((u) => u.id !== userId);
                 localStorage.setItem('vendify_users', JSON.stringify(this.users));
-                console.log('📦 User deleted from local storage');
             }
-            
-            // Log user deletion to audit trail
             if (user) {
                 await auditLogger.logUserManagement('DELETE_USER', {
-                    fullName: user.fullName,
-                    email: user.email,
-                    role: user.role
+                    fullName: user.fullName, email: user.email, role: user.role
                 });
             }
-
             return true;
         } catch (error) {
             console.error('❌ Error deleting user:', error);
@@ -253,95 +277,58 @@ class UserManager {
         }
     }
 
-    // Update user activity (lastActive timestamp)
     async updateUserActivity(userId) {
         try {
-            const updates = {
-                lastActive: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            };
-
-            if (this.isFirebaseAvailable()) {
-                const userRef = doc(db, 'users', userId);
-                await updateDoc(userRef, updates);
-                
-                // Update local cache
-                const userIndex = this.users.findIndex(u => u.id === userId);
-                if (userIndex !== -1) {
-                    this.users[userIndex] = { ...this.users[userIndex], ...updates };
-                }
+            const updates = { lastActive: new Date().toISOString(), updatedAt: new Date().toISOString() };
+            if (this.isFirebaseAvailable() || isRtdbConfigured) {
+                await updateUserProfileDuplex(userId, updates, { timeoutMs: USER_IO_TIMEOUT_MS });
+                const idx = this.users.findIndex((u) => u.id === userId);
+                if (idx !== -1) this.users[idx] = { ...this.users[idx], ...updates };
             } else {
-                // Update in localStorage
-                const userIndex = this.users.findIndex(user => user.id === userId);
-                if (userIndex !== -1) {
-                    this.users[userIndex] = { ...this.users[userIndex], ...updates };
+                const idx = this.users.findIndex((u) => u.id === userId);
+                if (idx !== -1) {
+                    this.users[idx] = { ...this.users[idx], ...updates };
                     localStorage.setItem('vendify_users', JSON.stringify(this.users));
                 }
             }
-
             return true;
         } catch (error) {
-            console.error('❌ Error updating user activity:', error);
             return false;
         }
     }
 
-    // Check if user is online (active in last 5 minutes)
+    // ---------- Getters ----------
+
     isUserOnline(user) {
-        if (!user || !user.lastActive) return false;
-        
-        const lastActiveTime = new Date(user.lastActive).getTime();
-        const currentTime = Date.now();
-        const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
-        
-        return (currentTime - lastActiveTime) < fiveMinutes;
+        if (!user?.lastActive) return false;
+        return (Date.now() - new Date(user.lastActive).getTime()) < 5 * 60 * 1000;
     }
 
-    // Get time since last active
     getLastSeenText(user) {
-        if (!user || !user.lastActive) return 'Never';
-        
-        const lastActiveTime = new Date(user.lastActive).getTime();
-        const currentTime = Date.now();
-        const diffMs = currentTime - lastActiveTime;
-        
-        const diffMinutes = Math.floor(diffMs / (1000 * 60));
-        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-        
-        if (diffMinutes < 1) return 'Just now';
-        if (diffMinutes < 5) return 'Online';
-        if (diffMinutes < 60) return `${diffMinutes} min ago`;
-        if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-        return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+        if (!user?.lastActive) return 'Never';
+        const diffMs = Date.now() - new Date(user.lastActive).getTime();
+        const min = Math.floor(diffMs / 60000);
+        const hr = Math.floor(diffMs / 3600000);
+        const day = Math.floor(diffMs / 86400000);
+        if (min < 1) return 'Just now';
+        if (min < 5) return 'Online';
+        if (min < 60) return `${min} min ago`;
+        if (hr < 24) return `${hr} hour${hr > 1 ? 's' : ''} ago`;
+        return `${day} day${day > 1 ? 's' : ''} ago`;
     }
 
-    // Get all users
-    getAllUsers() {
-        return this.users;
-    }
-
-    // Get user by ID
-    getUserById(userId) {
-        return this.users.find(user => user.id === userId);
-    }
-
-    // Get users by role
-    getUsersByRole(role) {
-        return this.users.filter(user => user.role === role);
-    }
-
-    // Get users by branch
+    getAllUsers() { return this.users; }
+    getUserById(userId) { return this.users.find((u) => u.id === userId || u.uid === userId); }
+    getUserByEmail(email) { return this.users.find((u) => u.email === email); }
+    getUsersByRole(role) { return this.users.filter((u) => u.role === role); }
     getUsersByBranch(branchId) {
-        return this.users.filter(user => user.branchId === branchId || !user.branchId);
+        return this.users.filter((u) => {
+            const ids = Array.isArray(u.branchIds) ? u.branchIds : (u.branchId ? [u.branchId] : []);
+            return ids.length === 0 || ids.includes(branchId);
+        });
     }
-
-    // Get active users
-    getActiveUsers() {
-        return this.users.filter(user => user.status === 'active');
-    }
+    getActiveUsers() { return this.users.filter((u) => u.status === 'active'); }
 }
 
-// Create and export singleton instance
 const userManager = new UserManager();
 export default userManager;

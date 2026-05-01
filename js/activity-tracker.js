@@ -1,218 +1,237 @@
-// Activity Tracker System
-import { db, isFirebaseConfigured, collection, addDoc, getDocs, query, where, orderBy, limit, onSnapshot } from './firebase-config.js';
+// Activity Tracker - real-time activity stream backed by Firestore /activities
+// All modules call activityTracker.logActivity(...). The tracker keeps a live
+// in-memory cache of the most recent activities (via onSnapshot) so the
+// dashboard, activity log page and any other UI stay in sync instantly.
+
+import {
+    db, isFirebaseConfigured,
+    collection, addDoc,
+    query, orderBy, limit,
+    onSnapshot
+} from './firebase-config.js';
 import branchManager from './branch-manager.js';
+import sessionManager from './session-manager.js';
+
+const STREAM_LIMIT = 500;          // how many recent activities to keep in memory
+const LOCAL_KEY    = 'vendlfy_activities';
 
 class ActivityTracker {
     constructor() {
-        this.activities = [];
-        this.listeners = [];
+        this.activities = [];                 // newest first, capped at STREAM_LIMIT
         this.useLocalStorage = !isFirebaseConfigured;
-        this.currentFilters = {
-            date: 'today',
-            type: 'all'
-        };
-        this.currentPage = 1;
-        this.itemsPerPage = 20;
-        
+        this._streamUnsub = null;
+        this._streamStarted = false;
+        this._changeCallbacks = [];           // (activities, change) => void
+        this._newCallbacks = [];              // (activity) => void  (single new activity)
+        this._initialLoaded = false;
+
+        if (this.useLocalStorage) this._loadLocal();
+    }
+
+    // ---------- Lifecycle ----------
+
+    start() {
+        if (this._streamStarted) return;
+        this._streamStarted = true;
+
         if (this.useLocalStorage) {
-            this.loadFromLocalStorage();
+            this._initialLoaded = true;
+            this._emitChange({ type: 'initial' });
+            return;
         }
-    }
 
-    // Load activities from localStorage
-    loadFromLocalStorage() {
         try {
-            const data = localStorage.getItem('vendlfy_activities');
-            if (data) {
-                this.activities = JSON.parse(data);
-            }
-        } catch (error) {
-            console.error('Error loading activities from localStorage:', error);
+            const q = query(
+                collection(db, 'activities'),
+                orderBy('timestamp', 'desc'),
+                limit(STREAM_LIMIT)
+            );
+
+            this._streamUnsub = onSnapshot(
+                q,
+                (snap) => {
+                    const list = [];
+                    snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
+                    this.activities = list;
+
+                    // Detect newly-added (not just initial load) so we can fire spotlight notifications
+                    const isInitial = !this._initialLoaded;
+                    this._initialLoaded = true;
+
+                    if (!isInitial) {
+                        snap.docChanges().forEach((change) => {
+                            if (change.type === 'added') {
+                                const activity = { id: change.doc.id, ...change.doc.data() };
+                                this._newCallbacks.forEach((cb) => {
+                                    try { cb(activity); } catch (e) { /* ignore */ }
+                                });
+                            }
+                        });
+                    }
+
+                    this._emitChange({ type: isInitial ? 'initial' : 'snapshot' });
+                },
+                (err) => {
+                    console.warn('Activity stream error:', err.message);
+                }
+            );
+        } catch (err) {
+            console.error('Failed to start activity stream:', err);
         }
     }
 
-    // Save activities to localStorage
-    saveToLocalStorage() {
+    stop() {
+        if (this._streamUnsub) {
+            try { this._streamUnsub(); } catch (e) { /* ignore */ }
+            this._streamUnsub = null;
+        }
+        this._streamStarted = false;
+        this._initialLoaded = false;
+    }
+
+    // ---------- Local cache (offline / no-firebase fallback) ----------
+
+    _loadLocal() {
         try {
-            localStorage.setItem('vendlfy_activities', JSON.stringify(this.activities));
-        } catch (error) {
-            console.error('Error saving activities to localStorage:', error);
-        }
+            const data = localStorage.getItem(LOCAL_KEY);
+            if (data) this.activities = JSON.parse(data);
+        } catch (e) { /* ignore */ }
     }
 
-    // Log a new activity
+    _saveLocal() {
+        try { localStorage.setItem(LOCAL_KEY, JSON.stringify(this.activities.slice(0, STREAM_LIMIT))); } catch (e) { /* ignore */ }
+    }
+
+    // ---------- Logging ----------
+
     async logActivity(type, action, details = {}, metadata = {}) {
         const currentBranch = branchManager.getCurrentBranch();
         const user = this.getCurrentUser();
 
         const activity = {
-            type,           // 'inventory', 'sale', 'b2b', 'order', 'customer', 'expense', 'user'
-            action,         // 'added', 'updated', 'deleted', 'created', 'completed', etc.
-            details,        // Specific details about the activity
-            metadata,       // Additional metadata
-            branchId: currentBranch ? currentBranch.id : null,
+            type,
+            action,
+            details,
+            metadata,
+            branchId:   currentBranch ? currentBranch.id : null,
             branchName: currentBranch ? currentBranch.name : null,
-            userId: user.id,
-            userName: user.name,
-            timestamp: new Date().toISOString(),
-            id: this.generateId()
+            userId:     user.id,
+            userName:   user.name,
+            userEmail:  user.email || null,
+            timestamp:  new Date().toISOString()
         };
 
         try {
             if (this.useLocalStorage) {
-                // Save to localStorage
+                activity.id = this._generateId();
                 this.activities.unshift(activity);
-                // Keep only last 1000 activities in localStorage
-                if (this.activities.length > 1000) {
-                    this.activities = this.activities.slice(0, 1000);
-                }
-                this.saveToLocalStorage();
-                console.log('✅ Activity logged to localStorage:', activity);
+                if (this.activities.length > STREAM_LIMIT) this.activities.length = STREAM_LIMIT;
+                this._saveLocal();
+                this._newCallbacks.forEach((cb) => { try { cb(activity); } catch (e) { /* ignore */ } });
+                this._emitChange({ type: 'local-add' });
             } else {
-                // Save to Firestore
-                const activitiesRef = collection(db, 'activities');
-                const docRef = await addDoc(activitiesRef, activity);
+                const docRef = await addDoc(collection(db, 'activities'), activity);
                 activity.id = docRef.id;
-                console.log('✅ Activity logged to Firestore:', activity);
+                // Stream will pick it up automatically via onSnapshot — no manual notify needed.
             }
-
-            // Notify listeners
-            this.notifyListeners(activity);
-            
             return activity;
         } catch (error) {
-            console.error('❌ Error logging activity:', error);
-            throw error;
+            console.error('Failed to log activity:', error);
+            return null;
         }
     }
 
-    // Get current user (you can integrate with your auth system)
+    // Reads the *real* signed-in user from sessionManager. Falls back gracefully.
     getCurrentUser() {
-        // Default user - replace with actual user from auth system
-        const savedUser = localStorage.getItem('currentUser');
-        if (savedUser) {
-            return JSON.parse(savedUser);
-        }
-        return {
-            id: 'admin',
-            name: 'Admin User'
-        };
-    }
-
-    // Generate unique ID
-    generateId() {
-        return 'act_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    }
-
-    // Get activities with filters
-    async getActivities(filters = {}) {
         try {
-            if (this.useLocalStorage) {
-                return this.filterActivities(this.activities, filters);
-            } else {
-                // Query from Firestore
-                const activitiesRef = collection(db, 'activities');
-                let conditions = [];
-                
-                // Apply branch filter
-                const currentBranch = branchManager.getCurrentBranch();
-                if (currentBranch && !branchManager.isViewingAllBranches()) {
-                    conditions.push(where('branchId', '==', currentBranch.id));
-                }
-
-                // Apply type filter
-                if (filters.type && filters.type !== 'all') {
-                    conditions.push(where('type', '==', filters.type));
-                }
-
-                // Order by timestamp
-                conditions.push(orderBy('timestamp', 'desc'));
-
-                // Apply limit
-                if (filters.limit) {
-                    conditions.push(limit(filters.limit));
-                }
-
-                const q = query(activitiesRef, ...conditions);
-                const querySnapshot = await getDocs(q);
-                
-                let activities = [];
-                querySnapshot.forEach((doc) => {
-                    activities.push({ id: doc.id, ...doc.data() });
-                });
-
-                // Apply date filter
-                if (filters.date) {
-                    activities = this.filterByDate(activities, filters.date);
-                }
-
-                return activities;
+            const profile = sessionManager.getUser?.();
+            const auth    = sessionManager.getAuthUser?.();
+            if (profile && !profile._missing) {
+                return {
+                    id:    profile.uid || auth?.uid || profile.id || 'unknown',
+                    name:  profile.fullName || profile.name || profile.email || auth?.email || 'Unknown User',
+                    email: profile.email || auth?.email || null
+                };
             }
-        } catch (error) {
-            console.error('Error getting activities:', error);
-            return [];
-        }
+            if (auth) {
+                return { id: auth.uid, name: auth.email || 'Unknown User', email: auth.email };
+            }
+        } catch (e) { /* ignore */ }
+        return { id: 'system', name: 'System', email: null };
     }
 
-    // Filter activities (for localStorage)
-    filterActivities(activities, filters) {
-        let filtered = [...activities];
+    _generateId() {
+        return 'act_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11);
+    }
 
-        // Filter by type
+    // ---------- Reading & filtering ----------
+
+    // Returns a filtered, sorted, branch-scoped slice of the in-memory cache.
+    // This is *synchronous* now — kept async-shaped for backwards compatibility.
+    async getActivities(filters = {}) {
+        if (!this._streamStarted) this.start();
+
+        let list = this.activities.slice();
+
+        // Branch scoping: non-admins only see their assigned branches.
+        // Admins see the active branch (or all branches if "all" is selected).
+        const allowed = sessionManager.getAllowedBranchIds?.();
+        const currentBranch = branchManager.getCurrentBranch?.();
+        const viewingAll = branchManager.isViewingAllBranches?.();
+
+        if (Array.isArray(allowed)) {
+            // Non-admin: hard filter to their branch list
+            list = list.filter((a) => !a.branchId || allowed.includes(a.branchId));
+        } else if (!viewingAll && currentBranch) {
+            // Admin viewing a specific branch
+            list = list.filter((a) => !a.branchId || a.branchId === currentBranch.id);
+        }
+
+        // Type
         if (filters.type && filters.type !== 'all') {
-            filtered = filtered.filter(a => a.type === filters.type);
+            list = list.filter((a) => a.type === filters.type);
         }
 
-        // Filter by date
-        if (filters.date) {
-            filtered = this.filterByDate(filtered, filters.date);
-        }
+        // Date
+        if (filters.date) list = this.filterByDate(list, filters.date);
 
-        // Filter by search term
+        // Search
         if (filters.search) {
-            const searchLower = filters.search.toLowerCase();
-            filtered = filtered.filter(a => 
-                a.action.toLowerCase().includes(searchLower) ||
-                a.type.toLowerCase().includes(searchLower) ||
-                JSON.stringify(a.details).toLowerCase().includes(searchLower)
-            );
+            const s = String(filters.search).toLowerCase();
+            list = list.filter((a) => {
+                if (a.action?.toLowerCase().includes(s)) return true;
+                if (a.type?.toLowerCase().includes(s)) return true;
+                if (a.userName?.toLowerCase().includes(s)) return true;
+                if (this.getActivityDescription(a).toLowerCase().includes(s)) return true;
+                return false;
+            });
         }
 
-        // Apply limit
-        if (filters.limit) {
-            filtered = filtered.slice(0, filters.limit);
-        }
-
-        return filtered;
+        if (filters.limit) list = list.slice(0, filters.limit);
+        return list;
     }
 
-    // Filter by date range
     filterByDate(activities, dateFilter) {
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        
-        return activities.filter(activity => {
-            const activityDate = new Date(activity.timestamp);
-            
-            switch(dateFilter) {
+
+        return activities.filter((activity) => {
+            const t = new Date(activity.timestamp);
+            switch (dateFilter) {
                 case 'today':
-                    return activityDate >= today;
-                    
-                case 'yesterday':
-                    const yesterday = new Date(today);
-                    yesterday.setDate(yesterday.getDate() - 1);
-                    return activityDate >= yesterday && activityDate < today;
-                    
-                case 'week':
-                    const weekAgo = new Date(today);
-                    weekAgo.setDate(weekAgo.getDate() - 7);
-                    return activityDate >= weekAgo;
-                    
-                case 'month':
-                    const monthAgo = new Date(today);
-                    monthAgo.setDate(monthAgo.getDate() - 30);
-                    return activityDate >= monthAgo;
-                    
+                    return t >= today;
+                case 'yesterday': {
+                    const y = new Date(today); y.setDate(y.getDate() - 1);
+                    return t >= y && t < today;
+                }
+                case 'week': {
+                    const w = new Date(today); w.setDate(w.getDate() - 7);
+                    return t >= w;
+                }
+                case 'month': {
+                    const m = new Date(today); m.setDate(m.getDate() - 30);
+                    return t >= m;
+                }
                 case 'all':
                 default:
                     return true;
@@ -220,214 +239,170 @@ class ActivityTracker {
         });
     }
 
-    // Start real-time listener (for Firestore)
-    startRealtimeListener(callback) {
-        if (this.useLocalStorage) {
-            console.log('⚠️ Real-time listener not available in localStorage mode');
-            return null;
-        }
+    // ---------- Subscriptions ----------
 
-        try {
-            const activitiesRef = collection(db, 'activities');
-            const q = query(activitiesRef, orderBy('timestamp', 'desc'), limit(50));
-            
-            const unsubscribe = onSnapshot(q, (snapshot) => {
-                snapshot.docChanges().forEach((change) => {
-                    if (change.type === 'added') {
-                        const activity = { id: change.doc.id, ...change.doc.data() };
-                        if (callback) {
-                            callback(activity);
-                        }
-                    }
-                });
-            });
-
-            this.listeners.push(unsubscribe);
-            console.log('✅ Real-time activity listener started');
-            return unsubscribe;
-        } catch (error) {
-            console.error('Error starting real-time listener:', error);
-            return null;
-        }
-    }
-
-    // Add listener for new activities
-    addListener(callback) {
-        this.listeners.push(callback);
-    }
-
-    // Notify all listeners
-    notifyListeners(activity) {
-        this.listeners.forEach(listener => {
-            if (typeof listener === 'function') {
-                listener(activity);
-            }
-        });
-    }
-
-    // Get activity stats
-    async getActivityStats(dateFilter = 'today') {
-        const activities = await this.getActivities({ date: dateFilter });
-        
-        const stats = {
-            total: activities.length,
-            byType: {},
-            byUser: {},
-            mostActive: null
+    // Fired whenever the underlying activity list changes (initial load, snapshot update, local add)
+    onChange(cb) {
+        if (typeof cb === 'function') this._changeCallbacks.push(cb);
+        return () => {
+            const i = this._changeCallbacks.indexOf(cb);
+            if (i >= 0) this._changeCallbacks.splice(i, 1);
         };
+    }
 
-        activities.forEach(activity => {
-            // Count by type
-            stats.byType[activity.type] = (stats.byType[activity.type] || 0) + 1;
-            
-            // Count by user
-            stats.byUser[activity.userName] = (stats.byUser[activity.userName] || 0) + 1;
+    _emitChange(change) {
+        this._changeCallbacks.forEach((cb) => {
+            try { cb(this.activities, change); } catch (e) { /* ignore */ }
         });
+    }
 
-        // Find most active type
+    // Legacy: keep for back-compat (modules calling addListener / startRealtimeListener)
+    addListener(cb) {
+        if (typeof cb === 'function') this._newCallbacks.push(cb);
+    }
+    startRealtimeListener(cb) {
+        this.start();
+        if (typeof cb === 'function') this._newCallbacks.push(cb);
+        return () => {
+            const i = this._newCallbacks.indexOf(cb);
+            if (i >= 0) this._newCallbacks.splice(i, 1);
+        };
+    }
+
+    // ---------- Stats ----------
+
+    async getActivityStats(dateFilter = 'today') {
+        const list = await this.getActivities({ date: dateFilter });
+        const stats = { total: list.length, byType: {}, byUser: {}, mostActive: null };
+        list.forEach((a) => {
+            stats.byType[a.type]      = (stats.byType[a.type]      || 0) + 1;
+            stats.byUser[a.userName]  = (stats.byUser[a.userName]  || 0) + 1;
+        });
         if (Object.keys(stats.byType).length > 0) {
-            stats.mostActive = Object.keys(stats.byType).reduce((a, b) => 
+            stats.mostActive = Object.keys(stats.byType).reduce((a, b) =>
                 stats.byType[a] > stats.byType[b] ? a : b
             );
         }
-
         return stats;
     }
 
-    // Format activity for display
-    formatActivity(activity) {
-        const icon = this.getActivityIcon(activity.type);
-        const color = this.getActivityColor(activity.type);
-        const timeAgo = this.getTimeAgo(activity.timestamp);
-        const description = this.getActivityDescription(activity);
+    // ---------- Display helpers ----------
 
+    formatActivity(activity) {
         return {
             ...activity,
-            icon,
-            color,
-            timeAgo,
-            description
+            icon:        this.getActivityIcon(activity.type),
+            color:       this.getActivityColor(activity.type),
+            timeAgo:     this.getTimeAgo(activity.timestamp),
+            description: this.getActivityDescription(activity)
         };
     }
 
-    // Get icon for activity type
     getActivityIcon(type) {
         const icons = {
             inventory: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>',
-            sale: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>',
-            b2b: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>',
-            order: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>',
-            customer: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>',
-            expense: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>',
-            user: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>',
-            supplier: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>'
+            sale:      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>',
+            b2b:       '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>',
+            order:     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>',
+            customer:  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>',
+            expense:   '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>',
+            user:      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>',
+            supplier:  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>',
+            auth:      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>',
+            branch:    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>'
         };
         return icons[type] || icons.inventory;
     }
 
-    // Get color for activity type
     getActivityColor(type) {
         const colors = {
             inventory: 'blue',
-            sale: 'green',
-            b2b: 'purple',
-            order: 'orange',
-            customer: 'teal',
-            expense: 'red',
-            user: 'gray',
-            supplier: 'indigo'
+            sale:      'green',
+            b2b:       'purple',
+            order:     'orange',
+            customer:  'teal',
+            expense:   'red',
+            user:      'gray',
+            supplier:  'indigo',
+            auth:      'slate',
+            branch:    'amber'
         };
         return colors[type] || 'blue';
     }
 
-    // Get activity description
     getActivityDescription(activity) {
-        const { type, action, details } = activity;
-        
-        switch(type) {
+        const { type, action, details = {} } = activity;
+        const safe = (v, f = 'Unknown') => (v == null || v === '' ? f : v);
+
+        switch (type) {
             case 'inventory':
-                if (action === 'added') {
-                    return `Added new item: <strong>${details.itemName || 'Unknown'}</strong>`;
-                } else if (action === 'updated') {
-                    return `Updated item: <strong>${details.itemName || 'Unknown'}</strong>`;
-                } else if (action === 'deleted') {
-                    return `Deleted item: <strong>${details.itemName || 'Unknown'}</strong>`;
-                }
+                if (action === 'added')   return `Added new item: <strong>${safe(details.itemName)}</strong>`;
+                if (action === 'updated') return `Updated item: <strong>${safe(details.itemName)}</strong>`;
+                if (action === 'deleted') return `Deleted item: <strong>${safe(details.itemName)}</strong>`;
+                if (action === 'imported') return `Imported <strong>${safe(details.count, 0)}</strong> inventory items`;
                 break;
-                
             case 'sale':
-                if (action === 'completed') {
-                    return `Completed sale of <strong>KES ${details.amount || 0}</strong>`;
-                }
+                if (action === 'completed') return `Completed sale of <strong>${details.currency || 'KES'} ${safe(details.amount, 0)}</strong>`;
+                if (action === 'refunded')  return `Refunded sale <strong>#${safe(details.saleNumber)}</strong>`;
                 break;
-                
             case 'b2b':
-                if (action === 'created') {
-                    return `Created B2B order for <strong>${details.customerName || 'Unknown'}</strong>`;
-                }
+                if (action === 'created')  return `Created B2B sale for <strong>${safe(details.customerName)}</strong>`;
+                if (action === 'paid')     return `Recorded payment on B2B sale <strong>#${safe(details.saleNumber)}</strong>`;
                 break;
-                
             case 'order':
-                if (action === 'created') {
-                    return `Created purchase order from <strong>${details.supplierName || 'Unknown'}</strong>`;
-                }
+                if (action === 'created')   return `Created purchase order from <strong>${safe(details.supplierName)}</strong>`;
+                if (action === 'received')  return `Received order from <strong>${safe(details.supplierName)}</strong>`;
+                if (action === 'cancelled') return `Cancelled order <strong>#${safe(details.orderNumber)}</strong>`;
                 break;
-                
             case 'customer':
-                if (action === 'added') {
-                    return `Added new customer: <strong>${details.customerName || 'Unknown'}</strong>`;
-                }
+                if (action === 'added')   return `Added new customer: <strong>${safe(details.customerName)}</strong>`;
+                if (action === 'updated') return `Updated customer: <strong>${safe(details.customerName)}</strong>`;
+                if (action === 'deleted') return `Deleted customer: <strong>${safe(details.customerName)}</strong>`;
                 break;
-                
             case 'expense':
-                if (action === 'recorded') {
-                    return `Recorded expense: <strong>${details.category || 'Unknown'}</strong> - KES ${details.amount || 0}`;
-                }
+                if (action === 'recorded') return `Recorded expense: <strong>${safe(details.category)}</strong> - ${details.currency || 'KES'} ${safe(details.amount, 0)}`;
                 break;
-                
             case 'user':
-                if (action === 'created') {
-                    return `Created new user: <strong>${details.userName || 'Unknown'}</strong>`;
-                }
+                if (action === 'created') return `Created new user: <strong>${safe(details.userName)}</strong>`;
+                if (action === 'updated') return `Updated user: <strong>${safe(details.userName)}</strong>`;
+                if (action === 'deleted') return `Deleted user: <strong>${safe(details.userName)}</strong>`;
                 break;
-                
             case 'supplier':
-                if (action === 'added') {
-                    return `Added new supplier: <strong>${details.supplierName || 'Unknown'}</strong>`;
-                }
+                if (action === 'added')   return `Added new supplier: <strong>${safe(details.supplierName)}</strong>`;
+                if (action === 'updated') return `Updated supplier: <strong>${safe(details.supplierName)}</strong>`;
+                break;
+            case 'auth':
+                if (action === 'login')  return `Signed in`;
+                if (action === 'logout') return `Signed out`;
+                break;
+            case 'branch':
+                if (action === 'created') return `Created branch <strong>${safe(details.branchName)}</strong>`;
+                if (action === 'updated') return `Updated branch <strong>${safe(details.branchName)}</strong>`;
                 break;
         }
-        
-        return `${action} ${type}`;
+        return `${action || 'updated'} ${type || 'item'}`;
     }
 
-    // Get time ago string
     getTimeAgo(timestamp) {
         const now = new Date();
-        const activityTime = new Date(timestamp);
-        const diffMs = now - activityTime;
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
+        const t   = new Date(timestamp);
+        const ms  = now - t;
+        const m   = Math.floor(ms / 60000);
+        const h   = Math.floor(ms / 3600000);
+        const d   = Math.floor(ms / 86400000);
 
-        if (diffMins < 1) {
-            return 'Just now';
-        } else if (diffMins < 60) {
-            return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
-        } else if (diffHours < 24) {
-            return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-        } else if (diffDays < 7) {
-            return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-        } else {
-            return activityTime.toLocaleDateString();
-        }
+        if (m < 1)   return 'Just now';
+        if (m < 60)  return `${m} min${m > 1 ? 's' : ''} ago`;
+        if (h < 24)  return `${h} hour${h > 1 ? 's' : ''} ago`;
+        if (d < 7)   return `${d} day${d > 1 ? 's' : ''} ago`;
+        return t.toLocaleDateString();
     }
 }
 
-// Create singleton instance
 const activityTracker = new ActivityTracker();
 
-// Make it globally available
-window.activityTracker = activityTracker;
+if (typeof window !== 'undefined') {
+    window.activityTracker = activityTracker;
+}
 
 export default activityTracker;

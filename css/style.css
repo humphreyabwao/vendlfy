@@ -383,19 +383,24 @@ body::-webkit-scrollbar-thumb:hover {
     color: var(--text-secondary);
 }
 
-/* Sidebar */
+/* Sidebar — light, clean, professional */
 .sidebar {
     position: fixed;
     top: var(--topbar-height);
     left: 0;
     width: var(--sidebar-width);
     height: calc(100vh - var(--topbar-height));
-    background-color: var(--bg-primary);
-    border-right: 1px solid var(--border-color);
+    background-color: #f8fafc;
+    border-right: 1px solid #e2e8f0;
     overflow-y: auto;
     overflow-x: hidden;
     transition: all var(--transition-speed);
     z-index: 999;
+}
+
+[data-theme="dark"] .sidebar {
+    background-color: #1e293b;
+    border-right-color: rgba(255, 255, 255, 0.06);
 }
 
 .sidebar::-webkit-scrollbar {
@@ -407,12 +412,20 @@ body::-webkit-scrollbar-thumb:hover {
 }
 
 .sidebar::-webkit-scrollbar-thumb {
-    background: var(--border-color);
+    background: #cbd5e1;
     border-radius: 3px;
 }
 
 .sidebar::-webkit-scrollbar-thumb:hover {
-    background: var(--text-tertiary);
+    background: #94a3b8;
+}
+
+[data-theme="dark"] .sidebar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .sidebar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
 }
 
 .sidebar.collapsed {
@@ -421,61 +434,109 @@ body::-webkit-scrollbar-thumb:hover {
 
 .sidebar-nav {
     padding: 16px 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
 }
 
 .nav-list {
     list-style: none;
 }
 
+/* Bottom-pinned nav group (Settings, etc.) */
+.nav-list-bottom {
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid #e2e8f0;
+}
+
+[data-theme="dark"] .nav-list-bottom {
+    border-top-color: rgba(255, 255, 255, 0.06);
+}
+
+.sidebar.collapsed .nav-list-bottom {
+    border-top-color: transparent;
+}
+
 .nav-item {
-    margin-bottom: 4px;
+    margin-bottom: 2px;
+    padding: 0 10px;
 }
 
 .nav-link {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px 20px;
-    color: var(--text-secondary);
+    padding: 11px 14px;
+    color: #475569;
     text-decoration: none;
     font-size: 14px;
     font-weight: 500;
-    transition: all 0.2s;
+    transition: background-color 0.18s ease, color 0.18s ease;
     position: relative;
+    border-radius: 8px;
 }
 
 .nav-link:hover {
-    color: var(--text-primary);
-    background-color: var(--bg-tertiary);
+    color: #0f172a;
+    background-color: #eef2f7;
 }
 
 .nav-link.active {
-    color: var(--primary-blue);
-    background-color: rgba(37, 99, 235, 0.1);
+    color: #ffffff;
+    background-color: #2563eb;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+.nav-link.active svg {
+    color: #ffffff;
+}
+
+[data-theme="dark"] .nav-link {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .nav-link:hover {
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.06);
 }
 
 [data-theme="dark"] .nav-link.active {
-    background-color: rgba(59, 130, 246, 0.15);
-}
-
-.nav-link.active::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 3px;
-    background-color: var(--primary-blue);
+    background-color: #2563eb;
+    color: #ffffff;
 }
 
 .nav-link svg {
     flex-shrink: 0;
+    color: #64748b;
+    transition: color 0.18s ease;
+}
+
+.nav-link:hover svg {
+    color: #0f172a;
+}
+
+[data-theme="dark"] .nav-link svg {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .nav-link:hover svg {
+    color: #ffffff;
 }
 
 .nav-link span {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.sidebar.collapsed .nav-item {
+    padding: 0 6px;
+}
+
+.sidebar.collapsed .nav-link {
+    justify-content: center;
+    padding: 11px 8px;
 }
 
 .sidebar.collapsed .nav-link span {
@@ -485,6 +546,7 @@ body::-webkit-scrollbar-thumb:hover {
 .submenu-arrow {
     margin-left: auto;
     transition: transform 0.3s;
+    color: #94a3b8;
 }
 
 .sidebar.collapsed .submenu-arrow {
@@ -500,6 +562,7 @@ body::-webkit-scrollbar-thumb:hover {
     max-height: 0;
     overflow: hidden;
     transition: max-height 0.3s ease;
+    margin-top: 2px;
 }
 
 .nav-item.has-submenu.active .submenu {
@@ -508,16 +571,36 @@ body::-webkit-scrollbar-thumb:hover {
 
 .submenu li a {
     display: block;
-    padding: 10px 20px 10px 52px;
-    color: var(--text-secondary);
+    padding: 9px 14px 9px 46px;
+    color: #64748b;
     text-decoration: none;
     font-size: 13px;
-    transition: all 0.2s;
+    transition: background-color 0.18s ease, color 0.18s ease;
+    border-radius: 6px;
+    margin: 1px 0;
 }
 
 .submenu li a:hover {
-    color: var(--text-primary);
-    background-color: var(--bg-tertiary);
+    color: #0f172a;
+    background-color: #eef2f7;
+}
+
+.submenu li a.active {
+    color: #ffffff;
+    background-color: #2563eb;
+}
+
+[data-theme="dark"] .submenu li a {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .submenu li a:hover {
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] .submenu li a.active {
+    background-color: rgba(37, 99, 235, 0.6);
 }
 
 .sidebar.collapsed .submenu {
@@ -1241,6 +1324,25 @@ body::-webkit-scrollbar-thumb:hover {
     border-color: #2563eb;
 }
 
+.action-btn.add-stock {
+    background-color: #16a34a;
+    color: #ffffff;
+    border-color: #15803d;
+    box-shadow: 0 1px 2px rgba(22, 163, 74, 0.35);
+}
+
+.action-btn.add-stock:hover {
+    background-color: #15803d;
+    color: #ffffff;
+    border-color: #166534;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(22, 163, 74, 0.45);
+}
+
+.action-btn.add-stock svg {
+    stroke: #ffffff;
+}
+
 /* Checkbox Cell with Inline Delete */
 .checkbox-cell {
     display: flex;
@@ -1894,51 +1996,74 @@ textarea.form-input {
     border-color: var(--primary-blue);
 }
 
-/* Quick Actions Grid */
+/* Quick Actions Grid — clean square cards, one row, solid colors */
 .quick-actions-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(6, 1fr);
     gap: 16px;
     margin-bottom: 32px;
 }
 
 .action-card {
+    aspect-ratio: 1 / 1;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 16px;
-    padding: 20px;
-    background-color: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
+    justify-content: center;
+    gap: 14px;
+    padding: 20px 12px;
+    border: none;
+    border-radius: 14px;
     cursor: pointer;
-    transition: all 0.2s;
-    text-align: left;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+    color: #ffffff;
+    text-align: center;
+    min-height: 140px;
 }
 
 .action-card:hover {
-    border-color: var(--primary-blue);
-    background-color: var(--bg-tertiary);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.18);
+    filter: brightness(1.05);
 }
 
-.action-card svg {
-    flex-shrink: 0;
-    color: var(--primary-blue);
+.action-card:active {
+    transform: translateY(-1px);
 }
 
-.action-content h4 {
+.action-card-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+}
+
+.action-card-icon svg {
+    color: #ffffff;
+}
+
+.action-card-label {
     font-size: 14px;
     font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 4px;
+    color: #ffffff;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
 }
 
-.action-content p {
-    font-size: 12px;
-    color: var(--text-secondary);
-    margin: 0;
-}
+/* Solid color variants */
+.action-card-blue   { background-color: #2563eb; }
+.action-card-green  { background-color: #10b981; }
+.action-card-orange { background-color: #f97316; }
+.action-card-purple { background-color: #8b5cf6; }
+.action-card-teal   { background-color: #0891b2; }
+.action-card-slate  { background-color: #475569; }
 
 /* Recent Activity */
 .recent-activity {
@@ -2416,8 +2541,20 @@ textarea.form-input {
     }
     
     .quick-actions-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(3, 1fr);
         gap: 12px;
+    }
+    .action-card {
+        min-height: 110px;
+        padding: 14px 8px;
+        gap: 10px;
+    }
+    .action-card-icon {
+        width: 44px;
+        height: 44px;
+    }
+    .action-card-label {
+        font-size: 12px;
     }
     
     .dashboard-controls {
@@ -2445,6 +2582,14 @@ textarea.form-input {
     
     .stats-grid {
         grid-template-columns: 1fr;
+    }
+
+    .quick-actions-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    .action-card {
+        min-height: 100px;
     }
     
     .stat-card {
@@ -13626,3 +13771,396 @@ canvas {
     }
 }
 
+/* ============================
+   STAFF & HR MODULE STYLES
+   ============================ */
+
+/* HR primary action button (teal/indigo gradient — distinct from the red Expenses button) */
+.btn-hr {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+    font-family: 'Montserrat', sans-serif;
+}
+
+.btn-hr:hover {
+    background: linear-gradient(135deg, #0284c7 0%, #1d4ed8 100%);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+    transform: translateY(-2px);
+}
+
+.btn-hr:active {
+    transform: translateY(0);
+}
+
+.btn-hr svg {
+    flex-shrink: 0;
+}
+
+/* "Pay" variant — green for the salary-payment action */
+.btn-hr.btn-hr-pay {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.btn-hr.btn-hr-pay:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+/* Staff filter buttons (mirror .expense-filter-btn but with the HR accent on .active) */
+.staff-filter-btn {
+    padding: 0.5rem 1rem;
+    border: 1px solid #d1d5db;
+    background: white;
+    color: #374151;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    font-family: 'Montserrat', sans-serif;
+}
+
+.staff-filter-btn:hover {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+.staff-filter-btn.active {
+    background: #2563eb;
+    color: white;
+    border-color: #2563eb;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+}
+
+[data-theme="dark"] .staff-filter-btn {
+    background: var(--bg-tertiary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .staff-filter-btn:hover {
+    background: var(--bg-secondary);
+}
+
+[data-theme="dark"] .staff-filter-btn.active {
+    background: #2563eb;
+    color: white;
+    border-color: #2563eb;
+}
+
+/* HR stat-icon accent — slight teal wash so HR cards aren't visually identical to expense cards */
+#hr-staff-page .stat-icon-clean {
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(37, 99, 235, 0.12));
+    color: #2563eb;
+}
+
+[data-theme="dark"] #hr-staff-page .stat-icon-clean {
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.18), rgba(37, 99, 235, 0.18));
+    color: #60a5fa;
+}
+
+/* Staff status badges — extend the existing status-badge palette */
+.status-badge.status-on-leave {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+
+.status-badge.status-terminated {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+[data-theme="dark"] .status-badge.status-on-leave {
+    background: rgba(245, 158, 11, 0.18);
+    color: #fcd34d;
+    border-color: rgba(245, 158, 11, 0.35);
+}
+
+[data-theme="dark"] .status-badge.status-terminated {
+    background: rgba(239, 68, 68, 0.18);
+    color: #fca5a5;
+    border-color: rgba(239, 68, 68, 0.35);
+}
+
+/* Net Pay summary card on the pay-staff form (replaces the inline-styled box) */
+.hr-net-card {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 1.5rem;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.10), rgba(37, 99, 235, 0.10));
+    border: 1px dashed rgba(16, 185, 129, 0.45);
+    margin-top: 0.5rem;
+}
+
+.hr-net-card .hr-net-label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.hr-net-card .hr-net-label strong {
+    font-size: 1rem;
+    color: var(--text-primary);
+    letter-spacing: 0.02em;
+}
+
+.hr-net-card .hr-net-label small {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.hr-net-card .hr-net-amount {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #059669;
+    letter-spacing: -0.01em;
+}
+
+[data-theme="dark"] .hr-net-card {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.14), rgba(37, 99, 235, 0.14));
+    border-color: rgba(16, 185, 129, 0.5);
+}
+
+[data-theme="dark"] .hr-net-card .hr-net-amount {
+    color: #34d399;
+}
+
+/* "Selected staff" info line under the staff dropdown on the pay-staff page */
+#paySalaryStaffInfo {
+    display: block;
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    border-left: 3px solid #2563eb;
+}
+
+#paySalaryStaffInfo:empty {
+    display: none;
+}
+
+/* Salary History filter row — clean replacement for the search-box wrapper */
+.hr-filter-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.04));
+}
+
+.hr-filter-row label {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.hr-filter-row select {
+    flex: 1;
+    min-width: 240px;
+    padding: 0.55rem 2.25rem 0.55rem 0.85rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+    color: #111827;
+    font-size: 0.9rem;
+    font-family: 'Montserrat', sans-serif;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 12 12' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2.5 4.5L6 8L9.5 4.5' stroke='%23374151' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.85rem center;
+    transition: all 0.15s;
+}
+
+.hr-filter-row select:hover {
+    border-color: #9ca3af;
+}
+
+.hr-filter-row select:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+[data-theme="dark"] .hr-filter-row select {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+/* Polished view-staff modal footer (uses .pos-modal-footer; just ensure spacing) */
+#hr-staff-page + * .pos-modal .pos-modal-footer,
+.pos-modal .pos-modal-footer {
+    gap: 0.75rem;
+}
+
+/* Compact action-buttons column on the staff table */
+#staffTableBody .action-buttons {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: nowrap;
+}
+
+#staffTableBody td:last-child {
+    white-space: nowrap;
+}
+
+/* Staff name + position emphasis */
+#staffTableBody tr td:first-child strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* Salary History table number alignment */
+#salaryHistoryTableBody td:nth-child(n+4) {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+#salaryHistoryTableBody td:nth-child(2),
+#salaryHistoryTableBody td:nth-child(3) {
+    text-align: left;
+}
+
+#salaryHistoryTable thead th:nth-child(n+4),
+.data-table thead th[data-numeric] {
+    text-align: right;
+}
+
+/* ----- Loading / success / error states for HR submit buttons ----- */
+@keyframes hr-spin {
+    to { transform: rotate(360deg); }
+}
+
+.hr-btn-spinner,
+.ui-btn-spinner {
+    animation: hr-spin 0.7s linear infinite;
+    flex-shrink: 0;
+}
+
+.btn-submit.is-loading,
+.btn-hr.is-loading,
+.btn-cancel.is-loading,
+.btn.btn-primary.is-loading,
+.btn.btn-secondary.is-loading,
+.btn.btn-danger.is-loading {
+    cursor: progress;
+    opacity: 0.92;
+    pointer-events: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-submit.is-success,
+.btn-hr.is-success,
+.btn.btn-primary.is-success,
+.btn.btn-secondary.is-success,
+.btn.btn-danger.is-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    border-color: #059669 !important;
+    color: #fff !important;
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35) !important;
+    transform: none !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-submit.is-error,
+.btn-hr.is-error,
+.btn.btn-primary.is-error,
+.btn.btn-secondary.is-error,
+.btn.btn-danger.is-error {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+    border-color: #dc2626 !important;
+    color: #fff !important;
+    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35) !important;
+    animation: hr-shake 0.4s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+@keyframes hr-shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-4px); }
+    40%, 80% { transform: translateX(4px); }
+}
+
+/* When buttons are in a state, ensure the inline svg/text don't get squeezed weirdly */
+.btn-submit.is-loading svg,
+.btn-submit.is-success svg,
+.btn-submit.is-error svg,
+.btn-hr.is-loading svg,
+.btn-hr.is-success svg,
+.btn-hr.is-error svg {
+    flex-shrink: 0;
+}
+
+/* Fallback toast (used by hr.js if window.showNotification isn't ready yet) */
+.hr-fallback-toast {
+    animation: hr-toast-in 0.25s ease;
+}
+
+@keyframes hr-toast-in {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .btn-hr {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .hr-net-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .hr-net-card .hr-net-amount {
+        font-size: 1.5rem;
+    }
+
+    .hr-filter-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .hr-filter-row select {
+        min-width: 100%;
+    }
+
+    #staffTableBody .action-buttons {
+        flex-wrap: wrap;
+    }
+}

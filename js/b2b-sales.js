@@ -1,6 +1,7 @@
 // B2B Sales Module - Wholesale Sales Management
 import dataManager from './data-manager.js';
 import branchManager from './branch-manager.js';
+import brandManager from './brand-manager.js';
 
 class B2BSalesManager {
     constructor() {
@@ -183,24 +184,23 @@ class B2BSalesManager {
         });
     }
 
-    // Start real-time sync for sales updates
+    // Start real-time sync for sales updates.
+    // Refresh every 2 minutes, only when the b2b-sales page is visible and the
+    // tab is in the foreground. Previously this polled every 30s on every page
+    // and ALSO cascaded into refreshDashboardStats + refreshAccountStats — those
+    // modules already auto-refresh themselves when their page is active, so the
+    // cascade just multiplied Firestore reads.
     startRealtimeSync() {
-        // Refresh sales every 30 seconds
+        if (this._realtimeSyncStarted) return;
+        this._realtimeSyncStarted = true;
         setInterval(async () => {
+            if (document.visibilityState !== 'visible') return;
+            const b2bPage = document.getElementById('b2b-sales-page');
+            if (!b2bPage || !b2bPage.classList.contains('active')) return;
             await this.loadB2BSales();
             this.renderStats();
             this.renderSalesTable();
-            
-            // Also refresh dashboard stats
-            if (window.refreshDashboardStats) {
-                await window.refreshDashboardStats();
-            }
-            
-            // Refresh account stats
-            if (window.refreshAccountStats) {
-                await window.refreshAccountStats();
-            }
-        }, 30000);
+        }, 120000);
     }
 
     // Apply filters
@@ -646,6 +646,7 @@ class B2BSalesManager {
         const sale = this.sales.find(s => s.id === saleId);
         if (!sale) return;
 
+        const brand = brandManager.getBrand();
         const printWindow = window.open('', '', 'height=900,width=800');
         const invoiceDate = new Date(sale.createdAt);
         const dueDate = this.calculateDueDate(invoiceDate, sale.creditTerm);
@@ -865,10 +866,17 @@ class B2BSalesManager {
             </head>
             <body>
                 <div class="invoice-header">
-                    <div class="company-info">
-                        <h1>Vendify</h1>
-                        <p>Point of Sale System</p>
-                        <p>vendly-pos.firebaseapp.com</p>
+                    <div class="company-info" style="display:flex;align-items:center;gap:16px;">
+                        ${brandManager.getLogoUrl() ? `<img src="${brandManager.getLogoUrl()}" alt="${brand.name}" style="height:64px;width:auto;max-width:120px;object-fit:contain;flex-shrink:0;" onerror="this.style.display='none'">` : ''}
+                        <div>
+                            <h1>${brand.name}</h1>
+                            ${brand.tagline ? `<p>${brand.tagline}</p>` : ''}
+                            ${brand.address ? `<p>${brand.address}</p>` : ''}
+                            ${brand.phone ? `<p>Tel: ${brand.phone}</p>` : ''}
+                            ${brand.email ? `<p>${brand.email}</p>` : ''}
+                            ${brand.website ? `<p>${brand.website}</p>` : ''}
+                            ${brand.taxId ? `<p>PIN: ${brand.taxId}</p>` : ''}
+                        </div>
                     </div>
                     <div class="invoice-meta">
                         <h2>INVOICE</h2>
@@ -1233,7 +1241,13 @@ class B2BSalesManager {
 
     // Mark sale as completed
     async markAsCompleted(saleId) {
-        if (!confirm('Mark this order as completed?')) return;
+        const ok = await window.uiConfirm?.({
+            title: 'Mark as completed?',
+            message: 'This will mark the order as completed.',
+            tone: 'success',
+            okLabel: 'Mark completed'
+        });
+        if (!ok) return;
 
         try {
             await dataManager.updateSale(saleId, { status: 'completed' });
@@ -1305,6 +1319,8 @@ class B2BSalesManager {
             </head>
             <body>
                 <div class="header">
+                    ${brandManager.getLogoHTML({ maxWidth: 80, maxHeight: 80, marginBottom: 6, alt: brandManager.name() })}
+                    <div style="font-size:18px;font-weight:700;color:#1f2937;margin-bottom:4px;">${brandManager.name()}</div>
                     <h1>B2B / Wholesale Sales Report</h1>
                     <p>Generated on ${new Date().toLocaleString()}</p>
                     <p>Total Sales: ${this.formatCurrency(this.filteredSales.reduce((sum, s) => sum + s.total, 0))}</p>
@@ -1453,13 +1469,16 @@ class B2BSalesManager {
         if (!sale) return;
 
         // Confirmation dialog
-        const confirmed = confirm(
-            `Are you sure you want to delete this B2B sale?\n\n` +
-            `Invoice: ${sale.saleNumber}\n` +
-            `Customer: ${sale.customer || 'Walk-in'}\n` +
-            `Amount: KES ${this.formatCurrency(sale.total)}\n\n` +
-            `This action cannot be undone.`
-        );
+        const confirmed = await window.uiConfirm?.({
+            title: 'Delete B2B sale?',
+            message:
+                `Invoice: ${sale.saleNumber}\n` +
+                `Customer: ${sale.customer || 'Walk-in'}\n` +
+                `Amount: KES ${this.formatCurrency(sale.total)}\n\n` +
+                `This action cannot be undone.`,
+            tone: 'danger',
+            okLabel: 'Delete'
+        });
 
         if (!confirmed) return;
 

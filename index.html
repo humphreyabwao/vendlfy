@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vendify POS - Login</title>
+    <link rel="icon" type="image/jpeg" href="images/logo/logo_page-0001.jpg">
+    <link rel="apple-touch-icon" href="images/logo/logo_page-0001.jpg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -393,7 +395,10 @@
         <div class="login-left">
             <div class="logo-section">
                 <div class="logo-icon">
-                    <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <img src="images/logo/logo_page-0001.jpg" alt="Brand logo" class="login-brand-logo"
+                        style="max-width:80%;max-height:80%;object-fit:contain;display:block;"
+                        onerror="this.style.display='none'; this.nextElementSibling.style.display='';">
+                    <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
                         <circle cx="9" cy="21" r="1"></circle>
                         <circle cx="20" cy="21" r="1"></circle>
                         <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
@@ -506,7 +511,12 @@
 
     <!-- Firebase SDK -->
     <script type="module">
-        import { auth, signInWithEmailAndPassword, sendPasswordResetEmail, setPersistence, browserSessionPersistence, browserLocalPersistence } from './js/firebase-config.js';
+        import {
+            auth, db,
+            signInWithEmailAndPassword, signOut, sendPasswordResetEmail,
+            setPersistence, browserSessionPersistence, browserLocalPersistence,
+            doc, getDoc
+        } from './js/firebase-config.js';
 
         class LoginManager {
             constructor() {
@@ -517,44 +527,49 @@
             init() {
                 this.attachEventListeners();
                 this.checkAuthState();
+                // Show error passed via URL query param (e.g. ?error=disabled)
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('error') === 'disabled') {
+                    this.showError('Your account has been disabled. Contact your administrator.');
+                }
             }
 
             attachEventListeners() {
-                // Login form
                 document.getElementById('loginForm').addEventListener('submit', (e) => this.handleLogin(e));
-                
-                // Password toggle
                 document.getElementById('passwordToggle').addEventListener('click', () => this.togglePassword());
-                
-                // Forgot password modal
                 document.getElementById('forgotPasswordLink').addEventListener('click', (e) => {
                     e.preventDefault();
                     this.showForgotPasswordModal();
                 });
-                
                 document.getElementById('closeModal').addEventListener('click', () => this.hideForgotPasswordModal());
-                
                 document.getElementById('forgotPasswordModal').addEventListener('click', (e) => {
-                    if (e.target.id === 'forgotPasswordModal') {
-                        this.hideForgotPasswordModal();
-                    }
+                    if (e.target.id === 'forgotPasswordModal') this.hideForgotPasswordModal();
                 });
-                
-                // Forgot password form
                 document.getElementById('forgotPasswordForm').addEventListener('submit', (e) => this.handlePasswordReset(e));
-                
-                // Enter key handling
                 document.addEventListener('keydown', (e) => {
-                    if (e.key === 'Escape') {
-                        this.hideForgotPasswordModal();
-                    }
+                    if (e.key === 'Escape') this.hideForgotPasswordModal();
                 });
             }
 
             async checkAuthState() {
-                auth.onAuthStateChanged((user) => {
+                auth.onAuthStateChanged(async (user) => {
                     if (user) {
-                        // User is signed in, redirect to main app
+                        // Before redirecting, check if account is active in Firestore
+                        try {
+                            const profileRef = doc(db, 'users', user.uid);
+                            const profileSnap = await getDoc(profileRef);
+                            if (profileSnap.exists()) {
+                                const profile = profileSnap.data();
+                                if (profile.status && profile.status !== 'active') {
+                                    await signOut(auth);
+                                    this.showError('Your account has been disabled. Contact your administrator.');
+                                    return;
+                                }
+                            }
+                        } catch (e) {
+                            // Firestore rules might block this before profile is created — allow through
+                            // (session-manager in dashboard.html will handle missing profile)
+                        }
                         window.location.href = 'dashboard.html';
                     }
                 });
@@ -562,33 +577,42 @@
 
             async handleLogin(e) {
                 e.preventDefault();
-                
                 if (this.isLoading) return;
-                
+
                 const email = document.getElementById('email').value.trim();
                 const password = document.getElementById('password').value;
                 const rememberMe = document.getElementById('rememberMe').checked;
-                
+
                 if (!email || !password) {
                     this.showError('Please fill in all fields');
                     return;
                 }
-                
+
                 this.setLoading(true);
                 this.clearError();
-                
+
                 try {
-                    // Set persistence based on remember me
                     const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence;
                     await setPersistence(auth, persistence);
-                    
-                    // Sign in user
                     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-                    console.log('✅ Login successful:', userCredential.user.email);
-                    
-                    // Redirect to main app
+
+                    // Check account status before redirecting
+                    try {
+                        const profileRef = doc(db, 'users', userCredential.user.uid);
+                        const profileSnap = await getDoc(profileRef);
+                        if (profileSnap.exists()) {
+                            const profile = profileSnap.data();
+                            if (profile.status && profile.status !== 'active') {
+                                await signOut(auth);
+                                this.showError('Your account has been disabled. Contact your administrator.');
+                                return;
+                            }
+                        }
+                    } catch (profileErr) {
+                        // Profile might not exist yet (first-time bootstrap) — allow through
+                    }
+
                     window.location.href = 'dashboard.html';
-                    
                 } catch (error) {
                     console.error('❌ Login error:', error);
                     this.handleAuthError(error);

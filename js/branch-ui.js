@@ -9,6 +9,61 @@ window.editBranch = editBranch;
 window.deleteBranch = deleteBranch;
 window.loadBranchesList = loadBranchesList;
 
+// ---------- Save-button state helpers (loading / success / error) ----------
+
+const BTN_SPINNER_SVG = '<svg class="hr-btn-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>';
+const BTN_CHECK_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+const BTN_X_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+
+function setBranchBtnState(btn, state, label) {
+    if (!btn) return;
+    if (!btn.dataset.brOriginalHtml) btn.dataset.brOriginalHtml = btn.innerHTML;
+    clearTimeout(btn._brRestoreTimer);
+    btn.classList.remove('is-loading', 'is-success', 'is-error');
+
+    if (state === 'loading') {
+        btn.disabled = true;
+        btn.classList.add('is-loading');
+        btn.innerHTML = `${BTN_SPINNER_SVG}<span> ${label || 'Saving…'}</span>`;
+        return;
+    }
+    if (state === 'success') {
+        btn.disabled = true;
+        btn.classList.add('is-success');
+        btn.innerHTML = `${BTN_CHECK_SVG}<span> ${label || 'Saved!'}</span>`;
+        btn._brRestoreTimer = setTimeout(() => setBranchBtnState(btn, 'idle'), 1100);
+        return;
+    }
+    if (state === 'error') {
+        btn.disabled = false;
+        btn.classList.add('is-error');
+        btn.innerHTML = `${BTN_X_SVG}<span> ${label || 'Failed'}</span>`;
+        btn._brRestoreTimer = setTimeout(() => setBranchBtnState(btn, 'idle'), 1800);
+        return;
+    }
+    btn.disabled = false;
+    btn.innerHTML = btn.dataset.brOriginalHtml || btn.innerHTML;
+}
+
+function branchErrorMessage(e, action = 'save branch') {
+    if (!e) return `Could not ${action}.`;
+    const code = e.code || e?.cause?.code || '';
+    const msg = (e.message || '').toLowerCase();
+    if (code === 'permission-denied' || msg.includes('permission')) {
+        return `Permission denied. Only admins can ${action}, and the Firestore rules must be deployed (run: firebase deploy --only firestore:rules).`;
+    }
+    if (code === 'timeout') {
+        return `Network is slow — could not ${action} within 12 seconds. Check your connection and retry.`;
+    }
+    if (code === 'unavailable' || msg.includes('offline') || msg.includes('network')) {
+        return `You appear to be offline — could not ${action}. Reconnect and retry.`;
+    }
+    if (code === 'unauthenticated') {
+        return `Your session has expired. Please sign in again.`;
+    }
+    return `Could not ${action}: ${e.message || e}`;
+}
+
 // Open branch modal for adding/editing
 function openBranchModal(branchId = null) {
     const modal = document.getElementById('branchModal');
@@ -48,42 +103,74 @@ function closeBranchModal() {
     modal.classList.remove('active');
 }
 
-// Save branch (add or update)
+// Save branch (add or update). Robust against load-order races: prevents
+// the default form submit BEFORE awaiting anything, so the page never
+// navigates even if some dependency is slow to load.
 async function saveBranch(event) {
-    event.preventDefault();
-    
-    const form = event.target;
-    const formData = new FormData(form);
-    const branchId = formData.get('branchId');
-    
-    const branchData = {
-        name: formData.get('name'),
-        address: formData.get('address'),
-        phone: formData.get('phone'),
-        manager: formData.get('manager'),
-        status: formData.get('status')
-    };
-    
-    try {
-        if (branchId) {
-            // Update existing branch (don't change code)
-            await branchManager.updateBranch(branchId, branchData);
-            showNotification('Branch updated successfully', 'success');
-        } else {
-            // Create new branch (code will be auto-generated)
-            branchData.isCentral = false;
-            await branchManager.createBranch(branchData);
-            showNotification('Branch created successfully', 'success');
-        }
-        
-        closeBranchModal();
-        await loadBranchesList();
-        await window.populateBranchSelector();
-        
-    } catch (error) {
-        console.error('Error saving branch:', error);
-        showNotification('Error saving branch: ' + error.message, 'error');
+    if (event) {
+        try { event.preventDefault(); } catch (_) {}
+        try { event.stopPropagation(); } catch (_) {}
     }
+
+    const form = (event && event.target) || document.getElementById('branchForm');
+    if (!form) {
+        console.error('[branches] No form found in saveBranch event');
+        return false;
+    }
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const formData = new FormData(form);
+    const branchId = (formData.get('branchId') || '').toString().trim();
+    const name = (formData.get('name') || '').toString().trim();
+
+    if (!name) {
+        showNotification('Branch name is required', 'error');
+        setBranchBtnState(submitBtn, 'error', 'Name required');
+        return false;
+    }
+
+    const branchData = {
+        name,
+        address: (formData.get('address') || '').toString().trim(),
+        phone: (formData.get('phone') || '').toString().trim(),
+        manager: (formData.get('manager') || '').toString().trim(),
+        status: formData.get('status') || 'active'
+    };
+
+    setBranchBtnState(submitBtn, 'loading', branchId ? 'Saving…' : 'Creating…');
+    console.log('🏢 [branches] Saving branch', branchId ? `(edit ${branchId})` : '(new)', branchData);
+
+    try {
+        let saved;
+        if (branchId) {
+            await branchManager.updateBranch(branchId, branchData);
+            console.log('✅ [branches] Branch updated:', branchId);
+            saved = { id: branchId, ...branchData };
+        } else {
+            branchData.isCentral = false;
+            saved = await branchManager.createBranch(branchData);
+            console.log('✅ [branches] Branch created:', saved);
+        }
+
+        setBranchBtnState(submitBtn, 'success', branchId ? 'Saved!' : 'Created!');
+        showNotification(
+            branchId ? `Branch "${branchData.name}" updated` : `Branch "${branchData.name}" created`,
+            'success'
+        );
+
+        // Always refresh the list immediately so the UI reflects the change
+        // even if the realtime listener hasn't fired yet.
+        try { await loadBranchesList(); } catch (_) {}
+        try { if (typeof window.populateBranchSelector === 'function') await window.populateBranchSelector(); } catch (_) {}
+
+        // Close after the success state has been visible for a moment.
+        setTimeout(() => closeBranchModal(), 700);
+    } catch (error) {
+        console.error('❌ [branches] Save branch failed:', error);
+        setBranchBtnState(submitBtn, 'error', 'Failed');
+        showNotification(branchErrorMessage(error, branchId ? 'update branch' : 'create branch'), 'error');
+    }
+
+    return false; // belt-and-braces against legacy onsubmit returns
 }
 
 // Edit branch
@@ -94,24 +181,34 @@ function editBranch(branchId) {
 // Delete branch
 async function deleteBranch(branchId) {
     const branch = branchManager.getBranchById(branchId);
-    
+
     if (!branch) return;
-    
+
     if (branch.isCentral) {
         showNotification('Cannot delete central branch', 'error');
         return;
     }
-    
-    if (confirm(`Are you sure you want to delete "${branch.name}"? This action cannot be undone.`)) {
-        try {
-            await branchManager.deleteBranch(branchId);
-            showNotification('Branch deleted successfully', 'success');
-            await loadBranchesList();
-            await window.populateBranchSelector();
-        } catch (error) {
-            console.error('Error deleting branch:', error);
-            showNotification('Error deleting branch: ' + error.message, 'error');
-        }
+
+    const ok = await window.uiConfirm?.({
+        title: 'Delete branch?',
+        message: `Are you sure you want to delete "${branch.name}"? This cannot be undone.`,
+        tone: 'danger',
+        okLabel: 'Delete'
+    });
+    if (!ok) return;
+
+    console.log('🗑️  [branches] Deleting branch', branchId, branch.name);
+    showNotification(`Deleting "${branch.name}"…`, 'info');
+
+    try {
+        await branchManager.deleteBranch(branchId);
+        console.log('✅ [branches] Branch deleted:', branchId);
+        showNotification(`Branch "${branch.name}" deleted`, 'success');
+        try { await loadBranchesList(); } catch (_) {}
+        try { if (typeof window.populateBranchSelector === 'function') await window.populateBranchSelector(); } catch (_) {}
+    } catch (error) {
+        console.error('❌ [branches] Delete branch failed:', error);
+        showNotification(branchErrorMessage(error, 'delete branch'), 'error');
     }
 }
 
@@ -255,7 +352,26 @@ function initRealtimeUpdates() {
 window.addEventListener('DOMContentLoaded', () => {
     // Initialize real-time updates
     initRealtimeUpdates();
-    
+
+    // Bind the branch form submit explicitly via JS so the handler runs
+    // reliably even if module load order or a stale cache means the inline
+    // onsubmit="saveBranch(event)" attribute fires before window.saveBranch
+    // is defined (which would let the form submit via default GET and look
+    // like the modal "stays for a moment and disappears").
+    const branchForm = document.getElementById('branchForm');
+    if (branchForm) {
+        branchForm.addEventListener('submit', (e) => {
+            // Always block default first — even if our handler then errors.
+            e.preventDefault();
+            e.stopPropagation();
+            void saveBranch(e);
+        });
+        // Also clear the inline attribute so it can't fire twice / fight us.
+        branchForm.removeAttribute('onsubmit');
+    } else {
+        console.warn('[branches] #branchForm not found at DOMContentLoaded');
+    }
+
     // Load branches when admin page is accessed
     const navLinks = document.querySelectorAll('[data-page="admin"]');
     navLinks.forEach(link => {

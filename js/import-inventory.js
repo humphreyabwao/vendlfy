@@ -1,6 +1,7 @@
 // Import Inventory from Excel
 import dataManager from './data-manager.js';
 import auditLogger from './audit-logger.js';
+import brandManager from './brand-manager.js';
 
 class InventoryImporter {
     constructor() {
@@ -682,7 +683,8 @@ class InventoryImporter {
             { wch: 15 }  // Location
         ];
 
-        XLSX.writeFile(wb, 'Vendify_Inventory_Template.xlsx');
+        const brandName = (brandManager.getBrand().name || 'Inventory').replace(/[^a-z0-9]+/gi, '_');
+        XLSX.writeFile(wb, `${brandName}_Inventory_Template.xlsx`);
         window.showNotification('Template downloaded successfully', 'success');
     }
 

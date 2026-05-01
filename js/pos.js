@@ -3,6 +3,9 @@ import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, wher
 import branchManager from './branch-manager.js';
 import dataManager from './data-manager.js';
 import auditLogger from './audit-logger.js';
+import brandManager from './brand-manager.js';
+import sessionManager from './session-manager.js';
+import { setBtnState, friendlyError } from './ui-feedback.js';
 
 class POSSystem {
     constructor() {
@@ -44,6 +47,13 @@ class POSSystem {
         // Only attach event listeners once to prevent duplicates
         if (!this.initialized) {
             this.attachEventListeners();
+            this._inventoryExternalRefreshTimer = null;
+            window.addEventListener('inventoryDataChanged', () => {
+                clearTimeout(this._inventoryExternalRefreshTimer);
+                this._inventoryExternalRefreshTimer = setTimeout(() => {
+                    this.loadInventory().catch((err) => console.error('POS inventory refresh:', err));
+                }, 200);
+            });
             this.initialized = true;
             console.log('✅ Event listeners attached');
         }
@@ -85,17 +95,37 @@ class POSSystem {
         }
     }
 
-    // Start real-time sync for stats
+    // Start real-time sync for stats — only refresh while the POS page is
+    // visible and the tab is in the foreground (avoid Firestore read drain).
     startRealtimeSync() {
-        // Refresh stats every 30 seconds
+        if (this._realtimeSyncStarted) return;
+        this._realtimeSyncStarted = true;
         setInterval(() => {
-            this.loadTodayStats();
-            this.renderStats();
-        }, 30000);
+            if (document.visibilityState !== 'visible') return;
+            const posPage = document.getElementById('pos-page');
+            if (!posPage || !posPage.classList.contains('active')) return;
+            this.loadTodayStats().then(() => this.renderStats());
+        }, 60000);
     }
 
     // Render statistics cards
     renderStats() {
+        const cur = brandManager.getBrand().currency || 'KES';
+        const showProfit = sessionManager.isAdmin();
+
+        const profitCard = showProfit ? `
+            <div class="pos-stat-card">
+                <div class="pos-stat-icon" style="background: #f5576c;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    </svg>
+                </div>
+                <div class="pos-stat-content">
+                    <div class="pos-stat-label">Profit</div>
+                    <div class="pos-stat-value">${cur} ${this.formatCurrency(this.todayStats.profit)}</div>
+                </div>
+            </div>` : '';
+
         const statsHTML = `
             <div class="pos-stat-card">
                 <div class="pos-stat-icon" style="background: #667eea;">
@@ -106,20 +136,10 @@ class POSSystem {
                 </div>
                 <div class="pos-stat-content">
                     <div class="pos-stat-label">Revenue</div>
-                    <div class="pos-stat-value">KES ${this.formatCurrency(this.todayStats.revenue)}</div>
+                    <div class="pos-stat-value">${cur} ${this.formatCurrency(this.todayStats.revenue)}</div>
                 </div>
             </div>
-            <div class="pos-stat-card">
-                <div class="pos-stat-icon" style="background: #f5576c;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                    </svg>
-                </div>
-                <div class="pos-stat-content">
-                    <div class="pos-stat-label">Profit</div>
-                    <div class="pos-stat-value">KES ${this.formatCurrency(this.todayStats.profit)}</div>
-                </div>
-            </div>
+            ${profitCard}
             <div class="pos-stat-card">
                 <div class="pos-stat-icon" style="background: #4facfe;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -149,6 +169,12 @@ class POSSystem {
         const statsContainer = document.getElementById('posStatsContainer');
         if (statsContainer) {
             statsContainer.innerHTML = statsHTML;
+        }
+
+        // Re-render automatically when the user's role changes (live)
+        if (!this._sessionHook) {
+            this._sessionHook = true;
+            sessionManager.onChange(() => this.renderStats());
         }
     }
 
@@ -866,32 +892,38 @@ class POSSystem {
     }
 
     // Clear entire cart
-    clearCart() {
+    async clearCart() {
         if (this.cart.length === 0) return;
 
-        if (confirm('Are you sure you want to clear the cart?')) {
-            this.cart = [];
-            this.discount = 0;
-            this.tax = 0;
-            this.paymentMethod = 'cash'; // Reset to cash
-            
-            const discountInput = document.getElementById('posDiscountInput');
-            const taxInput = document.getElementById('posTaxInput');
-            if (discountInput) discountInput.value = '';
-            if (taxInput) taxInput.value = '';
-            
-            // Reset payment method buttons
-            document.querySelectorAll('.pos-payment-btn').forEach(btn => {
-                btn.classList.remove('active');
-                if (btn.getAttribute('data-method') === 'cash') {
-                    btn.classList.add('active');
-                }
-            });
-            
-            this.renderCart();
-            this.updateTotals();
-            this.showNotification('Cart cleared', 'info');
-        }
+        const ok = await window.uiConfirm?.({
+            title: 'Clear the cart?',
+            message: 'All items, discounts and taxes will be reset.',
+            tone: 'warning',
+            okLabel: 'Clear cart'
+        });
+        if (!ok) return;
+
+        this.cart = [];
+        this.discount = 0;
+        this.tax = 0;
+        this.paymentMethod = 'cash'; // Reset to cash
+
+        const discountInput = document.getElementById('posDiscountInput');
+        const taxInput = document.getElementById('posTaxInput');
+        if (discountInput) discountInput.value = '';
+        if (taxInput) taxInput.value = '';
+
+        // Reset payment method buttons
+        document.querySelectorAll('.pos-payment-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.getAttribute('data-method') === 'cash') {
+                btn.classList.add('active');
+            }
+        });
+
+        this.renderCart();
+        this.updateTotals();
+        this.showNotification('Cart cleared', 'info');
     }
 
     // Update totals and calculations
@@ -939,10 +971,7 @@ class POSSystem {
         this.isProcessingSale = true;
 
         const completeSaleBtn = document.getElementById('posCompleteSale');
-        if (completeSaleBtn) {
-            completeSaleBtn.disabled = true;
-            completeSaleBtn.innerHTML = '<span class="btn-spinner"></span> Processing...';
-        }
+        setBtnState(completeSaleBtn, 'loading', 'Processing…');
 
         try {
             // Calculate totals
@@ -1064,9 +1093,10 @@ class POSSystem {
             this.renderCart();
             this.updateTotals();
 
-            // 4. Show success message IMMEDIATELY
+            // 4. Drive the button to success and toast IMMEDIATELY.
+            setBtnState(completeSaleBtn, 'success', 'Done!');
             this.showNotification(`✅ Sale completed! Total: KES ${this.formatCurrency(total)}`, 'success');
-            
+
             // 5. Show receipt dialog IMMEDIATELY
             this.showReceiptDialog(sale);
 
@@ -1119,30 +1149,16 @@ class POSSystem {
 
         } catch (error) {
             console.error('❌ Error completing sale:', error);
-            console.error('Error message:', error.message);
-            console.error('Error stack:', error.stack);
-            
-            // Show detailed error to help debug
-            const errorMsg = error.message || 'Unknown error occurred';
-            this.showNotification(`Sale Error: ${errorMsg}`, 'error');
-            
-            // If sale was actually saved despite error, inform user
+            setBtnState(completeSaleBtn, 'error', 'Failed');
+            this.showNotification(friendlyError(error, 'complete sale'), 'error');
+
             if (error.message && error.message.includes('refresh')) {
                 this.showNotification('Sale may have been saved. Check All Sales page.', 'info');
             }
         } finally {
-            // Reset processing flag
+            // Reset processing flag (button restoration is handled by setBtnState's
+            // auto-restore timer for success/error states).
             this.isProcessingSale = false;
-            
-            if (completeSaleBtn) {
-                completeSaleBtn.disabled = false;
-                completeSaleBtn.innerHTML = `
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                    Complete Sale
-                `;
-            }
         }
     }
 
@@ -1153,7 +1169,13 @@ class POSSystem {
             return;
         }
 
-        const customerName = prompt('Enter customer name (optional):');
+        const customerName = await window.uiPrompt?.({
+            title: 'Hold sale',
+            message: 'Optionally name this held sale so you can recognise it later.',
+            placeholder: 'Walk-in customer',
+            okLabel: 'Hold sale'
+        });
+        if (customerName === null) return; // user cancelled
 
         const holdData = {
             cart: JSON.parse(JSON.stringify(this.cart)), // Deep copy
@@ -1309,9 +1331,13 @@ class POSSystem {
 
     // Delete a held sale
     async deleteHeldSale(saleId) {
-        if (!confirm('Are you sure you want to delete this held sale?')) {
-            return;
-        }
+        const ok = await window.uiConfirm?.({
+            title: 'Delete held sale?',
+            message: 'This held cart will be permanently removed.',
+            tone: 'danger',
+            okLabel: 'Delete'
+        });
+        if (!ok) return;
 
         try {
             await dataManager.deleteHeldSale(saleId);
@@ -1350,7 +1376,12 @@ class POSSystem {
             return;
         }
 
-        const customerName = prompt('Enter customer name:');
+        const customerName = await window.uiPrompt?.({
+            title: 'Generate quote',
+            message: 'Who is this quote for?',
+            placeholder: 'Customer or company name',
+            okLabel: 'Generate'
+        });
         if (!customerName) {
             this.showNotification('Customer name is required for quote', 'info');
             return;
@@ -1512,12 +1543,13 @@ class POSSystem {
                 return;
             }
 
+            const brand = brandManager.getBrand();
             const printWindow = window.open('', '_blank');
             printWindow.document.write(`
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>Quote Receipt #${quote.quoteNumber}</title>
+                    <title>Quote ${brand.name} #${quote.quoteNumber}</title>
                     <style>
                         @media print {
                             body { margin: 0; }
@@ -1599,7 +1631,13 @@ class POSSystem {
                 </head>
                 <body>
                     <div class="receipt-header">
-                        <h2>VENDLY POS</h2>
+                        ${brandManager.getLogoHTML({ maxWidth: 70, maxHeight: 70, marginBottom: 6, alt: brand.name })}
+                        <h2>${brand.name}</h2>
+                        ${brand.tagline ? `<div style="font-size:10px;font-style:italic;">${brand.tagline}</div>` : ''}
+                        ${brand.address ? `<div style="font-size:10px;">${brand.address}</div>` : ''}
+                        ${brand.phone ? `<div style="font-size:10px;">Tel: ${brand.phone}</div>` : ''}
+                        ${brand.email ? `<div style="font-size:10px;">${brand.email}</div>` : ''}
+                        ${brand.taxId ? `<div style="font-size:10px;">PIN: ${brand.taxId}</div>` : ''}
                         <div class="quote-tag">QUOTATION</div>
                         <div style="font-weight: bold;">#${quote.quoteNumber}</div>
                     </div>
@@ -1628,8 +1666,8 @@ class POSSystem {
                             <div class="item">
                                 <div class="item-name">${item.name}</div>
                                 <div class="item-details">
-                                    <span>${item.quantity} x KES ${item.price.toFixed(2)}</span>
-                                    <span>KES ${item.total.toFixed(2)}</span>
+                                    <span>${item.quantity} x ${brand.currency} ${item.price.toFixed(2)}</span>
+                                    <span>${brand.currency} ${item.total.toFixed(2)}</span>
                                 </div>
                             </div>
                         `).join('')}
@@ -1638,30 +1676,30 @@ class POSSystem {
                     <div class="totals">
                         <div class="total-row">
                             <span>Subtotal:</span>
-                            <span>KES ${quote.subtotal.toFixed(2)}</span>
+                            <span>${brand.currency} ${quote.subtotal.toFixed(2)}</span>
                         </div>
                         ${quote.discount > 0 ? `
                             <div class="total-row">
                                 <span>Discount:</span>
-                                <span>-KES ${quote.discount.toFixed(2)}</span>
+                                <span>-${brand.currency} ${quote.discount.toFixed(2)}</span>
                             </div>
                         ` : ''}
                         ${quote.tax > 0 ? `
                             <div class="total-row">
                                 <span>Tax:</span>
-                                <span>KES ${quote.tax.toFixed(2)}</span>
+                                <span>${brand.currency} ${quote.tax.toFixed(2)}</span>
                             </div>
                         ` : ''}
                         <div class="total-row final">
                             <span>TOTAL:</span>
-                            <span>KES ${quote.total.toFixed(2)}</span>
+                            <span>${brand.currency} ${quote.total.toFixed(2)}</span>
                         </div>
                     </div>
                     
                     <div class="footer">
                         <div>This is a quotation, not a receipt</div>
                         <div>Valid for 30 days from issue date</div>
-                        <div style="margin-top: 10px;">Thank you for your business!</div>
+                        <div style="margin-top: 10px;">${brand.receiptFooter || 'Thank you for your business!'}</div>
                     </div>
                 </body>
                 </html>
@@ -1877,13 +1915,15 @@ class POSSystem {
     showReceiptDialog(sale) {
         const modal = document.createElement('div');
         modal.className = 'pos-modal';
-        
+        const brand = brandManager.getBrand();
+        const cur = brand.currency || 'KES';
+
         const itemsHTML = sale.items.map(item => `
             <tr>
                 <td>${item.name}</td>
                 <td>${item.quantity}</td>
-                <td>KES ${this.formatCurrency(item.price)}</td>
-                <td>KES ${this.formatCurrency(item.total)}</td>
+                <td>${cur} ${this.formatCurrency(item.price)}</td>
+                <td>${cur} ${this.formatCurrency(item.total)}</td>
             </tr>
         `).join('');
 
@@ -1901,7 +1941,13 @@ class POSSystem {
                 <div class="pos-modal-body">
                     <div class="pos-receipt">
                         <div class="receipt-header">
-                            <h2>Vendify POS</h2>
+                            ${brandManager.getLogoHTML({ maxWidth: 70, maxHeight: 70, marginBottom: 6, alt: brand.name })}
+                            <h2>${brand.name}</h2>
+                            ${brand.tagline ? `<p style="font-style:italic;font-size:11px;">${brand.tagline}</p>` : ''}
+                            ${brand.address ? `<p style="font-size:11px;">${brand.address}</p>` : ''}
+                            ${brand.phone ? `<p style="font-size:11px;">Tel: ${brand.phone}</p>` : ''}
+                            ${brand.email ? `<p style="font-size:11px;">${brand.email}</p>` : ''}
+                            ${brand.taxId ? `<p style="font-size:11px;">PIN: ${brand.taxId}</p>` : ''}
                             <p>Receipt #${sale.id.substring(0, 8).toUpperCase()}</p>
                             <p>${new Date().toLocaleString()}</p>
                             <p><strong>Payment:</strong> ${this.formatPaymentMethod(sale.paymentMethod)}</p>
@@ -1922,23 +1968,23 @@ class POSSystem {
                         <div class="receipt-totals">
                             <div class="receipt-row">
                                 <span>Subtotal:</span>
-                                <span>KES ${this.formatCurrency(sale.subtotal)}</span>
+                                <span>${cur} ${this.formatCurrency(sale.subtotal)}</span>
                             </div>
                             ${sale.discount > 0 ? `
                             <div class="receipt-row">
                                 <span>Discount:</span>
-                                <span>-KES ${this.formatCurrency(sale.discount)}</span>
+                                <span>-${cur} ${this.formatCurrency(sale.discount)}</span>
                             </div>
                             ` : ''}
                             ${sale.tax > 0 ? `
                             <div class="receipt-row">
                                 <span>Tax:</span>
-                                <span>+KES ${this.formatCurrency(sale.tax)}</span>
+                                <span>+${cur} ${this.formatCurrency(sale.tax)}</span>
                             </div>
                             ` : ''}
                             <div class="receipt-row receipt-total">
                                 <span>Total:</span>
-                                <span>KES ${this.formatCurrency(sale.total)}</span>
+                                <span>${cur} ${this.formatCurrency(sale.total)}</span>
                             </div>
                             <div class="receipt-row receipt-payment">
                                 <span>Payment Method:</span>
@@ -1946,7 +1992,7 @@ class POSSystem {
                             </div>
                         </div>
                         <div class="receipt-footer">
-                            <p>Thank you for your purchase!</p>
+                            <p>${brand.receiptFooter || 'Thank you for your purchase!'}</p>
                         </div>
                     </div>
                 </div>

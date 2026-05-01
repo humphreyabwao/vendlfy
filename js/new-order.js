@@ -1,5 +1,6 @@
 // New Order Manager
 import { db, collection, addDoc, getDocs, query, where, serverTimestamp } from './firebase-config.js';
+import { setBtnState, friendlyError, toast } from './ui-feedback.js';
 
 const newOrderManager = {
     suppliers: [],
@@ -41,7 +42,7 @@ const newOrderManager = {
         if (form) {
             form.addEventListener('submit', (e) => {
                 e.preventDefault();
-                this.createOrder();
+                this.createOrder(e);
             });
         }
     },
@@ -229,14 +230,17 @@ const newOrderManager = {
         document.getElementById('summaryTotalAmount').textContent = `KSh ${totalAmount.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     },
 
-    async createOrder() {
+    async createOrder(event) {
+        const form = document.getElementById('newOrderForm');
+        const submitBtn = form?.querySelector('button[type="submit"]') || event?.submitter || null;
+
         // Validation
         const supplierSelect = document.getElementById('orderSupplier');
         const expectedDate = document.getElementById('orderExpectedDate').value;
         const notes = document.getElementById('orderNotes').value.trim();
 
         if (!supplierSelect.value) {
-            this.showNotification('Please select a supplier', 'error');
+            toast('Please select a supplier', 'error');
             return;
         }
 
@@ -244,7 +248,7 @@ const newOrderManager = {
         const items = container.querySelectorAll('.order-item-row');
 
         if (items.length === 0) {
-            this.showNotification('Please add at least one item to the order', 'error');
+            toast('Please add at least one item to the order', 'error');
             return;
         }
 
@@ -275,7 +279,7 @@ const newOrderManager = {
         });
 
         if (hasError) {
-            this.showNotification('Please fill in all item details correctly', 'error');
+            toast('Please fill in all item details correctly', 'error');
             return;
         }
 
@@ -303,6 +307,7 @@ const newOrderManager = {
             updatedAt: serverTimestamp()
         };
 
+        setBtnState(submitBtn, 'loading', 'Creating…');
         try {
             console.log('Creating order:', orderData);
 
@@ -310,8 +315,7 @@ const newOrderManager = {
             const docRef = await addDoc(ordersRef, orderData);
 
             console.log('✅ Order created successfully with ID:', docRef.id);
-            
-            // Log activity
+
             if (window.activityTracker) {
                 window.activityTracker.logActivity('order', 'created', {
                     supplierName: supplierName,
@@ -320,27 +324,27 @@ const newOrderManager = {
                     expectedDate: expectedDate
                 });
             }
-            
-            this.showNotification('Order created successfully!', 'success');
 
-            // Update orders manager if available
+            setBtnState(submitBtn, 'success', 'Created!');
+            toast('Order created successfully!', 'success');
+
             if (window.ordersManager) {
                 await window.ordersManager.loadOrders();
             }
-            
-            // Refresh account stats
             if (window.refreshAccountStats) {
                 await window.refreshAccountStats();
             }
 
-            // Reset form and redirect
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            this.clearForm();
-            showPage('orders');
-
+            // Brief pause so the success state is visible, then reset & navigate.
+            setTimeout(() => {
+                this.clearForm();
+                if (typeof showPage === 'function') showPage('orders');
+                else document.querySelector('[data-page="orders"]')?.click();
+            }, 800);
         } catch (error) {
             console.error('❌ Error creating order:', error);
-            this.showNotification('Failed to create order: ' + error.message, 'error');
+            setBtnState(submitBtn, 'error', 'Failed');
+            toast(friendlyError(error, 'create order'), 'error');
         }
     },
 

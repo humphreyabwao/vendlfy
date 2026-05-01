@@ -2,6 +2,8 @@
 import dataManager from './data-manager.js';
 import branchManager from './branch-manager.js';
 import auditLogger from './audit-logger.js';
+import { appendStockHistoryRecord } from './stock-history.js';
+import { setBtnState, friendlyError, toast } from './ui-feedback.js';
 
 class AddItemManager {
     constructor() {
@@ -415,57 +417,56 @@ class AddItemManager {
         await this.saveItem(true);
     }
 
-    // Save item
+    // Save item — drives the "Save" / "Save & New" buttons through
+    // loading / success / error states using the shared ui-feedback util.
     async saveItem(addNew = false) {
-        // Prevent multiple simultaneous submissions
         if (this.isSaving) {
             console.log('⚠️ Save already in progress, ignoring duplicate request');
             return;
         }
 
         const formData = this.getFormData();
-
         if (!this.validateForm(formData)) {
             return;
         }
 
-        this.isSaving = true;
         const saveBtn = document.getElementById('saveItemBtn');
         const saveAndNewBtn = document.getElementById('saveAndNewBtn');
-        const saveIcon = document.getElementById('saveItemIcon');
-        const saveText = document.getElementById('saveItemText');
-        
-        // Disable buttons and show spinning animation
-        if (saveBtn) {
-            saveBtn.disabled = true;
-            saveBtn.style.opacity = '0.7';
-            saveBtn.style.cursor = 'not-allowed';
-        }
-        if (saveAndNewBtn) {
-            saveAndNewBtn.disabled = true;
-        }
-        
-        // Change to spinner icon and update text
-        if (saveIcon) {
-            saveIcon.innerHTML = '<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" stroke-dasharray="60" stroke-dashoffset="15" />';
-            saveIcon.classList.add('spinning');
-        }
-        if (saveText) {
-            saveText.textContent = 'Saving...';
-        }
+        const activeBtn = addNew ? (saveAndNewBtn || saveBtn) : (saveBtn || saveAndNewBtn);
+        const otherBtn = addNew ? saveBtn : saveAndNewBtn;
+
+        this.isSaving = true;
+        if (otherBtn) otherBtn.disabled = true;
+        setBtnState(activeBtn, 'loading', 'Saving…');
 
         try {
-            // Add timestamp - let Firebase generate the ID
             const itemData = {
                 ...formData,
                 dateAdded: new Date().toISOString(),
                 salesLastMonth: 0
             };
 
-            // Save to database - Firebase will generate the ID
             const savedItem = await dataManager.createInventoryItem(itemData);
 
-            // Log activity
+            const initialQty = Math.max(0, parseInt(savedItem.quantity, 10) || 0);
+            const sid = savedItem.id ? String(savedItem.id) : '';
+            if (initialQty > 0 && sid && !sid.startsWith('local_') && !sid.startsWith('item_')) {
+                const branchId = savedItem.branchId || branchManager.getCurrentBranch?.()?.id || '';
+                const br = branchId && branchManager.getBranchById?.(branchId);
+                const branchName = br?.name ?? branchManager.getCurrentBranch?.()?.name ?? null;
+                void appendStockHistoryRecord({
+                    itemId: sid,
+                    itemName: savedItem.name,
+                    sku: savedItem.sku || '',
+                    branchId,
+                    branchName,
+                    quantityBefore: 0,
+                    quantityAdded: initialQty,
+                    quantityAfter: initialQty,
+                    source: 'new_item'
+                });
+            }
+
             if (window.activityTracker) {
                 window.activityTracker.logActivity('inventory', 'added', {
                     itemName: savedItem.name,
@@ -476,7 +477,6 @@ class AddItemManager {
                 });
             }
 
-            // Add notification for new item
             if (window.notificationManager) {
                 window.notificationManager.notify(
                     'item_added',
@@ -487,43 +487,27 @@ class AddItemManager {
                 );
             }
 
-            window.showNotification('Item added successfully!', 'success');
+            setBtnState(activeBtn, 'success', addNew ? 'Saved! New…' : 'Saved!');
+            toast('Item added successfully!', 'success');
 
             if (addNew) {
-                this.resetForm();
+                // After the success state has been visible briefly, reset the
+                // form so the user can keep adding items.
+                setTimeout(() => this.resetForm(), 700);
             } else {
-                this.navigateToInventory();
+                setTimeout(() => this.navigateToInventory(), 700);
             }
 
-            // Refresh inventory if on inventory page
             if (window.inventoryManager) {
                 await window.inventoryManager.refresh();
             }
-
         } catch (error) {
             console.error('Error saving item:', error);
-            window.showNotification('Failed to save item', 'error');
+            setBtnState(activeBtn, 'error', 'Failed');
+            toast(friendlyError(error, 'save item'), 'error');
         } finally {
             this.isSaving = false;
-            
-            // Restore button state
-            if (saveBtn) {
-                saveBtn.disabled = false;
-                saveBtn.style.opacity = '1';
-                saveBtn.style.cursor = 'pointer';
-            }
-            if (saveAndNewBtn) {
-                saveAndNewBtn.disabled = false;
-            }
-            
-            // Restore original icon and text
-            if (saveIcon) {
-                saveIcon.classList.remove('spinning');
-                saveIcon.innerHTML = '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline>';
-            }
-            if (saveText) {
-                saveText.textContent = 'Save Item';
-            }
+            if (otherBtn) otherBtn.disabled = false;
         }
     }
 
@@ -626,12 +610,16 @@ class AddItemManager {
     }
 
     // Cancel form
-    cancelForm() {
-        const confirmed = confirm('Are you sure you want to cancel? All unsaved changes will be lost.');
-        if (confirmed) {
-            this.resetForm();
-            this.navigateToInventory();
-        }
+    async cancelForm() {
+        const confirmed = await window.uiConfirm?.({
+            title: 'Discard changes?',
+            message: 'Any unsaved details for this item will be lost.',
+            tone: 'warning',
+            okLabel: 'Discard'
+        });
+        if (!confirmed) return;
+        this.resetForm();
+        this.navigateToInventory();
     }
 
     // Navigate to inventory

@@ -1,5 +1,6 @@
 // Supplier Manager
 import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy as firestoreOrderBy, Timestamp, serverTimestamp } from './firebase-config.js';
+import { setBtnState, friendlyError, toast } from './ui-feedback.js';
 
 const supplierManager = {
     suppliers: [],
@@ -34,10 +35,14 @@ const supplierManager = {
                 clearInterval(this.refreshInterval);
             }
             
-            // Auto-refresh every 30 seconds
+            // Auto-refresh every 2 minutes, only when the suppliers page is visible
+            // and the tab is in the foreground (avoid Firestore read amplification).
             this.refreshInterval = setInterval(() => {
+                if (document.visibilityState !== 'visible') return;
+                const suppliersPage = document.getElementById('add-supplier-page');
+                if (!suppliersPage || !suppliersPage.classList.contains('active')) return;
                 this.loadSuppliers();
-            }, 30000);
+            }, 120000);
         });
     },
 
@@ -58,7 +63,7 @@ const supplierManager = {
         if (form) {
             form.addEventListener('submit', (e) => {
                 e.preventDefault();
-                this.saveSupplier();
+                this.saveSupplier(e);
             });
         }
 
@@ -155,31 +160,17 @@ const supplierManager = {
             console.log('Loading suppliers for branch:', branchId);
 
             const suppliersRef = collection(db, 'suppliers');
-            
-            // Try loading ALL suppliers first to see if any exist
-            console.log('🔍 Attempting to load ALL suppliers from Firestore...');
-            const allSnapshot = await getDocs(suppliersRef);
-            console.log(`📊 Found ${allSnapshot.size} total suppliers in database (all branches)`);
-            
-            if (allSnapshot.size > 0) {
-                const firstDoc = allSnapshot.docs[0].data();
-                console.log('📄 Sample supplier data:', {
-                    name: firstDoc.name,
-                    company: firstDoc.company,
-                    branchId: firstDoc.branchId,
-                    status: firstDoc.status
-                });
-            }
-            
-            // Now filter by branch using simple query first (no ordering)
-            console.log(`🔍 Loading suppliers for current branch: ${branchId}`);
+
+            // Branch-scoped query only. Previously this method also did a debug
+            // `getDocs(suppliersRef)` over the ENTIRE collection (all branches)
+            // which doubled reads on every poll — removed to prevent quota
+            // blow-up.
             const simpleQuery = query(
                 suppliersRef,
                 where('branchId', '==', branchId)
             );
-            
             const simpleSnapshot = await getDocs(simpleQuery);
-            console.log(`📊 Found ${simpleSnapshot.size} suppliers for branch ${branchId} (without ordering)`);
+            console.log(`📊 Found ${simpleSnapshot.size} suppliers for branch ${branchId}`);
             
             this.suppliers = [];
             simpleSnapshot.forEach(docSnap => {
@@ -229,9 +220,14 @@ const supplierManager = {
         }
     },
 
-    async saveSupplier() {
+    async saveSupplier(event) {
+        const form = document.getElementById('addSupplierForm');
+        const submitBtn = form?.querySelector('button[type="submit"]')
+            || document.getElementById('saveSupplierBtn')
+            || event?.submitter || null;
+
         if (!window.db) {
-            this.showNotification('Database not available. Please refresh the page.', 'error');
+            toast('Database not available. Please refresh the page.', 'error');
             return;
         }
 
@@ -250,29 +246,29 @@ const supplierManager = {
             updatedAt: serverTimestamp()
         };
 
-        // Validation
         if (!supplierData.name || !supplierData.email || !supplierData.phone) {
-            this.showNotification('Please fill in all required fields', 'error');
+            toast('Please fill in all required fields', 'error');
             return;
         }
 
-        // Email validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(supplierData.email)) {
-            this.showNotification('Please enter a valid email address', 'error');
+            toast('Please enter a valid email address', 'error');
             return;
         }
 
         if (!supplierData.branchId) {
-            this.showNotification('Please select a branch first', 'error');
+            toast('Please select a branch first', 'error');
             return;
         }
+
+        const editing = !!this.editingId;
+        setBtnState(submitBtn, 'loading', editing ? 'Updating…' : 'Saving…');
 
         try {
             console.log('Saving supplier:', supplierData);
 
-            if (this.editingId) {
-                // Update existing supplier
+            if (editing) {
                 const supplierRef = doc(db, 'suppliers', this.editingId);
                 const updateData = {
                     name: supplierData.name,
@@ -289,15 +285,12 @@ const supplierManager = {
                 };
                 await updateDoc(supplierRef, updateData);
                 console.log('✅ Supplier updated successfully');
-                this.showNotification('Supplier updated successfully!', 'success');
                 this.editingId = null;
             } else {
-                // Add new supplier
                 const suppliersRef = collection(db, 'suppliers');
                 const docRef = await addDoc(suppliersRef, supplierData);
                 console.log('✅ Supplier added successfully with ID:', docRef.id);
-                
-                // Log activity
+
                 if (window.activityTracker) {
                     window.activityTracker.logActivity('supplier', 'added', {
                         supplierName: supplierData.name,
@@ -305,42 +298,17 @@ const supplierManager = {
                         category: supplierData.category
                     });
                 }
-                
-                this.showNotification('Supplier added successfully!', 'success');
             }
 
-            // Reset form
-            document.getElementById('addSupplierForm').reset();
-            document.getElementById('saveSupplierBtn').innerHTML = `
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                    <polyline points="7 3 7 8 15 8"></polyline>
-                </svg>
-                Save Supplier
-            `;
+            setBtnState(submitBtn, 'success', editing ? 'Updated!' : 'Saved!');
+            toast(editing ? 'Supplier updated successfully!' : 'Supplier added successfully!', 'success');
+            form.reset();
 
-            // Small delay to ensure Firestore write is complete
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            // Reload suppliers to show the new one
-            console.log('Reloading suppliers table...');
             await this.loadSuppliers();
-            
-            console.log('✅ Table updated with new supplier');
         } catch (error) {
             console.error('❌ Error saving supplier:', error);
-            console.error('Error details:', error.message);
-            
-            // Show specific error message
-            if (error.code === 'permission-denied') {
-                this.showNotification('Permission denied. Please check Firestore rules.', 'error');
-            } else if (error.message && error.message.includes('index')) {
-                this.showNotification('Database index required. Check console for details.', 'error');
-                console.error('⚠️ Create composite index: branchId (Ascending) + createdAt (Descending)');
-            } else {
-                this.showNotification('Failed to save supplier: ' + error.message, 'error');
-            }
+            setBtnState(submitBtn, 'error', 'Failed');
+            toast(friendlyError(error, editing ? 'update supplier' : 'add supplier'), 'error');
         }
     },
 
@@ -701,9 +669,13 @@ const supplierManager = {
     },
 
     async deleteSupplier(supplierId) {
-        if (!confirm('Are you sure you want to delete this supplier? This action cannot be undone.')) {
-            return;
-        }
+        const ok = await window.uiConfirm?.({
+            title: 'Delete supplier?',
+            message: 'This supplier will be permanently removed. This cannot be undone.',
+            tone: 'danger',
+            okLabel: 'Delete'
+        });
+        if (!ok) return;
 
         try {
             const supplierRef = doc(db, 'suppliers', supplierId);

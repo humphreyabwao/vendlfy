@@ -22,6 +22,16 @@ import globalSearch from './global-search.js';
 import notificationManager from './notification-manager.js';
 import auditLogger from './audit-logger.js';
 import { initializeAuditTrail } from './audit-ui.js';
+import sessionManager from './session-manager.js';
+import permissionGuard from './permission-guard.js';
+import brandManager from './brand-manager.js';
+import brandUI from './brand-ui.js';
+import tenantsManager from './tenants.js';
+import cashInjectionsManager from './cash-injections.js';
+import venturesManager from './ventures.js';
+import hrManager from './hr.js';
+import { auth, signOut } from './firebase-config.js';
+import { setBtnState, friendlyError } from './ui-feedback.js';
 
 // Make managers globally available
 window.branchManager = branchManager;
@@ -45,6 +55,15 @@ window.activityTracker = activityTracker;
 window.activityUI = activityUI;
 window.globalSearch = globalSearch;
 window.auditLogger = auditLogger;
+window.sessionManager = sessionManager;
+window.permissionGuard = permissionGuard;
+window.brandManager = brandManager;
+window.brandUI = brandUI;
+window.tenantsManager = tenantsManager;
+window.cashInjectionsManager = cashInjectionsManager;
+window.venturesManager = venturesManager;
+window.hrManager = hrManager;
+// populateBranchSelector is set on window after definition below
 
 // App Initialization
 document.addEventListener('DOMContentLoaded', async function() {
@@ -58,10 +77,30 @@ async function initializeApp() {
     initNavigation();
     initProfileDropdown();
     initSystemSettingsTabs();
+    brandManager.init();
+    brandUI.init();
     await initBranchSystem();
     globalSearch.init();
     notificationManager.init();
     await initializeAuditTrail();
+    initInitialPageGuard();
+}
+
+/**
+ * After the session profile is ready, ensure the user's landing page is one
+ * they can actually access. Without this, a non-admin without dashboard.view
+ * would see the dashboard markup on first load (because the dashboard is the
+ * default .page.active in the HTML, even after their nav link is hidden).
+ *
+ * Live updates after this point are handled by permissionGuard.onSessionChanged().
+ */
+function initInitialPageGuard() {
+    const enforce = () => {
+        if (!sessionManager.isProfileLoaded()) return;
+        permissionGuard.enforceCurrentPage({ silent: true });
+    };
+    enforce();
+    sessionManager.ready?.().then(enforce).catch(() => {});
 }
 
 // Initialize Branch System
@@ -85,45 +124,184 @@ async function initBranchSystem() {
     }
 }
 
-// Populate branch selector dropdown
-async function populateBranchSelector() {
-    const branchSelect = document.getElementById('branchSelect');
-    if (!branchSelect) return;
-    
-    const branches = branchManager.getAllBranches();
-    const currentBranch = branchManager.getCurrentBranch();
-    
-    // Clear existing options
-    branchSelect.innerHTML = '';
-    
-    // Add "All Branches" option
-    const allOption = document.createElement('option');
-    allOption.value = 'all';
-    allOption.textContent = 'All Branches';
-    branchSelect.appendChild(allOption);
-    
-    // Add branch options
-    branches.forEach(branch => {
-        const option = document.createElement('option');
-        option.value = branch.id;
-        option.textContent = branch.name;
-        branchSelect.appendChild(option);
-    });
-    
-    // Set current branch
-    if (currentBranch) {
-        branchSelect.value = currentBranch.id === 'all' ? 'all' : currentBranch.id;
-    }
-    
-    // Handle branch change
-    branchSelect.addEventListener('change', function() {
-        if (this.value === 'all') {
+function _bindBranchSelectChangeOnce(branchSelect) {
+    if (branchSelect.dataset.vendifyBranchListener === '1') return;
+    branchSelect.dataset.vendifyBranchListener = '1';
+    branchSelect.addEventListener('change', function () {
+        const val = this.value;
+        if (!val) return;
+        const allowedIds = sessionManager.getAllowedBranchIds();
+        const canSeeAll = sessionManager.canAccessAllBranches();
+        if (!canSeeAll && allowedIds && !allowedIds.includes(val) && val !== 'all') {
+            window.showNotification('You are not authorized to access that branch.', 'error');
+            const cur = branchManager.getCurrentBranch();
+            const all = branchManager.getAllBranches();
+            const vis = canSeeAll
+                ? all
+                : all.filter((b) => allowedIds && allowedIds.includes(b.id));
+            if (cur?.code === 'ALL' && canSeeAll) this.value = 'all';
+            else this.value = cur?.id || vis[0]?.id || '';
+            return;
+        }
+        if (val === 'all') {
             branchManager.setViewAllBranches();
         } else {
-            branchManager.switchBranch(this.value);
+            branchManager.switchBranch(val);
         }
     });
 }
+
+// Populate branch selector dropdown — respects session RBAC
+async function populateBranchSelector() {
+    const branchSelect = document.getElementById('branchSelect');
+    if (!branchSelect) return;
+
+    const profileReady = sessionManager.isProfileLoaded();
+    const allBranches = branchManager.getAllBranches();
+    const currentBranch = branchManager.getCurrentBranch();
+
+    const allowedIds = sessionManager.getAllowedBranchIds();
+    const canSeeAll = sessionManager.canAccessAllBranches();
+
+    // Defer: don't bake in "No branch assigned" before profile or branches finish loading.
+    // Without this guard, non-admin staff briefly see "No branch assigned" even after branches
+    // were assigned correctly — because populateBranchSelector ran before the profile arrived.
+    if (!profileReady || (!canSeeAll && allBranches.length === 0)) {
+        const mark = 'loading';
+        if (branchSelect.dataset.branchPopulateMark !== mark) {
+            branchSelect.dataset.branchPopulateMark = mark;
+            branchSelect.innerHTML = '<option value="">Loading branches…</option>';
+        }
+        branchSelect.disabled = true;
+        return;
+    }
+
+    const visibleBranches = canSeeAll
+        ? allBranches
+        : allBranches.filter((b) => allowedIds && allowedIds.includes(b.id));
+
+    // Profile loaded + branches loaded, but the user's branchIds don't match any existing branch.
+    // Flag it loudly in the console so we can tell "really no branch" from a stale id mismatch.
+    if (
+        !canSeeAll &&
+        Array.isArray(allowedIds) &&
+        allowedIds.length > 0 &&
+        visibleBranches.length === 0
+    ) {
+        const allIds = allBranches.map((b) => b.id);
+        console.warn(
+            '[branchSelector] User has assigned branches but none match loaded branch ids.',
+            { assigned: allowedIds, available: allIds }
+        );
+    }
+
+    const optSig = `${canSeeAll ? 1 : 0}:${visibleBranches.map((b) => b.id).join(',')}`;
+
+    let desired = '';
+    if (currentBranch) {
+        if (currentBranch.code === 'ALL' && canSeeAll) {
+            desired = 'all';
+        } else if (canSeeAll || (allowedIds && allowedIds.includes(currentBranch.id))) {
+            desired = currentBranch.id;
+        } else if (visibleBranches.length > 0) {
+            desired = visibleBranches[0].id;
+        }
+    } else if (canSeeAll) {
+        desired = 'all';
+    } else if (visibleBranches.length > 0) {
+        desired = visibleBranches[0].id;
+    }
+
+    // Single allowed branch — locked control
+    if (!canSeeAll && visibleBranches.length === 1) {
+        const onlyId = visibleBranches[0].id;
+        const mark = `one:${onlyId}`;
+        if (branchSelect.dataset.branchPopulateMark !== mark) {
+            branchSelect.dataset.branchPopulateMark = mark;
+            branchSelect.innerHTML = '';
+            const opt = document.createElement('option');
+            opt.value = onlyId;
+            opt.textContent = visibleBranches[0].name;
+            branchSelect.appendChild(opt);
+        }
+        branchSelect.disabled = true;
+        branchSelect.value = onlyId;
+        if (branchManager.getCurrentBranch()?.id !== onlyId) {
+            branchManager.switchBranch(onlyId);
+        }
+        _bindBranchSelectChangeOnce(branchSelect);
+        return;
+    }
+
+    if (!canSeeAll && visibleBranches.length === 0) {
+        const hasMismatch =
+            Array.isArray(allowedIds) && allowedIds.length > 0 && allBranches.length > 0;
+        const mark = hasMismatch ? 'mismatch' : 'none';
+        if (branchSelect.dataset.branchPopulateMark !== mark) {
+            branchSelect.dataset.branchPopulateMark = mark;
+            branchSelect.innerHTML = hasMismatch
+                ? '<option value="">Assigned branch not found — contact admin</option>'
+                : '<option value="">No branch assigned</option>';
+        }
+        branchSelect.disabled = true;
+        _bindBranchSelectChangeOnce(branchSelect);
+        return;
+    }
+
+    const multiMark = `multi:${optSig}`;
+    const needOptionRebuild = branchSelect.dataset.branchPopulateMark !== multiMark;
+
+    branchSelect.disabled = false;
+    if (needOptionRebuild) {
+        branchSelect.dataset.branchPopulateMark = multiMark;
+        branchSelect.innerHTML = '';
+        if (canSeeAll) {
+            const allOpt = document.createElement('option');
+            allOpt.value = 'all';
+            allOpt.textContent = 'All Branches';
+            branchSelect.appendChild(allOpt);
+        }
+        visibleBranches.forEach((branch) => {
+            const opt = document.createElement('option');
+            opt.value = branch.id;
+            opt.textContent = branch.name;
+            branchSelect.appendChild(opt);
+        });
+    }
+
+    const hasDesired =
+        desired && [...branchSelect.options].some((o) => o.value === String(desired));
+    if (!hasDesired) {
+        desired = canSeeAll ? 'all' : visibleBranches[0]?.id || '';
+    }
+    if (desired && branchSelect.value !== desired) {
+        branchSelect.value = desired;
+    }
+
+    if (
+        visibleBranches.length > 0 &&
+        currentBranch &&
+        !canSeeAll &&
+        allowedIds &&
+        !allowedIds.includes(currentBranch.id) &&
+        currentBranch.code !== 'ALL'
+    ) {
+        const firstId = visibleBranches[0].id;
+        if (branchManager.getCurrentBranch()?.id !== firstId) {
+            branchManager.switchBranch(firstId);
+        }
+    } else if (!currentBranch && visibleBranches.length > 0 && !canSeeAll) {
+        const firstId = visibleBranches[0].id;
+        if (branchManager.getCurrentBranch()?.id !== firstId) {
+            branchManager.switchBranch(firstId);
+        }
+    }
+
+    _bindBranchSelectChangeOnce(branchSelect);
+}
+
+// Expose populateBranchSelector globally (used by session-manager and permission-guard callbacks)
+window.populateBranchSelector = populateBranchSelector;
 
 // Handle branch change event
 async function handleBranchChange(event) {
@@ -151,14 +329,18 @@ async function initializeDashboard() {
     await refreshDashboardStats();
     await initDashboardActivities();
     
-    // Set up periodic refresh for dashboard stats (every 30 seconds)
+    // Periodic dashboard refresh — only when the dashboard page is visible
+    // and the tab is in the foreground. Each call fans out to ~5 collection
+    // reads (sales×2 + expenses + customers + inventory) so we keep this on
+    // a long cadence to avoid Firestore quota drain.
     setInterval(async () => {
+        if (document.visibilityState !== 'visible') return;
         const dashboardPage = document.getElementById('dashboard-page');
         if (dashboardPage && dashboardPage.classList.contains('active')) {
             await refreshDashboardStats();
             await activityUI.updateDashboardActivity();
         }
-    }, 30000);
+    }, 120000);
 }
 
 // Make refreshDashboardStats globally available
@@ -294,11 +476,25 @@ function initNavigation() {
             e.preventDefault();
             
             const pageId = this.getAttribute('data-page');
+
+            // Permission guard check
+            const denial = permissionGuard.guardNavigation(pageId);
+            if (denial) {
+                window.showNotification(denial, 'error');
+                return;
+            }
             
             // Update active link
             navLinks.forEach(l => l.classList.remove('active'));
             this.classList.add('active');
-            
+
+            // Tear down reports' 6 long-lived Firestore onSnapshot listeners
+            // when leaving the reports page. Otherwise they stay subscribed
+            // for the lifetime of the tab and consume reads on every doc change.
+            if (pageId !== 'reports' && window.reportsManager?.initialized) {
+                try { window.reportsManager.destroy(); } catch (_) {}
+            }
+
             // Show selected page
             pages.forEach(page => page.classList.remove('active'));
             const targetPage = document.getElementById(pageId + '-page');
@@ -353,6 +549,40 @@ function initNavigation() {
                         dateInput.value = new Date().toISOString().split('T')[0];
                     }
                 }
+
+                // Initialize HR / Staff pages
+                if (pageId === 'hr-staff') {
+                    hrManager.init();
+                }
+                if (pageId === 'add-staff') {
+                    if (!hrManager.initialized) hrManager.init();
+                    else hrManager.bindEventListeners();
+                    const form = document.getElementById('addStaffForm');
+                    if (form && !hrManager._editingIntent) {
+                        form.reset();
+                        form.dataset.editingId = '';
+                        const header = document.getElementById('addStaffHeader');
+                        if (header) header.textContent = 'Add Staff';
+                        const submitSpan = form.querySelector('button[type="submit"] span');
+                        if (submitSpan) submitSpan.textContent = ' Add Staff';
+                        const hireDate = form.querySelector('input[name="hireDate"]');
+                        if (hireDate && !hireDate.value) hireDate.value = new Date().toISOString().split('T')[0];
+                    }
+                    hrManager._editingIntent = false;
+                    hrManager._onSalaryTypeChange?.();
+                }
+                if (pageId === 'pay-staff') {
+                    if (!hrManager.initialized) hrManager.init();
+                    else { hrManager.bindEventListeners(); hrManager.populateStaffSelectors(); }
+                    hrManager._setDefaultPaymentDate?.();
+                    hrManager._recalcPaymentTotal?.();
+                }
+                if (pageId === 'salary-history') {
+                    (async () => {
+                        if (!hrManager.initialized) await hrManager.init();
+                        else { hrManager.bindEventListeners(); hrManager.populateStaffSelectors(); hrManager.renderPaymentHistory(); }
+                    })();
+                }
                 
                 // Initialize Customers page
                 if (pageId === 'customers') {
@@ -402,14 +632,33 @@ function initNavigation() {
                     }
                 }
 
-                // Initialize Reports page
-                if (pageId === 'reports') {
-                    reportsManager.init();
-                }
-
                 // Initialize Activities page
                 if (pageId === 'activities') {
                     activityUI.init();
+                }
+
+                // Initialize Tenants page
+                if (pageId === 'tenants') {
+                    tenantsManager.init();
+                    // Submenu shortcuts: open the right modal/view
+                    const action = this.getAttribute('data-action');
+                    setTimeout(() => {
+                        if (action === 'add-tenant') {
+                            tenantsManager.openTenantModal();
+                        } else if (action === 'rent-payments') {
+                            if (tenantsManager.currentView !== 'payments') tenantsManager.toggleView();
+                        }
+                    }, 50);
+                }
+
+                // Initialize Ventures page (always reset to list view when nav is clicked)
+                if (pageId === 'ventures') {
+                    venturesManager.init();
+                    venturesManager.backToList();
+                    const action = this.getAttribute('data-action');
+                    if (action === 'create-venture') {
+                        setTimeout(() => venturesManager.openVentureModal(), 60);
+                    }
                 }
                 
                 // Initialize New User page
@@ -456,28 +705,30 @@ function initNavigation() {
 // Initialize Dashboard Activities
 async function initDashboardActivities() {
     try {
-        // Load recent activities on dashboard
+        // Kick off the real-time activity stream (one shared listener for the whole app)
+        activityTracker.start();
+
+        // Render the dashboard panel once the stream has data
         await activityUI.updateDashboardActivity();
-        
-        // Start real-time listener for dashboard activities
-        activityTracker.addListener((newActivity) => {
-            console.log('📢 New activity detected on dashboard:', newActivity);
-            // Update dashboard activity section in real-time
-            activityUI.updateDashboardActivity();
+
+        // Live-refresh the dashboard panel on every stream change
+        activityTracker.onChange(() => {
+            const dashboardPage = document.getElementById('dashboard-page');
+            if (dashboardPage && dashboardPage.classList.contains('active')) {
+                activityUI.updateDashboardActivity();
+            }
         });
-        
+
         // Set up View All button
         const viewAllBtn = document.getElementById('viewAllActivitiesBtn');
         if (viewAllBtn) {
             viewAllBtn.addEventListener('click', function() {
                 const activitiesLink = document.querySelector('[data-page="activities"]');
-                if (activitiesLink) {
-                    activitiesLink.click();
-                }
+                if (activitiesLink) activitiesLink.click();
             });
         }
-        
-        console.log('✅ Dashboard activities initialized with real-time updates');
+
+        console.log('Dashboard activities initialized with real-time updates');
     } catch (error) {
         console.error('Error initializing dashboard activities:', error);
     }
@@ -512,6 +763,27 @@ function initProfileDropdown() {
             });
         }
     });
+
+    const logoutBtn = document.getElementById('dashboardLogoutBtn');
+    if (logoutBtn && logoutBtn.dataset.logoutBound !== '1') {
+        logoutBtn.dataset.logoutBound = '1';
+        // Capture: run before any other handler can swallow the click (staff / touch / hash links).
+        logoutBtn.addEventListener(
+            'click',
+            (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                profileDropdown.classList.remove('active');
+                const user = sessionManager.getAuthUser();
+                if (user && auditLogger?.logLogout) {
+                    void auditLogger.logLogout(user.email, user.displayName || user.email).catch(() => {});
+                }
+                void signOut(auth).catch(() => {});
+                window.location.replace('index.html');
+            },
+            true
+        );
+    }
 }
 
 // System Settings Tab Management
@@ -537,50 +809,62 @@ function initSystemSettingsTabs() {
             if (targetContent) {
                 targetContent.classList.add('active');
             }
+
+            // Refresh brand form when its tab opens
+            if (targetTab === 'brand' && window.brandUI) {
+                window.brandUI.populateForm();
+            }
         });
     });
 
-    // Handle form submissions
-    const profileForm = document.getElementById('profileForm');
-    if (profileForm) {
-        profileForm.addEventListener('submit', async function(e) {
+    // Settings form submissions — drive the submit button through
+    // loading → success states so users get visible feedback. These forms
+    // currently persist to localStorage / show a success notification only;
+    // when wired to a backend they'll surface real errors via setBtnState.
+    const wireSettingsForm = (id, label, save) => {
+        const form = document.getElementById(id);
+        if (!form) return;
+        form.addEventListener('submit', async function(e) {
             e.preventDefault();
-            showNotification('Profile updated successfully!', 'success');
-        });
-    }
-
-    const passwordForm = document.getElementById('passwordForm');
-    if (passwordForm) {
-        passwordForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const newPassword = document.getElementById('newPassword').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
-            
-            if (newPassword !== confirmPassword) {
-                showNotification('Passwords do not match!', 'warning');
-                return;
+            const btn = form.querySelector('button[type="submit"]') || e.submitter || null;
+            setBtnState(btn, 'loading', 'Saving…');
+            try {
+                const result = await save(form);
+                if (result === false) {
+                    setBtnState(btn, 'idle');
+                    return;
+                }
+                setBtnState(btn, 'success', 'Saved!');
+            } catch (err) {
+                console.error(`[settings] ${label} save failed:`, err);
+                setBtnState(btn, 'error', 'Failed');
+                showNotification(friendlyError(err, `save ${label.toLowerCase()}`), 'error');
             }
-            
-            showNotification('Password updated successfully!', 'success');
-            passwordForm.reset();
         });
-    }
+    };
 
-    const preferencesForm = document.getElementById('preferencesForm');
-    if (preferencesForm) {
-        preferencesForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            showNotification('Preferences saved successfully!', 'success');
-        });
-    }
+    wireSettingsForm('profileForm', 'profile', () => {
+        showNotification('Profile updated successfully!', 'success');
+    });
 
-    const notificationsForm = document.getElementById('notificationsForm');
-    if (notificationsForm) {
-        notificationsForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            showNotification('Notification settings saved!', 'success');
-        });
-    }
+    wireSettingsForm('passwordForm', 'password', (form) => {
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        if (newPassword !== confirmPassword) {
+            showNotification('Passwords do not match!', 'warning');
+            return false;
+        }
+        showNotification('Password updated successfully!', 'success');
+        form.reset();
+    });
+
+    wireSettingsForm('preferencesForm', 'preferences', () => {
+        showNotification('Preferences saved successfully!', 'success');
+    });
+
+    wireSettingsForm('notificationsForm', 'notification settings', () => {
+        showNotification('Notification settings saved!', 'success');
+    });
 
     // Dark mode toggle
     const darkModeToggle = document.getElementById('darkModeToggle');
@@ -690,11 +974,16 @@ function initProfilePictureUpload() {
     // Remove button click
     if (removeBtn) {
         removeBtn.addEventListener('click', async () => {
-            if (confirm('Are you sure you want to remove your profile picture?')) {
-                await removeProfilePicture();
-                removeBtn.style.display = 'none';
-                showNotification('Profile picture removed', 'info');
-            }
+            const ok = await window.uiConfirm?.({
+                title: 'Remove profile picture?',
+                message: 'Your current profile photo will be removed.',
+                tone: 'warning',
+                okLabel: 'Remove'
+            });
+            if (!ok) return;
+            await removeProfilePicture();
+            removeBtn.style.display = 'none';
+            showNotification('Profile picture removed', 'info');
         });
     }
 }

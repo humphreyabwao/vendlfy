@@ -1,6 +1,7 @@
 // Sales Management Module - View All Sales
 import dataManager from './data-manager.js';
 import branchManager from './branch-manager.js';
+import brandManager from './brand-manager.js';
 
 class SalesManager {
     constructor() {
@@ -793,6 +794,8 @@ class SalesManager {
                 </head>
                 <body>
                     <div class="header">
+                        ${brandManager.getLogoHTML({ maxWidth: 80, maxHeight: 80, marginBottom: 6, alt: brandManager.name() })}
+                        <div style="font-size:18px;font-weight:700;color:#1f2937;margin-bottom:4px;">${brandManager.name()}</div>
                         <h1>SALES REPORT</h1>
                         <p><strong>Period:</strong> ${dateRangeLabel}</p>
                         <p><strong>Branch:</strong> ${branchName}</p>

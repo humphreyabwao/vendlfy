@@ -1,5 +1,17 @@
 // Branch Management System
-import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot, isFirebaseConfigured } from './firebase-config.js';
+import { db, collection, getDocs, query, orderBy, onSnapshot, isFirebaseConfigured } from './firebase-config.js';
+import { createBranchDuplex, updateBranchDuplex, deleteBranchDuplex } from './storage-adapter.js';
+
+let _branchSelectorPopulateTimer = null;
+function schedulePopulateBranchSelector() {
+    if (_branchSelectorPopulateTimer) clearTimeout(_branchSelectorPopulateTimer);
+    _branchSelectorPopulateTimer = setTimeout(() => {
+        _branchSelectorPopulateTimer = null;
+        if (typeof window.populateBranchSelector === 'function') {
+            window.populateBranchSelector();
+        }
+    }, 80);
+}
 
 class BranchManager {
     constructor() {
@@ -117,14 +129,11 @@ class BranchManager {
             };
 
             if (this.isFirebaseAvailable()) {
-                // Save to Firestore
-                console.log('💾 Saving branch to Firestore:', newBranch.name);
-                const branchesRef = collection(db, 'branches');
-                const docRef = await addDoc(branchesRef, newBranch);
-                console.log('✅ Branch saved to Firestore with ID:', docRef.id);
-                
+                console.log('💾 Saving branch (Firestore + optional RTDB mirror):', newBranch.name);
+                const saved = await createBranchDuplex(newBranch);
+                console.log('✅ Branch saved with ID:', saved.id);
                 await this.loadBranches();
-                return { id: docRef.id, ...newBranch };
+                return saved;
             } else {
                 // Save to localStorage
                 console.log('💾 Saving branch to local storage:', newBranch.name);
@@ -194,10 +203,9 @@ class BranchManager {
             updates.updatedAt = new Date().toISOString();
 
             if (this.isFirebaseAvailable()) {
-                console.log('💾 Updating branch in Firestore:', branchId);
-                const branchRef = doc(db, 'branches', branchId);
-                await updateDoc(branchRef, updates);
-                console.log('✅ Branch updated in Firestore');
+                console.log('💾 Updating branch (Firestore + optional RTDB mirror):', branchId);
+                await updateBranchDuplex(branchId, updates);
+                console.log('✅ Branch updated');
             } else {
                 // Update in localStorage
                 console.log('💾 Updating branch in local storage:', branchId);
@@ -234,10 +242,9 @@ class BranchManager {
             }
 
             if (this.isFirebaseAvailable()) {
-                console.log('🗑️ Deleting branch from Firestore:', branchId);
-                const branchRef = doc(db, 'branches', branchId);
-                await deleteDoc(branchRef);
-                console.log('✅ Branch deleted from Firestore');
+                console.log('🗑️ Deleting branch (Firestore + optional RTDB mirror):', branchId);
+                await deleteBranchDuplex(branchId);
+                console.log('✅ Branch deleted');
             } else {
                 // Delete from localStorage
                 console.log('🗑️ Deleting branch from local storage:', branchId);
@@ -263,13 +270,13 @@ class BranchManager {
     // Switch branch
     switchBranch(branchId) {
         const branch = this.branches.find(b => b.id === branchId);
-        if (branch) {
-            this.saveCurrentBranch(branch);
-            // Trigger branch change event
+        if (!branch) return false;
+        const prevId = this.currentBranch?.id;
+        this.saveCurrentBranch(branch);
+        if (prevId !== branch.id) {
             window.dispatchEvent(new CustomEvent('branchChanged', { detail: branch }));
-            return true;
         }
-        return false;
+        return true;
     }
 
     // Get branch by ID
@@ -284,6 +291,7 @@ class BranchManager {
 
     // Set view to all branches
     setViewAllBranches() {
+        if (this.currentBranch?.code === 'ALL') return;
         this.saveCurrentBranch({
             id: 'all',
             code: 'ALL',
@@ -329,9 +337,7 @@ class BranchManager {
             });
 
             // Update branch selector if available
-            if (window.populateBranchSelector) {
-                window.populateBranchSelector();
-            }
+            schedulePopulateBranchSelector();
 
             // Dispatch custom event for other components
             window.dispatchEvent(new CustomEvent('branchesUpdated', { 
